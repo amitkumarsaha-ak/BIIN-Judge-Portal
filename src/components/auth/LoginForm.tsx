@@ -1,0 +1,240 @@
+import React, { useState } from 'react';
+import { Mail, Lock, LogIn, AlertCircle, Sparkles, UserCheck, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+
+interface LoginFormProps {
+  onSwitchToRegister: () => void;
+  onSuccess: () => void;
+  initialRole?: 'judge' | 'admin';
+}
+
+export const LoginForm: React.FC<LoginFormProps> = ({
+  onSwitchToRegister,
+  onSuccess,
+  initialRole = 'judge'
+}) => {
+  const { login } = useAuth();
+  const [selectedRole, setSelectedRole] = useState<'judge' | 'admin'>(initialRole);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+
+    const result = login(email, password);
+    if (!result.success) {
+      setErrorMessage(result.error || 'Login failed. Please verify credentials.');
+    } else {
+      onSuccess();
+    }
+  };
+
+  const handleQuickDemo = (demoEmail: string, demoPass: string, role: 'judge' | 'admin') => {
+    setSelectedRole(role);
+    setEmail(demoEmail);
+    setPassword(demoPass);
+    setErrorMessage(null);
+    const result = login(demoEmail, demoPass);
+    if (result.success) {
+      onSuccess();
+    } else {
+      setErrorMessage(result.error || 'Quick login failed.');
+    }
+  };
+
+  const switchTab = (role: 'judge' | 'admin') => {
+    setSelectedRole(role);
+    setErrorMessage(null);
+    if (role === 'admin') {
+      setEmail('admin@biin.org');
+      setPassword('admin123');
+    } else {
+      setEmail('');
+      setPassword('');
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-md w-full">
+      <div className="glass-panel rounded-2xl p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900">
+        
+        {/* Role Selector Tabs */}
+        <div className="grid grid-cols-2 p-1 mb-6 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+          <button
+            type="button"
+            onClick={() => switchTab('judge')}
+            className={`flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-bold transition-all ${
+              selectedRole === 'judge'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <UserCheck className="h-3.5 w-3.5" />
+            <span>Judge Login</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => switchTab('admin')}
+            className={`flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-bold transition-all ${
+              selectedRole === 'admin'
+                ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>Admin Login</span>
+          </button>
+        </div>
+
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div
+            className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl p-2 mb-3 border ${
+              selectedRole === 'admin'
+                ? 'bg-violet-50 dark:bg-violet-600/20 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-500/30'
+                : 'bg-indigo-50 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30'
+            }`}
+          >
+            {selectedRole === 'admin' ? <ShieldCheck className="h-6 w-6" /> : <LogIn className="h-6 w-6" />}
+          </div>
+          <h2 className="font-heading text-2xl font-bold text-slate-900 dark:text-white">
+            {selectedRole === 'admin' ? 'Administrator Login' : 'Judge Portal Login'}
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            {selectedRole === 'admin'
+              ? 'Sign in to access central management & scoring overrides'
+              : 'Sign in with your registered judge credentials'}
+          </p>
+        </div>
+
+        {/* Quick Demo Login Preset Banner */}
+        <div className="mb-6 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3.5 border border-slate-200 dark:border-slate-700 text-xs">
+          <div className="flex items-center space-x-1.5 text-slate-700 dark:text-slate-300 font-semibold mb-2">
+            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+            <span>Quick Login Presets (Click to Sign In):</span>
+          </div>
+          <div className="flex flex-col space-y-1.5">
+            <button
+              type="button"
+              onClick={() => handleQuickDemo('admin@biin.org', 'admin123', 'admin')}
+              className={`flex items-center justify-between rounded-lg px-2.5 py-2 text-slate-800 dark:text-slate-200 transition-all border ${
+                selectedRole === 'admin'
+                  ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-300 dark:border-violet-600 shadow-sm'
+                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-violet-50 dark:hover:bg-violet-900/20'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <ShieldCheck className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                <span className="font-medium text-violet-700 dark:text-violet-300">BIIN Administrator (Super Admin)</span>
+              </div>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">admin@biin.org</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleQuickDemo('judge@biin.org', 'password123', 'judge')}
+              className={`flex items-center justify-between rounded-lg px-2.5 py-2 text-slate-800 dark:text-slate-200 transition-all border ${
+                selectedRole === 'judge'
+                  ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-600 shadow-sm'
+                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <UserCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="font-medium">Dr. Sarah Jenkins (Room 01)</span>
+              </div>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">judge@biin.org</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Error Alert */}
+        {errorMessage && (
+          <div className="mb-5 flex items-start space-x-2 rounded-xl bg-red-50 dark:bg-red-500/10 p-3.5 text-sm text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/30">
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+              Email Address
+            </label>
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                <Mail className="h-4 w-4" />
+              </div>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={selectedRole === 'admin' ? 'admin@biin.org' : 'judge@biin.org'}
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/90 pl-10 pr-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+              Password
+            </label>
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                <Lock className="h-4 w-4" />
+              </div>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/90 pl-10 pr-10 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className={`w-full rounded-xl py-3 text-sm font-semibold text-white shadow-lg flex items-center justify-center space-x-2 mt-6 transition-all ${
+              selectedRole === 'admin'
+                ? 'bg-violet-600 hover:bg-violet-700 shadow-violet-600/30'
+                : 'btn-primary'
+            }`}
+          >
+            {selectedRole === 'admin' ? <ShieldCheck className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
+            <span>{selectedRole === 'admin' ? 'Login as Administrator' : 'Login to Judge Portal'}</span>
+          </button>
+        </form>
+
+        {/* Footer Toggle */}
+        <div className="mt-6 text-center border-t border-slate-200 dark:border-slate-800 pt-4">
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            Don't have a judge account?{' '}
+            <button
+              type="button"
+              onClick={onSwitchToRegister}
+              className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              Register Here
+            </button>
+          </p>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
