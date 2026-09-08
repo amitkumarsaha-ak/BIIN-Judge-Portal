@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   FolderGit2, Search, CheckCircle2, Clock,
-  Eye, DoorOpen, AlertTriangle, Building2, GraduationCap, Users
+  Eye, Building2, GraduationCap, Users, University, Filter
 } from 'lucide-react';
 import type { Project, ApplicationType } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -18,20 +18,20 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
   onSelectProjectForEvaluation
 }) => {
   const { currentUser } = useAuth();
-  const roomNumber = currentUser?.roomNumber;
-  const hasRoom = Boolean(roomNumber && roomNumber.trim());
-
-  const assignedProjects = getProjectsForJudge(roomNumber);
+  const assignedProjects = getProjectsForJudge();
   const myEvaluations = currentUser ? getEvaluationsByJudge(currentUser.email) : [];
   const settings = getSystemSettings();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<ApplicationType | 'All'>('All');
+  const [filterCategory, setFilterCategory] = useState<string>('All');
 
   const filteredProjects = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return assignedProjects.filter(p => {
+      if (p.status && p.status !== 'active') return false;
       if (filterType !== 'All' && p.applicationType !== filterType) return false;
+      if (filterCategory !== 'All' && p.headCategory !== filterCategory) return false;
       if (q) {
         const hay = [
           p.title,
@@ -45,12 +45,13 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
       }
       return true;
     });
-  }, [assignedProjects, searchQuery, filterType]);
+  }, [assignedProjects, searchQuery, filterType, filterCategory]);
 
   const getAppTypeIcon = (type: ApplicationType) => {
     switch (type) {
       case 'Student': return GraduationCap;
       case 'Organisation': return Building2;
+      case 'Student-Tertiary': return University;
       default: return Users;
     }
   };
@@ -59,21 +60,10 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
     switch (type) {
       case 'Student': return 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20';
       case 'Organisation': return 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
+      case 'Student-Tertiary': return 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20';
       default: return 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20';
     }
   };
-
-  if (!hasRoom) {
-    return (
-      <div className="glass-panel rounded-3xl p-12 text-center border border-amber-200 dark:border-amber-500/30 bg-white dark:bg-slate-900 shadow-xl space-y-3">
-        <AlertTriangle className="mx-auto h-12 w-12 text-amber-500" />
-        <h2 className="font-heading text-xl font-bold text-slate-900 dark:text-white">Awaiting Room Assignment</h2>
-        <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-          Your judge profile has not been assigned to a judging room by the Administrator. Please contact the coordinator to be assigned to an arena.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 pb-12">
@@ -81,20 +71,20 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
       <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="inline-flex items-center space-x-2 rounded-full bg-indigo-50 dark:bg-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 mb-2">
-            <DoorOpen className="h-3.5 w-3.5" />
-            <span>Assigned Judging Arena: {roomNumber}</span>
+            <Filter className="h-3.5 w-3.5" />
+            <span>Category-Based Evaluation</span>
           </div>
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-            Assigned Projects
+            Projects for Evaluation
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Projects assigned to your room for evaluation. Select any project to enter or update your scoring.
+            Browse nominated projects across Application Types and Head Categories. Select any project to enter or update your scoring.
           </p>
         </div>
 
         <div className="rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 p-4 text-center shrink-0">
-          <p className="text-[10px] uppercase font-bold text-indigo-700 dark:text-indigo-300">Projects in Room</p>
-          <p className="font-heading text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">{assignedProjects.length}</p>
+          <p className="text-[10px] uppercase font-bold text-indigo-700 dark:text-indigo-300">Matching Projects</p>
+          <p className="font-heading text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">{filteredProjects.length}</p>
         </div>
       </div>
 
@@ -106,7 +96,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search assigned projects by title, code, participant..."
+            placeholder="Search projects by title, code, participant, representative..."
             className="w-full rounded-xl bg-slate-50 dark:bg-slate-950/60 pl-10 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-indigo-500"
           />
         </div>
@@ -118,8 +108,22 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
         >
           <option value="All">All Application Types</option>
           <option value="Student">Student</option>
+          <option value="Student-Tertiary">Student-Tertiary Categories (University Level)</option>
           <option value="Organisation">Organisation</option>
           <option value="Individual or Group">Individual or Group</option>
+        </select>
+
+        <select
+          value={filterCategory}
+          onChange={e => setFilterCategory(e.target.value)}
+          className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+        >
+          <option value="All">All Head Categories</option>
+          {HEAD_CATEGORIES.map(hc => (
+            <option key={hc.code} value={hc.code}>
+              {hc.name}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -127,8 +131,8 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
       {filteredProjects.length === 0 ? (
         <div className="glass-panel rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <FolderGit2 className="mx-auto h-12 w-12 text-slate-400 mb-3" />
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">No projects found in this room</h3>
-          <p className="text-xs text-slate-500 mt-1">Try adjusting your search or filter.</p>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">No matching projects found</h3>
+          <p className="text-xs text-slate-500 mt-1">Try adjusting your search query, application type, or head category filter.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

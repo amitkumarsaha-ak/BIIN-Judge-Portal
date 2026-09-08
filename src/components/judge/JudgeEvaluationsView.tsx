@@ -1,12 +1,14 @@
 import React from 'react';
 import {
-  CheckCircle2, Pencil, Calendar, Award
+  CheckCircle2, Pencil, Calendar, Award, Layers
 } from 'lucide-react';
 import type { Project } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import {
   getEvaluationsByJudge, getProjectsForJudge, getSystemSettings
 } from '../../services/storage';
+import { HEAD_CATEGORIES } from '../../data/mockData';
+import { getCriteriaForApplicationType } from '../../utils/evaluation';
 
 interface JudgeEvaluationsViewProps {
   onSelectProjectForEvaluation: (project: Project) => void;
@@ -19,7 +21,7 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
   if (!currentUser) return null;
 
   const myEvaluations = getEvaluationsByJudge(currentUser.email);
-  const assignedProjects = getProjectsForJudge(currentUser.roomNumber);
+  const assignedProjects = getProjectsForJudge();
   const settings = getSystemSettings();
 
   return (
@@ -35,7 +37,7 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
             Evaluation Submissions
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Review your scores and qualitative feedback submitted for nominated projects in your arena.
+            Review your scores, criterion marks, and qualitative feedback across all nominated projects.
           </p>
         </div>
 
@@ -50,7 +52,7 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
         <div className="glass-panel rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg">
           <Award className="mx-auto h-12 w-12 text-slate-400 mb-3" />
           <h3 className="text-lg font-bold text-slate-900 dark:text-white">No evaluations submitted yet</h3>
-          <p className="text-xs text-slate-500 mt-1">Navigate to 'Assigned Projects' to begin evaluating.</p>
+          <p className="text-xs text-slate-500 mt-1">Navigate to 'Projects' to begin evaluating.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -59,6 +61,8 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
             const rawScore = e.rawTotalScore ?? e.totalScore ?? 0;
             const maxRaw = e.maxRawScore || 50;
             const converted = e.convertedScore ?? e.percentage ?? 0;
+            const categoryObj = HEAD_CATEGORIES.find(c => c.code === project?.headCategory);
+            const criteria = project ? getCriteriaForApplicationType(project.applicationType) : [];
 
             return (
               <div
@@ -67,23 +71,38 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
                   <div>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
                         {project?.applicationId || e.projectId}
                       </span>
-                      <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                      <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                         {project?.applicationType}
                       </span>
+                      {project?.headCategory && (
+                        <span className="rounded-md bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 px-2 py-0.5 text-[11px] font-semibold flex items-center space-x-1">
+                          <Layers className="h-3 w-3" />
+                          <span>{categoryObj?.name || project.headCategory}</span>
+                        </span>
+                      )}
                     </div>
                     <h3 className="font-heading text-base font-bold text-slate-900 dark:text-white mt-1">
                       {project?.title || 'Evaluated Project'}
                     </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">{project?.teamOrOrgName}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {project?.teamOrOrgName} · Lead: {project?.representativeName}
+                    </p>
                   </div>
 
-                  <div className="flex items-center space-x-3 shrink-0">
+                  <div className="flex items-center space-x-4 shrink-0">
                     <div className="text-right">
-                      <p className="text-[10px] text-slate-400 uppercase font-semibold">Converted Mark</p>
+                      <p className="text-[10px] text-slate-400 uppercase font-semibold">Raw Score</p>
+                      <span className="font-heading font-bold text-base text-slate-800 dark:text-slate-200 font-mono">
+                        {rawScore.toFixed(1)} / {maxRaw}
+                      </span>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-[10px] text-emerald-600 uppercase font-bold">Converted Mark</p>
                       <span className="font-heading font-black text-2xl text-emerald-600 dark:text-emerald-400 font-mono">
                         {converted.toFixed(1)} / 100
                       </span>
@@ -104,12 +123,15 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
 
                 {/* Scores Matrix Breakdown */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs">
-                  {Object.entries(e.scores).map(([key, val]) => (
-                    <div key={key} className="rounded-xl bg-slate-50 dark:bg-slate-950/60 p-2.5 border border-slate-200 dark:border-slate-800 text-center">
-                      <p className="text-[10px] text-slate-500 capitalize truncate">{key.replace(/([A-Z])/g, ' $1')}</p>
-                      <p className="font-heading text-base font-bold text-slate-900 dark:text-white mt-0.5 font-mono">{val} / 10</p>
-                    </div>
-                  ))}
+                  {criteria.map((crit) => {
+                    const val = e.scores[crit.key] ?? 0;
+                    return (
+                      <div key={crit.key} className="rounded-xl bg-slate-50 dark:bg-slate-950/60 p-2.5 border border-slate-200 dark:border-slate-800 text-center">
+                        <p className="text-[10px] text-slate-500 capitalize truncate" title={crit.label}>{crit.label}</p>
+                        <p className="font-heading text-base font-bold text-slate-900 dark:text-white mt-0.5 font-mono">{val} / 10</p>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Feedback */}
@@ -125,7 +147,7 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
                     <Calendar className="h-3 w-3" />
                     <span>Submitted: {new Date(e.submittedAt).toLocaleDateString()} at {new Date(e.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
-                  <span>Raw Score: {rawScore.toFixed(1)} / {maxRaw}</span>
+                  <span>Raw: {rawScore.toFixed(1)} / {maxRaw}</span>
                 </div>
               </div>
             );
@@ -135,3 +157,4 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
     </div>
   );
 };
+

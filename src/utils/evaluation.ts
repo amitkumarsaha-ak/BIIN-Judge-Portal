@@ -47,6 +47,44 @@ export const STUDENT_CRITERIA: CriteriaInfo[] = [
   }
 ];
 
+export const STUDENT_TERTIARY_CRITERIA: CriteriaInfo[] = [
+  {
+    key: 'uniqueness',
+    label: 'Uniqueness',
+    maxScore: 10,
+    description: 'Evaluates novelty, innovative architecture, intellectual property, and original differentiation.',
+    iconName: 'Sparkles'
+  },
+  {
+    key: 'proofOfConcept',
+    label: 'Proof of Concept',
+    maxScore: 10,
+    description: 'Assesses working prototype maturity, technical execution, benchmark validation, and functional viability.',
+    iconName: 'Cpu'
+  },
+  {
+    key: 'features',
+    label: 'Functionalities and Features',
+    maxScore: 10,
+    description: 'Measures breadth, depth, usability, and effectiveness of implemented feature sets.',
+    iconName: 'Layers'
+  },
+  {
+    key: 'quality',
+    label: 'Quality',
+    maxScore: 10,
+    description: 'Inspects code standards, systemic stability, security protocols, modern design elegance, and user experience.',
+    iconName: 'ShieldCheck'
+  },
+  {
+    key: 'presentation',
+    label: 'Presentation',
+    maxScore: 10,
+    description: 'Rates clarity of demonstration, technical documentation completeness, pitch delivery, and team Q&A accuracy.',
+    iconName: 'Presentation'
+  }
+];
+
 export const ORGANISATION_AND_INDIVIDUAL_CRITERIA: CriteriaInfo[] = [
   {
     key: 'uniqueness',
@@ -81,6 +119,9 @@ export const ORGANISATION_AND_INDIVIDUAL_CRITERIA: CriteriaInfo[] = [
 export const getCriteriaForApplicationType = (type: ApplicationType): CriteriaInfo[] => {
   if (type === 'Student') {
     return STUDENT_CRITERIA;
+  }
+  if (type === 'Student-Tertiary') {
+    return STUDENT_TERTIARY_CRITERIA;
   }
   return ORGANISATION_AND_INDIVIDUAL_CRITERIA;
 };
@@ -128,13 +169,13 @@ export const calculateConvertedScore = (rawTotal: number, maxRawScore: number): 
 };
 
 export const calculateAward = (finalScore: number, isHighestInCategory: boolean): AwardDesignation => {
-  if (finalScore > 80 && isHighestInCategory) {
+  if (finalScore >= 80 && isHighestInCategory) {
     return 'Champion';
   }
-  if (finalScore > 70) {
+  if (finalScore >= 70) {
     return 'Winner';
   }
-  if (finalScore > 60) {
+  if (finalScore >= 60) {
     return 'Merit';
   }
   return 'Participant';
@@ -198,7 +239,6 @@ export const getProjectCombinedResult = (
 
   return {
     project,
-    roomNumber: project.roomNumber || 'Room 01',
     applicationType: project.applicationType,
     judgesEvaluations,
     finalAverageScore,

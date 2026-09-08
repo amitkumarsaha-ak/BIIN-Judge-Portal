@@ -59,7 +59,7 @@ export const EvaluationSuccessView: React.FC<EvaluationSuccessViewProps> = ({
             <div className="text-left">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Project Name</span>
               <span className="font-heading font-bold text-slate-900 dark:text-white text-lg">{project.title}</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 block">{project.teamOrOrgName} • {project.roomNumber || 'Room 01'}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 block">{project.teamOrOrgName} • {project.applicationType}</span>
             </div>
 
             <div className="text-right">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, Phone, Building, GraduationCap, Building2, Users, User, Globe, Hash } from 'lucide-react';
+import { Mail, Phone, Building, GraduationCap, Building2, Users, User, Globe, Hash, University } from 'lucide-react';
 import type { Project } from '../../types';
 
 interface ProjectInfoPanelProps {
@@ -8,6 +8,7 @@ interface ProjectInfoPanelProps {
 
 export const ProjectInfoPanel: React.FC<ProjectInfoPanelProps> = ({ project }) => {
   const isStudent = project.applicationType === 'Student';
+  const isStudentTertiary = project.applicationType === 'Student-Tertiary';
   const isOrg = project.applicationType === 'Organisation';
 
   return (
@@ -23,6 +24,8 @@ export const ProjectInfoPanel: React.FC<ProjectInfoPanelProps> = ({ project }) =
           <span className="inline-flex items-center space-x-1.5 rounded-full bg-cyan-50 dark:bg-cyan-500/20 px-3 py-1 text-xs font-semibold text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30">
             {isStudent ? (
               <GraduationCap className="h-3.5 w-3.5" />
+            ) : isStudentTertiary ? (
+              <University className="h-3.5 w-3.5" />
             ) : isOrg ? (
               <Building2 className="h-3.5 w-3.5" />
             ) : (
@@ -40,7 +43,7 @@ export const ProjectInfoPanel: React.FC<ProjectInfoPanelProps> = ({ project }) =
       {/* Dynamic Contact Details Grid */}
       <div className="rounded-2xl bg-slate-50 dark:bg-slate-900/80 p-5 border border-slate-200 dark:border-slate-800 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-2">
-          {isStudent ? 'Student & Team Details' : isOrg ? 'Organisation Details' : 'Individual / Group Details'}
+          {(isStudent || isStudentTertiary) ? 'Student & Team Details' : isOrg ? 'Organisation Details' : 'Individual / Group Details'}
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -48,7 +51,7 @@ export const ProjectInfoPanel: React.FC<ProjectInfoPanelProps> = ({ project }) =
           {/* 1. Name */}
           <div className="space-y-1">
             <span className="text-slate-500 dark:text-slate-400 font-medium">
-              {isStudent ? 'Student / Group Name:' : isOrg ? 'Organisation Name:' : 'Individual / Group Name:'}
+              {(isStudent || isStudentTertiary) ? 'Student / Group Name:' : isOrg ? 'Organisation Name:' : 'Individual / Group Name:'}
             </span>
             <div className="font-semibold text-slate-900 dark:text-white flex items-center space-x-2">
               <Building className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
@@ -59,7 +62,7 @@ export const ProjectInfoPanel: React.FC<ProjectInfoPanelProps> = ({ project }) =
           {/* 2. Representative or Member(s) */}
           <div className="space-y-1">
             <span className="text-slate-500 dark:text-slate-400 font-medium">
-              {isStudent ? 'Lead Member:' : isOrg ? 'Representative Name:' : 'Lead Member:'}
+              {(isStudent || isStudentTertiary) ? 'Lead Member:' : isOrg ? 'Representative Name:' : 'Lead Member:'}
             </span>
             <div className="font-semibold text-slate-900 dark:text-white flex items-center space-x-2">
               <User className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
@@ -91,7 +94,7 @@ export const ProjectInfoPanel: React.FC<ProjectInfoPanelProps> = ({ project }) =
           {project.institutionOrOrg && (
             <div className="sm:col-span-2 space-y-1 pt-1 border-t border-slate-200 dark:border-slate-800/60">
               <span className="text-slate-500 dark:text-slate-400 font-medium">
-                {isStudent ? 'University / Institution:' : isOrg ? 'Registration / Company Info:' : 'Affiliation:'}
+                {(isStudent || isStudentTertiary) ? 'University / Institution:' : isOrg ? 'Registration / Company Info:' : 'Affiliation:'}
               </span>
               <div className="font-semibold text-indigo-700 dark:text-indigo-300 flex items-center space-x-2">
                 <Globe className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />

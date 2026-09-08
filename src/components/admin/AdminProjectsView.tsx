@@ -2,24 +2,23 @@ import React, { useState, useMemo, useCallback } from 'react';
 import {
   ShieldCheck, Plus, Search, RotateCcw, Pencil, Trash2, Eye,
   ToggleLeft, ToggleRight, Building2, GraduationCap, Users,
-  X, Check, AlertTriangle, DoorOpen,
-  Layers, BookOpen, MapPin, Filter,
-  CheckCircle2, XCircle, FolderGit2, UserMinus, ArrowRightLeft
+  X, Check, AlertTriangle,
+  Layers, BookOpen, Filter,
+  CheckCircle2, XCircle, FolderGit2, University, FileSpreadsheet
 } from 'lucide-react';
-import type { Project, ApplicationType, ProjectStatus } from '../../types';
+import type { Project, ApplicationType, ProjectStatus, HeadCategoryCode } from '../../types';
 import {
   getProjects, addProject, updateProject, deleteProject,
-  toggleProjectStatus, getEvaluations, removeProjectFromRoom
+  toggleProjectStatus, getEvaluations
 } from '../../services/storage';
 import { HEAD_CATEGORIES } from '../../data/mockData';
-
-const APPLICATION_TYPES: ApplicationType[] = ['Student', 'Organisation', 'Individual or Group'];
-const PRESET_ROOMS = ['Room 01', 'Room 02', 'Room 03', 'Room 04', 'Room 05'];
+import { ExcelImportModal } from './ExcelImportModal';
 
 const getAppTypeIcon = (type: ApplicationType) => {
   switch (type) {
     case 'Student': return GraduationCap;
     case 'Organisation': return Building2;
+    case 'Student-Tertiary': return University;
     default: return Users;
   }
 };
@@ -28,6 +27,7 @@ const getAppTypeColor = (type: ApplicationType) => {
   switch (type) {
     case 'Student': return 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20';
     case 'Organisation': return 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
+    case 'Student-Tertiary': return 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20';
     default: return 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20';
   }
 };
@@ -54,7 +54,6 @@ const EMPTY_FORM: Omit<Project, 'id'> = {
   problemStatement: '',
   solutionSummary: '',
   tags: [],
-  roomNumber: 'Room 01',
   status: 'active',
 };
 
@@ -114,14 +113,12 @@ interface DetailModalProps {
   evalCount: number;
   onClose: () => void;
   onEdit: () => void;
-  onOpenRoomModal: () => void;
 }
 
-const DetailModal: React.FC<DetailModalProps> = ({ project, evalCount, onClose, onEdit, onOpenRoomModal }) => {
+const DetailModal: React.FC<DetailModalProps> = ({ project, evalCount, onClose, onEdit }) => {
   const AppTypeIcon = getAppTypeIcon(project.applicationType);
   const category = HEAD_CATEGORIES.find(h => h.code === project.headCategory);
   const isActive = project.status === 'active';
-  const hasRoom = Boolean(project.roomNumber && project.roomNumber.trim());
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
@@ -154,10 +151,6 @@ const DetailModal: React.FC<DetailModalProps> = ({ project, evalCount, onClose, 
             <span className="inline-flex items-center space-x-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20">
               <Layers className="h-3.5 w-3.5" />
               <span>{category?.name || project.headCategory}</span>
-            </span>
-            <span className={`inline-flex items-center space-x-1.5 rounded-full px-3 py-1 text-xs font-semibold border ${hasRoom ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}>
-              <MapPin className="h-3.5 w-3.5" />
-              <span>{hasRoom ? project.roomNumber : 'Unassigned'}</span>
             </span>
             <span className={`inline-flex items-center space-x-1.5 rounded-full px-3 py-1 text-xs font-semibold border ${isActive ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}>
               {isActive ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
@@ -233,30 +226,20 @@ const DetailModal: React.FC<DetailModalProps> = ({ project, evalCount, onClose, 
           )}
         </div>
 
-        <div className="flex items-center justify-between p-4 border-t border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-end space-x-2 p-4 border-t border-slate-200 dark:border-slate-800">
           <button
-            onClick={onOpenRoomModal}
-            className="flex items-center space-x-1.5 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/20 px-3.5 py-2 text-xs font-semibold hover:bg-cyan-100 dark:hover:bg-cyan-500/20 transition-colors"
+            onClick={onClose}
+            className="rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
           >
-            <DoorOpen className="h-3.5 w-3.5" />
-            <span>{hasRoom ? 'Change / Move Room' : 'Assign to Room'}</span>
+            Close
           </button>
-
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={onClose}
-              className="rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
-            >
-              Close
-            </button>
-            <button
-              onClick={onEdit}
-              className="btn-primary flex items-center space-x-2 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-lg"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              <span>Edit Project</span>
-            </button>
-          </div>
+          <button
+            onClick={onEdit}
+            className="btn-primary flex items-center space-x-2 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-lg"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span>Edit Project</span>
+          </button>
         </div>
       </div>
     </div>
@@ -373,47 +356,36 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
             <div>
               <label className={labelCls}>Application Type *</label>
               <select className={inputCls('applicationType')} value={form.applicationType} onChange={set('applicationType')}>
-                {APPLICATION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                <option value="Student">Student</option>
+                <option value="Student-Tertiary">Student-Tertiary Categories (University Level)</option>
+                <option value="Organisation">Organisation</option>
+                <option value="Individual or Group">Individual or Group</option>
               </select>
             </div>
             <div>
               <label className={labelCls}>Head Category *</label>
               <select className={inputCls('headCategory')} value={form.headCategory} onChange={set('headCategory')}>
-                {HEAD_CATEGORIES.map(h => <option key={h.code} value={h.code}>{h.code} — {h.name}</option>)}
+                {HEAD_CATEGORIES.map(h => (
+                  <option key={h.code} value={h.code}>{h.name} ({h.code})</option>
+                ))}
               </select>
             </div>
           </div>
 
-          {/* Room Assignment & Status */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Room Assignment</label>
-              <input
-                list="room-suggestions-form"
-                className={inputCls('roomNumber')}
-                value={form.roomNumber || ''}
-                onChange={set('roomNumber')}
-                placeholder="e.g. Room 01 (or leave blank for Unassigned)"
-              />
-              <datalist id="room-suggestions-form">
-                {PRESET_ROOMS.map(r => <option key={r} value={r} />)}
-              </datalist>
-              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Select preset or enter custom room (e.g. Room 01, Room 02, etc.)</p>
-            </div>
-            <div>
-              <label className={labelCls}>Status</label>
-              <div className="flex items-center space-x-3 mt-2.5">
-                <button
-                  type="button"
-                  onClick={() => setForm(prev => ({ ...prev, status: prev.status === 'active' ? 'inactive' : 'active' }))}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 focus:outline-none ${form.status === 'active' ? 'bg-emerald-500 border-emerald-500' : 'bg-slate-300 dark:bg-slate-700 border-slate-300 dark:border-slate-700'}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out mt-0.5 ${form.status === 'active' ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </button>
-                <span className={`text-xs font-semibold ${form.status === 'active' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                  {form.status === 'active' ? 'Active (Visible to Judges)' : 'Inactive (Deactivated)'}
-                </span>
-              </div>
+          {/* Project Status */}
+          <div>
+            <label className={labelCls}>Project Status</label>
+            <div className="flex items-center space-x-3 mt-1.5">
+              <button
+                type="button"
+                onClick={() => setForm(prev => ({ ...prev, status: prev.status === 'active' ? 'inactive' : 'active' }))}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 focus:outline-none ${form.status === 'active' ? 'bg-emerald-500 border-emerald-500' : 'bg-slate-300 dark:bg-slate-700 border-slate-300 dark:border-slate-700'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out mt-0.5 ${form.status === 'active' ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
+              <span className={`text-xs font-semibold ${form.status === 'active' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                {form.status === 'active' ? 'Active (Eligible for Evaluation)' : 'Inactive (Deactivated)'}
+              </span>
             </div>
           </div>
 
@@ -479,148 +451,21 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
       </div>
     </div>
   );
-};
-
-// --- ROOM ASSIGN / MOVE / REMOVE MODAL ---
-interface RoomAssignModalProps {
-  project: Project;
-  onClose: () => void;
-  onAssign: (room: string) => void;
-  onRemove: () => void;
-}
-
-const RoomAssignModal: React.FC<RoomAssignModalProps> = ({ project, onClose, onAssign, onRemove }) => {
-  const currentRoom = (project.roomNumber || '').trim();
-  const [selectedRoom, setSelectedRoom] = useState(currentRoom || 'Room 01');
-
-  const handleApply = () => {
-    if (selectedRoom.trim()) {
-      onAssign(selectedRoom.trim());
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl p-6 space-y-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-500/30">
-              <DoorOpen className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="font-heading text-base font-bold text-slate-900 dark:text-white">
-                {currentRoom ? 'Move / Reassign Room' : 'Assign to Room'}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Manage judging room assignment</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Project summary banner */}
-        <div className="rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 p-3.5 space-y-1">
-          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{project.title}</p>
-          <div className="flex items-center space-x-2 text-[11px] text-slate-500 dark:text-slate-400">
-            <span className="font-mono">{project.applicationId}</span>
-            <span>·</span>
-            <span>Current: <strong className={currentRoom ? 'text-cyan-600 dark:text-cyan-400' : 'text-amber-500'}>{currentRoom || 'Unassigned'}</strong></span>
-          </div>
-        </div>
-
-        {/* Room selection presets */}
-        <div>
-          <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Preset Rooms</label>
-          <div className="grid grid-cols-3 gap-2">
-            {PRESET_ROOMS.map(r => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setSelectedRoom(r)}
-                className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all border ${selectedRoom === r ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-400'}`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Custom Room Input */}
-        <div>
-          <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Custom Room Name / Number</label>
-          <input
-            type="text"
-            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/60 px-3.5 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-            value={selectedRoom}
-            onChange={e => setSelectedRoom(e.target.value)}
-            placeholder="e.g. Room 06, Main Hall A"
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800">
-          {currentRoom ? (
-            <button
-              type="button"
-              onClick={onRemove}
-              className="inline-flex items-center space-x-1.5 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20 px-3 py-2 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
-            >
-              <UserMinus className="h-3.5 w-3.5" />
-              <span>Remove from Room</span>
-            </button>
-          ) : <div />}
-
-          <div className="flex items-center space-x-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl bg-slate-100 dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleApply}
-              disabled={!selectedRoom.trim()}
-              className="btn-primary flex items-center space-x-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-lg disabled:opacity-50"
-            >
-              <Check className="h-3.5 w-3.5" />
-              <span>{currentRoom ? 'Move Room' : 'Assign Room'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- MAIN ADMIN PROJECT MANAGEMENT VIEW ---
+};// --- MAIN ADMIN PROJECT MANAGEMENT VIEW ---
 export const AdminProjectsView: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>(() => getProjects());
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<ApplicationType | 'All'>('All');
+  const [filterCategory, setFilterCategory] = useState<HeadCategoryCode | 'All'>('All');
   const [filterStatus, setFilterStatus] = useState<ProjectStatus | 'All'>('All');
-  const [filterRoom, setFilterRoom] = useState<string>('All');
 
   const [formModal, setFormModal] = useState<{ mode: 'add' | 'edit'; data: Omit<Project, 'id'> & { id?: string } } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [detailTarget, setDetailTarget] = useState<Project | null>(null);
-  const [roomTarget, setRoomTarget] = useState<Project | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const refresh = useCallback(() => setProjects(getProjects()), []);
   const allEvaluations = getEvaluations();
-
-  // Dynamic Room options
-  const roomOptions = useMemo(() => {
-    const rooms = Array.from(new Set(projects.map(p => p.roomNumber).filter(r => Boolean(r && r.trim()))));
-    const hasUnassigned = projects.some(p => !p.roomNumber || !p.roomNumber.trim());
-    const sorted = rooms.sort();
-    if (hasUnassigned) {
-      sorted.push('Unassigned');
-    }
-    return ['All', ...sorted];
-  }, [projects]);
 
   // Filtered projects
   const filtered = useMemo(() => {
@@ -629,17 +474,11 @@ export const AdminProjectsView: React.FC = () => {
       // Filter by Application Type
       if (filterType !== 'All' && p.applicationType !== filterType) return false;
 
+      // Filter by Head Category
+      if (filterCategory !== 'All' && p.headCategory !== filterCategory) return false;
+
       // Filter by Status
       if (filterStatus !== 'All' && p.status !== filterStatus) return false;
-
-      // Filter by Room
-      if (filterRoom !== 'All') {
-        if (filterRoom === 'Unassigned') {
-          if (p.roomNumber && p.roomNumber.trim()) return false;
-        } else if (p.roomNumber !== filterRoom) {
-          return false;
-        }
-      }
 
       // Filter by Query text
       if (q) {
@@ -651,7 +490,6 @@ export const AdminProjectsView: React.FC = () => {
           p.representativeName,
           p.institutionOrOrg || '',
           p.description,
-          p.roomNumber || '',
           (p.tags || []).join(' ')
         ].join(' ').toLowerCase();
 
@@ -660,11 +498,10 @@ export const AdminProjectsView: React.FC = () => {
 
       return true;
     });
-  }, [projects, searchQuery, filterType, filterStatus, filterRoom]);
+  }, [projects, searchQuery, filterType, filterCategory, filterStatus]);
 
   const totalActive = projects.filter(p => p.status === 'active').length;
   const totalInactive = projects.filter(p => p.status === 'inactive').length;
-  const roomCount = new Set(projects.map(p => p.roomNumber).filter(r => Boolean(r && r.trim()))).size;
   const evalCountFor = (id: string) => allEvaluations.filter(e => e.projectId === id).length;
 
   const handleSave = (project: Project) => {
@@ -675,6 +512,11 @@ export const AdminProjectsView: React.FC = () => {
     }
     refresh();
     setFormModal(null);
+  };
+
+  const handleBulkImport = (newProjects: Project[]) => {
+    newProjects.forEach(p => addProject(p));
+    refresh();
   };
 
   const handleDelete = () => {
@@ -690,26 +532,6 @@ export const AdminProjectsView: React.FC = () => {
     refresh();
     if (detailTarget && detailTarget.id === id) {
       setDetailTarget(prev => prev ? { ...prev, status: prev.status === 'active' ? 'inactive' : 'active' } : null);
-    }
-  };
-
-  const handleRoomAssign = (room: string) => {
-    if (!roomTarget) return;
-    updateProject({ ...roomTarget, roomNumber: room });
-    refresh();
-    setRoomTarget(null);
-    if (detailTarget && detailTarget.id === roomTarget.id) {
-      setDetailTarget(prev => prev ? { ...prev, roomNumber: room } : null);
-    }
-  };
-
-  const handleRoomRemove = () => {
-    if (!roomTarget) return;
-    removeProjectFromRoom(roomTarget.id);
-    refresh();
-    setRoomTarget(null);
-    if (detailTarget && detailTarget.id === roomTarget.id) {
-      setDetailTarget(prev => prev ? { ...prev, roomNumber: '' } : null);
     }
   };
 
@@ -729,11 +551,11 @@ export const AdminProjectsView: React.FC = () => {
   const resetFilters = () => {
     setSearchQuery('');
     setFilterType('All');
+    setFilterCategory('All');
     setFilterStatus('All');
-    setFilterRoom('All');
   };
 
-  const hasFilters = searchQuery || filterType !== 'All' || filterStatus !== 'All' || filterRoom !== 'All';
+  const hasFilters = searchQuery || filterType !== 'All' || filterCategory !== 'All' || filterStatus !== 'All';
 
   return (
     <div className="space-y-6 pb-12">
@@ -762,20 +584,16 @@ export const AdminProjectsView: React.FC = () => {
           evalCount={evalCountFor(detailTarget.id)}
           onClose={() => setDetailTarget(null)}
           onEdit={() => openEdit(detailTarget)}
-          onOpenRoomModal={() => {
-            const current = detailTarget;
-            setDetailTarget(null);
-            setRoomTarget(current);
-          }}
         />
       )}
 
-      {roomTarget && (
-        <RoomAssignModal
-          project={roomTarget}
-          onClose={() => setRoomTarget(null)}
-          onAssign={handleRoomAssign}
-          onRemove={handleRoomRemove}
+      {isImportModalOpen && (
+        <ExcelImportModal
+          existingProjects={projects}
+          initialAppType={filterType !== 'All' ? filterType : undefined}
+          initialCategory={filterCategory !== 'All' ? filterCategory : undefined}
+          onClose={() => setIsImportModalOpen(false)}
+          onImport={handleBulkImport}
         />
       )}
 
@@ -792,18 +610,29 @@ export const AdminProjectsView: React.FC = () => {
               Project Management
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-              Add new projects, edit details, activate or deactivate submissions, assign/move/remove rooms, search, filter, and manage nominations.
+              Add new projects manually, import from Excel spreadsheets, manage classifications, and configure project details.
             </p>
           </div>
 
-          <button
-            id="admin-add-project-btn"
-            onClick={openAdd}
-            className="btn-primary inline-flex items-center space-x-2 rounded-2xl px-5 py-3 text-sm font-bold text-white shadow-xl flex-shrink-0"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add New Project</span>
-          </button>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              id="admin-excel-import-btn"
+              onClick={() => setIsImportModalOpen(true)}
+              className="inline-flex items-center space-x-2 rounded-2xl border border-emerald-300 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 px-4 py-3 text-sm font-bold transition-all shadow-sm flex-shrink-0"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Import Excel</span>
+            </button>
+
+            <button
+              id="admin-add-project-btn"
+              onClick={openAdd}
+              className="btn-primary inline-flex items-center space-x-2 rounded-2xl px-5 py-3 text-sm font-bold text-white shadow-xl flex-shrink-0"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add New Project</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -825,8 +654,8 @@ export const AdminProjectsView: React.FC = () => {
         </div>
 
         <div className="rounded-2xl border bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/20 p-4">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active Rooms</p>
-          <p className="font-heading text-3xl font-extrabold mt-1 text-cyan-600 dark:text-cyan-400">{roomCount}</p>
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Head Categories</p>
+          <p className="font-heading text-3xl font-extrabold mt-1 text-cyan-600 dark:text-cyan-400">{HEAD_CATEGORIES.length}</p>
         </div>
       </div>
 
@@ -855,8 +684,22 @@ export const AdminProjectsView: React.FC = () => {
               onChange={e => setFilterType(e.target.value as ApplicationType | 'All')}
               className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500"
             >
-              <option value="All">All Types</option>
-              {APPLICATION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              <option value="All">All Application Types</option>
+              <option value="Student">Student</option>
+              <option value="Student-Tertiary">Student-Tertiary (University Level)</option>
+              <option value="Organisation">Organisation</option>
+              <option value="Individual or Group">Individual or Group</option>
+            </select>
+
+            <select
+              value={filterCategory}
+              onChange={e => setFilterCategory(e.target.value as HeadCategoryCode | 'All')}
+              className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="All">All Head Categories</option>
+              {HEAD_CATEGORIES.map(h => (
+                <option key={h.code} value={h.code}>{h.name} ({h.code})</option>
+              ))}
             </select>
 
             <select
@@ -867,18 +710,6 @@ export const AdminProjectsView: React.FC = () => {
               <option value="All">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
-            </select>
-
-            <select
-              value={filterRoom}
-              onChange={e => setFilterRoom(e.target.value)}
-              className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500"
-            >
-              {roomOptions.map(r => (
-                <option key={r} value={r}>
-                  {r === 'All' ? 'All Rooms' : r === 'Unassigned' ? 'Unassigned' : r}
-                </option>
-              ))}
             </select>
 
             {hasFilters && (
@@ -904,14 +735,14 @@ export const AdminProjectsView: React.FC = () => {
               Type: {filterType}
             </span>
           )}
+          {filterCategory !== 'All' && (
+            <span className="rounded-full bg-cyan-50 dark:bg-cyan-500/20 px-2 py-0.5 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/20">
+              Category: {HEAD_CATEGORIES.find(h => h.code === filterCategory)?.name || filterCategory}
+            </span>
+          )}
           {filterStatus !== 'All' && (
             <span className={`rounded-full px-2 py-0.5 border ${filterStatus === 'active' ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}>
               Status: {filterStatus}
-            </span>
-          )}
-          {filterRoom !== 'All' && (
-            <span className="rounded-full bg-cyan-50 dark:bg-cyan-500/20 px-2 py-0.5 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/20">
-              Room: {filterRoom}
             </span>
           )}
           {searchQuery && (
@@ -935,9 +766,14 @@ export const AdminProjectsView: React.FC = () => {
               Clear Filters
             </button>
           ) : (
-            <button onClick={openAdd} className="btn-primary rounded-xl px-5 py-2.5 text-xs font-semibold text-white shadow-lg">
-              Add First Project
-            </button>
+            <div className="flex items-center justify-center gap-3">
+              <button onClick={() => setIsImportModalOpen(true)} className="rounded-xl border border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-5 py-2.5 text-xs font-bold shadow-sm">
+                Import via Excel
+              </button>
+              <button onClick={openAdd} className="btn-primary rounded-xl px-5 py-2.5 text-xs font-semibold text-white shadow-lg">
+                Add First Project
+              </button>
+            </div>
           )}
         </div>
       ) : (
@@ -947,7 +783,6 @@ export const AdminProjectsView: React.FC = () => {
             const isActive = project.status === 'active';
             const category = HEAD_CATEGORIES.find(h => h.code === project.headCategory);
             const evalCount = evalCountFor(project.id);
-            const hasRoom = Boolean(project.roomNumber && project.roomNumber.trim());
 
             return (
               <div
@@ -987,11 +822,7 @@ export const AdminProjectsView: React.FC = () => {
                       </span>
                       <span className="inline-flex items-center space-x-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 font-medium text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20">
                         <Layers className="h-2.5 w-2.5" />
-                        <span>{category?.shortCode || project.headCategory}</span>
-                      </span>
-                      <span className={`inline-flex items-center space-x-1 rounded-full px-2 py-0.5 font-medium border ${hasRoom ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}>
-                        <MapPin className="h-2.5 w-2.5" />
-                        <span>{hasRoom ? project.roomNumber : 'Unassigned'}</span>
+                        <span>{category?.name || project.headCategory}</span>
                       </span>
                       {evalCount > 0 && (
                         <span className="inline-flex items-center space-x-1 rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
@@ -1009,21 +840,10 @@ export const AdminProjectsView: React.FC = () => {
                       id={`admin-toggle-status-${project.id}`}
                       onClick={() => handleToggleStatus(project.id)}
                       title={isActive ? 'Deactivate Project' : 'Activate Project'}
-                      className={`group flex items-center space-x-1.5 rounded-xl px-3 py-2 text-xs font-semibold border transition-all ${isActive ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-emerald-500/20'}`}
+                      className={`group flex items-center space-x-1.5 rounded-xl px-3 py-2 text-xs font-semibold border transition-all ${isActive ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 dark:border-red-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-emerald-500/20'}`}
                     >
                       {isActive ? <ToggleRight className="h-3.5 w-3.5" /> : <ToggleLeft className="h-3.5 w-3.5" />}
                       <span className="hidden sm:inline">{isActive ? 'Active' : 'Inactive'}</span>
-                    </button>
-
-                    {/* Room Assign / Move */}
-                    <button
-                      id={`admin-room-${project.id}`}
-                      onClick={() => setRoomTarget(project)}
-                      title={hasRoom ? 'Move or Remove Room' : 'Assign to Room'}
-                      className="flex items-center space-x-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 hover:text-cyan-700 dark:hover:text-cyan-300 hover:border-cyan-200 dark:hover:border-cyan-500/20 transition-all"
-                    >
-                      {hasRoom ? <ArrowRightLeft className="h-3.5 w-3.5" /> : <DoorOpen className="h-3.5 w-3.5" />}
-                      <span className="hidden sm:inline">{hasRoom ? 'Move Room' : 'Assign Room'}</span>
                     </button>
 
                     {/* View Details */}

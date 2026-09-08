@@ -12,7 +12,7 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
   result,
   onClose
 }) => {
-  const { project, roomNumber, applicationType, judgesEvaluations, finalAverageScore, award } = result;
+  const { project, applicationType, judgesEvaluations, finalAverageScore, award } = result;
 
   const criteria = getCriteriaForApplicationType(applicationType);
 
@@ -120,8 +120,8 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
 
             <div className="text-right shrink-0">
               <div className="inline-block border-2 border-slate-900 rounded-xl px-4 py-2 bg-slate-50 text-center">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block">Room Number</span>
-                <span className="font-mono text-xl font-black text-slate-900">{roomNumber}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block">Category</span>
+                <span className="font-mono text-base font-black text-slate-900">{project.headCategory || 'General'}</span>
               </div>
             </div>
           </div>

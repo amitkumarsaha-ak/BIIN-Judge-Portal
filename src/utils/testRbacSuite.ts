@@ -35,21 +35,15 @@ export const runRbacTestSuite = () => {
   console.log(`[PASS] Configured rooms count: ${rooms.length}`);
   if (rooms.length < 5) throw new Error('Expected at least 5 default rooms');
 
-  // Test 2: Room 01 vs Room 02 project isolation for Judges
+  // Test 2: Judge project retrieval and category filtering
   const allProjects = getProjects();
-  const room1Projects = getProjectsForJudge('Room 01');
-  const room2Projects = getProjectsForJudge('Room 02');
-  const unassignedJudgeProjects = getProjectsForJudge('');
+  const studentProjects = getProjectsForJudge('Student');
+  const orgProjects = getProjectsForJudge('Organisation');
+  const allJudgeProjects = getProjectsForJudge();
 
-  console.log(`[PASS] Total projects: ${allProjects.length}, Room 01 projects: ${room1Projects.length}, Room 02 projects: ${room2Projects.length}`);
-  if (unassignedJudgeProjects.length !== 0) {
-    throw new Error('Unassigned judge should receive 0 projects');
-  }
-  if (room1Projects.some(p => p.roomNumber !== 'Room 01')) {
-    throw new Error('Room 01 judge received projects from another room');
-  }
-  if (room2Projects.some(p => p.roomNumber !== 'Room 02')) {
-    throw new Error('Room 02 judge received projects from another room');
+  console.log(`[PASS] Total projects: ${allProjects.length}, Judge view: ${allJudgeProjects.length}, Student: ${studentProjects.length}, Org: ${orgProjects.length}`);
+  if (allJudgeProjects.length === 0) {
+    throw new Error('Expected active projects to be available for judge');
   }
 
   // Test 3: Judge evaluation isolation
@@ -67,7 +61,7 @@ export const runRbacTestSuite = () => {
   // Test submitting evaluation while unlocked
   const testEval: Evaluation = {
     id: `eval-rbac-${Date.now()}`,
-    projectId: room1Projects[0]?.id || 'proj-org-hcc-1',
+    projectId: allJudgeProjects[0]?.id || 'proj-org-hcc-1',
     judgeEmail: 'judge@biin.org',
     judgeName: 'Dr. Sarah Jenkins',
     scores: { uniqueness: 8, publicOrGovValue: 8, features: 8, qualityTech: 8 },

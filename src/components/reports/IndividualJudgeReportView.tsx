@@ -84,7 +84,7 @@ export const IndividualJudgeReportView: React.FC<IndividualJudgeReportViewProps>
           >
             {allProjects.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.title} ({p.applicationType} • {p.roomNumber || 'Room 01'})
+                {p.title} ({p.applicationType} • {p.headCategory})
               </option>
             ))}
           </select>
@@ -128,9 +128,9 @@ export const IndividualJudgeReportView: React.FC<IndividualJudgeReportViewProps>
           {/* Metadata Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 bg-slate-50 dark:bg-slate-950/70 p-5 rounded-2xl border border-slate-200 dark:border-slate-800/80">
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Room Number</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Category</span>
               <span className="font-heading font-extrabold text-indigo-600 dark:text-indigo-400 text-lg">
-                {currentProject.roomNumber || activeEvaluation.roomNumber || 'Room 01'}
+                {currentProject.headCategory || 'General'}
               </span>
             </div>
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Award, LayoutDashboard, FolderGit2, CheckCircle2,
-  FileText, Sun, Moon, LogOut, DoorOpen
+  FileText, Sun, Moon, LogOut
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -24,12 +24,10 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
 
   const navItems: { id: JudgeTab; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'projects', label: 'Assigned Projects', icon: FolderGit2 },
+    { id: 'projects', label: 'Projects', icon: FolderGit2 },
     { id: 'submissions', label: 'My Submissions', icon: CheckCircle2 },
     { id: 'report', label: 'My Score Summary', icon: FileText }
   ];
-
-  const hasRoom = Boolean(currentUser?.roomNumber && currentUser.roomNumber.trim());
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-200">
@@ -93,11 +91,11 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
               )}
             </button>
 
-            {/* Room Badge */}
+            {/* Judge Badge & Logout */}
             <div className="flex items-center space-x-2 border-l border-slate-200 dark:border-slate-800 pl-2 sm:pl-3">
-              <span className={`hidden sm:inline-flex items-center space-x-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border ${hasRoom ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30'}`}>
-                <DoorOpen className="h-3.5 w-3.5" />
-                <span>{hasRoom ? currentUser?.roomNumber : 'Unassigned'}</span>
+              <span className="hidden sm:inline-flex items-center space-x-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30">
+                <Award className="h-3.5 w-3.5" />
+                <span>{currentUser?.fullName || 'Judge'}</span>
               </span>
 
               {/* Logout */}

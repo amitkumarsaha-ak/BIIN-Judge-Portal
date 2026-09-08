@@ -1,15 +1,21 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   Trophy, Medal, Printer, Lock, Unlock,
-  Search, UserCheck
+  Search, UserCheck, Sparkles, Filter
 } from 'lucide-react';
-import type { CombinedProjectResult, ApplicationType } from '../../types';
+import type { CombinedProjectResult, ApplicationType, HeadCategoryCode } from '../../types';
 import {
   getProjects, getEvaluations, getSystemSettings,
   toggleFinalResultLock
 } from '../../services/storage';
 import { useAuth } from '../../context/AuthContext';
-import { getProjectCombinedResult, formatScoreNumber } from '../../utils/evaluation';
+import {
+  getProjectCombinedResult,
+  formatScoreNumber,
+  getCriteriaForApplicationType,
+  getMaxRawScoreForApplicationType
+} from '../../utils/evaluation';
+import { HEAD_CATEGORIES } from '../../data/mockData';
 import { PrintResultReportSheet } from '../reports/PrintResultReportSheet';
 
 export const AdminResultsView: React.FC = () => {
@@ -24,6 +30,7 @@ export const AdminResultsView: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<ApplicationType | 'All'>('All');
+  const [filterCategory, setFilterCategory] = useState<HeadCategoryCode | 'All'>('All');
   const [selectedProjectId, setSelectedProjectId] = useState<string>(allProjects[0]?.id || '');
   const [activePrintResult, setActivePrintResult] = useState<CombinedProjectResult | null>(null);
 
@@ -31,6 +38,7 @@ export const AdminResultsView: React.FC = () => {
     return allProjects.map(p => getProjectCombinedResult(p, allProjects, allEvaluations));
   }, [allProjects, allEvaluations]);
 
+  // Ranked results sorted from Highest -> Lowest
   const rankedResults = useMemo(() => {
     const list = [...allCombinedResults];
     list.sort((a, b) => b.finalAverageScore - a.finalAverageScore);
@@ -38,22 +46,24 @@ export const AdminResultsView: React.FC = () => {
     const q = searchQuery.toLowerCase().trim();
     return list.filter(res => {
       if (filterType !== 'All' && res.project.applicationType !== filterType) return false;
+      if (filterCategory !== 'All' && res.project.headCategory !== filterCategory) return false;
       if (q) {
         const hay = [
           res.project.title,
           res.project.applicationId,
+          res.project.projectCode,
           res.project.teamOrOrgName,
-          res.project.roomNumber || ''
+          res.project.representativeName
         ].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [allCombinedResults, searchQuery, filterType]);
+  }, [allCombinedResults, searchQuery, filterType, filterCategory]);
 
   const selectedResult = useMemo(() => {
-    return allCombinedResults.find(r => r.project.id === selectedProjectId) || allCombinedResults[0] || null;
-  }, [allCombinedResults, selectedProjectId]);
+    return rankedResults.find(r => r.project.id === selectedProjectId) || rankedResults[0] || null;
+  }, [rankedResults, selectedProjectId]);
 
   const handleToggleLock = () => {
     if (currentUser) {
@@ -63,6 +73,10 @@ export const AdminResultsView: React.FC = () => {
       });
       refreshSettings();
     }
+  };
+
+  const handlePrintFullTable = () => {
+    window.print();
   };
 
   const getAwardBadge = (award: string) => {
@@ -78,8 +92,35 @@ export const AdminResultsView: React.FC = () => {
     }
   };
 
+  const criteriaForSelected = selectedResult
+    ? getCriteriaForApplicationType(selectedResult.project.applicationType)
+    : [];
+
+  const maxRawForSelected = selectedResult
+    ? getMaxRawScoreForApplicationType(selectedResult.project.applicationType)
+    : 50;
+
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 print:p-0">
+      {/* Printable styles */}
+      <style>{`
+        @media print {
+          body {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .print-card {
+            border: 1px solid #cbd5e1 !important;
+            box-shadow: none !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+          }
+        }
+      `}</style>
+
       {/* Print Sheet Modal */}
       {activePrintResult && (
         <PrintResultReportSheet
@@ -99,11 +140,19 @@ export const AdminResultsView: React.FC = () => {
             Results & Award Designation
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Aggregated multi-judge converted mark averages, live awards computation, and official A4 Printable Report Sheets.
+            Filter by Application Type & Head Category to inspect sorted rankings, judge scorecards, and official A4 reports.
           </p>
         </div>
 
-        <div className="flex items-center space-x-3 shrink-0">
+        <div className="flex items-center space-x-3 shrink-0 no-print">
+          <button
+            onClick={handlePrintFullTable}
+            className="btn-primary inline-flex items-center space-x-2 rounded-2xl px-5 py-3 text-xs font-bold text-white shadow-xl hover:scale-105 transition-transform"
+          >
+            <Printer className="h-4 w-4" />
+            <span>Print Results Report</span>
+          </button>
+
           <button
             onClick={handleToggleLock}
             className={`inline-flex items-center space-x-2 rounded-2xl px-5 py-3 text-xs font-bold transition-all shadow-xl ${settings.finalResultsLocked ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}`}
@@ -114,151 +163,263 @@ export const AdminResultsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Search & Category Filter */}
-      <div className="flex flex-col sm:flex-row gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+      {/* Search & Category Filter Bar */}
+      <div className="no-print flex flex-col sm:flex-row gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute inset-y-0 left-0 pl-3.5 h-full w-4 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search by project name, ID, team, room..."
+            placeholder="Search by project name, ID, participant, or code..."
             className="w-full rounded-xl bg-slate-50 dark:bg-slate-950/60 pl-10 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-amber-500"
           />
         </div>
 
+        {/* Application Type Filter */}
         <select
           value={filterType}
           onChange={e => setFilterType(e.target.value as ApplicationType | 'All')}
-          className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-500"
+          className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-500 font-semibold"
         >
           <option value="All">All Application Types</option>
           <option value="Student">Student</option>
+          <option value="Student-Tertiary">Student-Tertiary Categories (University Level)</option>
           <option value="Organisation">Organisation</option>
           <option value="Individual or Group">Individual or Group</option>
         </select>
+
+        {/* Head Category Filter */}
+        <select
+          value={filterCategory}
+          onChange={e => setFilterCategory(e.target.value as HeadCategoryCode | 'All')}
+          className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-500 font-semibold"
+        >
+          <option value="All">All Head Categories</option>
+          {HEAD_CATEGORIES.map(hc => (
+            <option key={hc.code} value={hc.code}>
+              {hc.code} — {hc.name}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {/* Two-Pane Layout: Leaderboard Ranking List + Selected Project Breakdown */}
+      {/* Active Filter Indicators */}
+      {(filterType !== 'All' || filterCategory !== 'All') && (
+        <div className="no-print flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-400 bg-amber-50/50 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-200 dark:border-amber-800">
+          <Filter className="h-4 w-4 text-amber-600" />
+          <span>Active Category:</span>
+          <span className="font-bold text-slate-900 dark:text-white">
+            {filterType !== 'All' ? filterType : 'All Types'}
+          </span>
+          <span>→</span>
+          <span className="font-bold text-slate-900 dark:text-white">
+            {filterCategory !== 'All' ? (HEAD_CATEGORIES.find(c => c.code === filterCategory)?.name || filterCategory) : 'All Categories'}
+          </span>
+          <span className="text-slate-400">({rankedResults.length} ranked project{rankedResults.length !== 1 ? 's' : ''})</span>
+        </div>
+      )}
+
+      {/* Two-Pane Layout: Leaderboard Ranking List + Selected Project Multi-Judge Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left 7 Columns: Ranked Project Leaderboard */}
-        <div className="lg:col-span-7 glass-panel rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xl space-y-3">
+        {/* Left 7 Columns: Ranked Project Leaderboard (Highest -> Lowest) */}
+        <div className="lg:col-span-6 glass-panel rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xl space-y-3">
           <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
             <h3 className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
               <Medal className="h-4 w-4 text-amber-500" />
               <span>Ranked Leaderboard ({rankedResults.length})</span>
             </h3>
-            <span className="text-[11px] text-slate-500 font-mono">Sorted by Mark Average</span>
+            <span className="text-[11px] text-slate-500 font-mono">Sorted: Highest → Lowest</span>
           </div>
 
-          <div className="space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
-            {rankedResults.map((res, idx) => {
-              const isSelected = selectedResult?.project.id === res.project.id;
-              const rank = idx + 1;
+          <div className="space-y-2.5 max-h-[640px] overflow-y-auto pr-1">
+            {rankedResults.length === 0 ? (
+              <div className="py-12 text-center text-slate-500">
+                <p className="text-xs">No projects match the selected category filters.</p>
+              </div>
+            ) : (
+              rankedResults.map((res, idx) => {
+                const isSelected = selectedResult?.project.id === res.project.id;
+                const rank = idx + 1;
 
-              return (
-                <div
-                  key={res.project.id}
-                  onClick={() => setSelectedProjectId(res.project.id)}
-                  className={`cursor-pointer rounded-2xl border p-3.5 transition-all flex items-center justify-between ${isSelected ? 'border-amber-500 bg-amber-50/40 dark:bg-amber-500/10 shadow-md ring-2 ring-amber-500/20' : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 hover:border-slate-300 dark:hover:border-slate-700'}`}
-                >
-                  <div className="flex items-center space-x-3 min-w-0">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded-xl font-heading font-black text-xs shrink-0 ${rank === 1 ? 'bg-amber-500 text-slate-950' : rank === 2 ? 'bg-slate-300 text-slate-900' : rank === 3 ? 'bg-amber-700 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
-                      #{rank}
+                return (
+                  <div
+                    key={res.project.id}
+                    onClick={() => setSelectedProjectId(res.project.id)}
+                    className={`cursor-pointer rounded-2xl border p-3.5 transition-all flex items-center justify-between ${isSelected ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-500/10 shadow-md ring-2 ring-amber-500/20' : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 hover:border-slate-300 dark:hover:border-slate-700'}`}
+                  >
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-xl font-heading font-black text-xs shrink-0 ${rank === 1 ? 'bg-amber-500 text-slate-950' : rank === 2 ? 'bg-slate-300 text-slate-900' : rank === 3 ? 'bg-amber-700 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+                        #{rank}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-900 dark:text-white text-xs truncate leading-tight">{res.project.title}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                          {res.project.applicationId} · {res.project.teamOrOrgName}
+                        </p>
+                        <div className="flex items-center space-x-1.5 mt-1 text-[10px] font-semibold text-slate-500">
+                          <span className="rounded bg-slate-200 dark:bg-slate-800 px-1.5 py-0.2">{res.project.applicationType}</span>
+                          <span>•</span>
+                          <span className="rounded bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.2">{res.project.headCategory}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-bold text-slate-900 dark:text-white text-xs truncate leading-tight">{res.project.title}</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">{res.project.applicationId} · {res.project.teamOrOrgName}</p>
+
+                    <div className="flex flex-col items-end space-y-1 shrink-0 pl-3">
+                      <span className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase ${getAwardBadge(res.award)}`}>
+                        {res.award}
+                      </span>
+                      <span className="font-heading font-extrabold text-sm text-slate-900 dark:text-white font-mono">
+                        {formatScoreNumber(res.finalAverageScore)}%
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {res.judgesEvaluations.length} Judge{res.judgesEvaluations.length !== 1 ? 's' : ''}
+                      </span>
                     </div>
                   </div>
-
-                  <div className="flex items-center space-x-2 shrink-0 pl-3">
-                    <span className={`rounded-full px-2.5 py-0.5 text-[10px] ${getAwardBadge(res.award)}`}>
-                      {res.award}
-                    </span>
-                    <span className="font-heading font-extrabold text-sm text-slate-900 dark:text-white font-mono">
-                      {formatScoreNumber(res.finalAverageScore)}%
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
-        {/* Right 5 Columns: Selected Project Multi-Judge Details */}
-        <div className="lg:col-span-5 glass-panel rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xl space-y-5 flex flex-col justify-between">
+        {/* Right 6 Columns: Selected Project Multi-Judge Detailed Breakdown */}
+        <div className="lg:col-span-6 glass-panel rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xl space-y-5 flex flex-col justify-between">
           {selectedResult ? (
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* Top Title & Badges */}
               <div className="flex items-start justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                <div>
-                  <span className={`inline-flex rounded-full px-3 py-1 text-xs ${getAwardBadge(selectedResult.award)}`}>
-                    {selectedResult.award}
-                  </span>
-                  <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white mt-2 leading-tight">
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <span className={`inline-flex rounded-full px-3 py-0.5 text-xs font-bold uppercase tracking-wider ${getAwardBadge(selectedResult.award)}`}>
+                      {selectedResult.award}
+                    </span>
+                    {selectedResult.isHighestInCategory && selectedResult.award === 'Champion' && (
+                      <span className="inline-flex items-center space-x-1 text-[11px] text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                        <Sparkles className="h-3 w-3" />
+                        <span>★ Highest in Category</span>
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="font-heading text-xl font-extrabold text-slate-900 dark:text-white mt-1 leading-tight">
                     {selectedResult.project.title}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-                    {selectedResult.project.applicationId} · {selectedResult.project.roomNumber}
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                    {selectedResult.project.applicationId} · {selectedResult.project.projectCode} · {selectedResult.project.teamOrOrgName}
                   </p>
+                  <div className="flex items-center space-x-2 text-xs font-semibold text-slate-600 dark:text-slate-400 pt-0.5">
+                    <span>Type: <strong>{selectedResult.applicationType}</strong></span>
+                    <span>•</span>
+                    <span>Category: <strong>{selectedResult.project.headCategory}</strong></span>
+                  </div>
                 </div>
               </div>
 
               {/* Combined Average Score Big Card */}
-              <div className="rounded-2xl bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-cyan-500/10 border border-amber-300/30 dark:border-amber-500/20 p-4 text-center">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Combined 3-Judge Mark Average
+              <div className="rounded-2xl bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-cyan-500/10 border border-amber-300/40 dark:border-amber-500/30 p-5 text-center">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-mono">
+                  FINAL AVERAGE SCORE
                 </p>
-                <p className="font-heading text-4xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">
-                  {formatScoreNumber(selectedResult.finalAverageScore)} / 100
+                <p className="font-heading text-4xl font-black text-amber-600 dark:text-amber-400 mt-1 font-mono">
+                  {formatScoreNumber(selectedResult.finalAverageScore)}%
                 </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Based on {selectedResult.judgesEvaluations.length} independent judge evaluation{selectedResult.judgesEvaluations.length !== 1 ? 's' : ''}
+                <p className="text-xs text-slate-500 mt-1 font-medium">
+                  Aggregated from {selectedResult.judgesEvaluations.length} independent judge evaluation{selectedResult.judgesEvaluations.length !== 1 ? 's' : ''}
                 </p>
               </div>
 
-              {/* Individual Judge Scores List */}
-              <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Judge Submissions Breakdown</p>
+              {/* Individual Judge Submissions with Detailed Criterion Marks */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Evaluator Scorecards Breakdown
+                  </p>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    Raw: /{maxRawForSelected} → Converted: /100
+                  </span>
+                </div>
+
                 {selectedResult.judgesEvaluations.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60">
+                  <p className="text-xs text-slate-500 italic p-4 rounded-xl bg-slate-50 dark:bg-slate-950/60 text-center border border-dashed border-slate-200 dark:border-slate-800">
                     No evaluations submitted yet for this project.
                   </p>
                 ) : (
-                  selectedResult.judgesEvaluations.map((je) => (
-                    <div
-                      key={je.judgeEmail}
-                      className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 p-3 text-xs space-y-1.5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <UserCheck className="h-3.5 w-3.5 text-indigo-500" />
-                          <span className="font-bold text-slate-900 dark:text-white">{je.judgeName}</span>
+                  <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                    {selectedResult.judgesEvaluations.map((je, idx) => (
+                      <div
+                        key={je.judgeEmail}
+                        className="rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 p-4 text-xs space-y-2.5"
+                      >
+                        {/* Judge Header */}
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-slate-800/80">
+                          <div className="flex items-center space-x-2">
+                            <UserCheck className="h-4 w-4 text-indigo-500" />
+                            <div>
+                              <span className="font-bold text-slate-900 dark:text-white">
+                                Judge {idx + 1}: {je.judgeName}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-mono block">{je.judgeEmail}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-3 text-right">
+                            <div>
+                              <span className="text-[10px] uppercase font-bold text-slate-400 block">Raw Total</span>
+                              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                                {formatScoreNumber(je.rawScore)} / {je.maxRawScore}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block">Converted</span>
+                              <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                                {formatScoreNumber(je.convertedScore)}%
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                          {formatScoreNumber(je.convertedScore)} / 100
-                        </span>
+
+                        {/* Individual Criteria Marks */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-1.5 text-[11px]">
+                          {criteriaForSelected.map(crit => {
+                            const val = je.scores[crit.key] ?? 0;
+                            return (
+                              <div
+                                key={crit.key}
+                                className="rounded-lg bg-white dark:bg-slate-900 p-1.5 border border-slate-200/70 dark:border-slate-800/70 text-center"
+                              >
+                                <p className="text-[9px] text-slate-500 truncate" title={crit.label}>{crit.label}</p>
+                                <p className="font-bold font-mono text-slate-900 dark:text-white">{formatScoreNumber(val)}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Qualitative Feedback */}
+                        {je.feedback && (
+                          <div className="bg-white/60 dark:bg-slate-900/60 p-2 rounded-lg border border-slate-200/60 dark:border-slate-800/60">
+                            <p className="text-[11px] text-slate-600 dark:text-slate-300 italic">
+                              "{je.feedback}"
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      {je.feedback && (
-                        <p className="text-[11px] text-slate-600 dark:text-slate-400 italic">"{je.feedback}"</p>
-                      )}
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
 
-              {/* Print Button */}
+              {/* Print Official Sheet Button */}
               <button
                 onClick={() => setActivePrintResult(selectedResult)}
-                className="btn-primary w-full inline-flex items-center justify-center space-x-2 rounded-2xl py-3 text-xs font-bold text-white shadow-xl hover:scale-105 transition-transform"
+                className="btn-primary w-full inline-flex items-center justify-center space-x-2 rounded-2xl py-3.5 text-xs font-bold text-white shadow-xl hover:scale-105 transition-transform"
               >
                 <Printer className="h-4 w-4" />
                 <span>Print Official A4 Result Report Sheet</span>
               </button>
             </div>
           ) : (
-            <div className="text-center py-12 text-slate-500">
-              <p>Select a project to view result breakdown</p>
+            <div className="text-center py-16 text-slate-500">
+              <p>Select a project from the left leaderboard to view full multi-judge scorecard.</p>
             </div>
           )}
         </div>
@@ -266,3 +427,4 @@ export const AdminResultsView: React.FC = () => {
     </div>
   );
 };
+

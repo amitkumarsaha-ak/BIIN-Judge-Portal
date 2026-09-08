@@ -1,4 +1,4 @@
-export type ApplicationType = 'Student' | 'Organisation' | 'Individual or Group';
+export type ApplicationType = 'Student' | 'Organisation' | 'Individual or Group' | 'Student-Tertiary';
 
 export type HeadCategoryCode = 'HC-C' | 'HC-I' | 'HC-BS' | 'HC-ICS' | 'HC-PSG';
 
@@ -13,6 +13,8 @@ export interface HeadCategory {
   accentColor: string;
 }
 
+export type JudgeStatus = 'pending' | 'approved' | 'rejected';
+
 export interface User {
   id: string;
   fullName: string;
@@ -20,6 +22,7 @@ export interface User {
   password?: string;
   role: 'judge' | 'admin';
   createdAt: string;
+  status?: JudgeStatus;
   roomNumber?: string;
   isActive?: boolean;
 }
@@ -68,7 +71,7 @@ export interface Project {
   problemStatement?: string;
   solutionSummary?: string;
   tags: string[];
-  roomNumber: string;           // e.g. 'Room 01', 'Room 02'
+  roomNumber?: string;          // Optional/deprecated
   status: ProjectStatus;        // active | inactive
 }
 
@@ -132,7 +135,7 @@ export interface JudgeScoreBreakdown {
 
 export interface CombinedProjectResult {
   project: Project;
-  roomNumber: string;
+  roomNumber?: string;
   applicationType: ApplicationType;
   judgesEvaluations: JudgeScoreBreakdown[];
   finalAverageScore: number;

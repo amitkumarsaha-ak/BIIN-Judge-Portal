@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  ShieldCheck, LayoutDashboard, FolderGit2, DoorOpen,
+  ShieldCheck, LayoutDashboard, FolderGit2,
   Users, CheckSquare, Trophy, History, Sun, Moon, LogOut
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -9,7 +9,6 @@ import { useTheme } from '../../context/ThemeContext';
 export type AdminTab =
   | 'dashboard'
   | 'projects'
-  | 'rooms'
   | 'judges'
   | 'evaluations'
   | 'results'
@@ -32,8 +31,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const navItems: { id: AdminTab; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'projects', label: 'Projects', icon: FolderGit2 },
-    { id: 'rooms', label: 'Rooms', icon: DoorOpen },
-    { id: 'judges', label: 'Judges', icon: Users },
+    { id: 'judges', label: 'Judge Approvals', icon: Users },
     { id: 'evaluations', label: 'Evaluations', icon: CheckSquare },
     { id: 'results', label: 'Results & Awards', icon: Trophy },
     { id: 'audit', label: 'Audit History', icon: History }

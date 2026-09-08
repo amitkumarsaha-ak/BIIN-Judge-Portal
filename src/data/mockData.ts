@@ -1,4 +1,4 @@
-﻿import type { ApplicationType, HeadCategory, CriteriaInfo, Project, User } from '../types';
+import type { ApplicationType, HeadCategory, CriteriaInfo, Project, User } from '../types';
 
 export const APPLICATION_TYPES: { id: ApplicationType; title: string; description: string; badge: string; icon: string }[] = [
   {
@@ -7,6 +7,13 @@ export const APPLICATION_TYPES: { id: ApplicationType; title: string; descriptio
     description: 'Projects developed by university, college, or school students & academic teams.',
     badge: 'Academic',
     icon: 'GraduationCap'
+  },
+  {
+    id: 'Student-Tertiary',
+    title: 'Student-Tertiary Categories (University Level)',
+    description: 'University-level student projects competing under the five head categories: Consumer, Business Services, Industrial, Community & Social, and Public Sector.',
+    badge: 'University',
+    icon: 'University'
   },
   {
     id: 'Organisation',
@@ -67,10 +74,10 @@ export const HEAD_CATEGORIES: HeadCategory[] = [
   }
 ];
 
-import { STUDENT_CRITERIA, ORGANISATION_AND_INDIVIDUAL_CRITERIA } from '../utils/evaluation';
+import { STUDENT_CRITERIA, ORGANISATION_AND_INDIVIDUAL_CRITERIA, STUDENT_TERTIARY_CRITERIA } from '../utils/evaluation';
 
 export const EVALUATION_CRITERIA: CriteriaInfo[] = STUDENT_CRITERIA;
-export { STUDENT_CRITERIA, ORGANISATION_AND_INDIVIDUAL_CRITERIA };
+export { STUDENT_CRITERIA, ORGANISATION_AND_INDIVIDUAL_CRITERIA, STUDENT_TERTIARY_CRITERIA };
 
 export const PRESEEDED_JUDGES: User[] = [
   {
@@ -497,6 +504,108 @@ export const SAMPLE_PROJECTS: Project[] = [
     solutionSummary: 'LoRa 915MHz long-range packet nodes broadcasting text messages up to 10km without internet or cellular coverage.',
     tags: ['Emergency Services', 'Mesh Network', 'Hardware'],
     roomNumber: 'Room 02',
+    status: 'active'
+  },
+
+  // STUDENT-TERTIARY (UNIVERSITY LEVEL) PROJECTS
+  {
+    id: 'proj-stert-hcc-1',
+    title: 'UniCart - AI Campus Grocery Optimizer',
+    applicationId: 'BIIN-2026-019',
+    projectCode: 'STERT-HC-C-001',
+    applicationType: 'Student-Tertiary',
+    headCategory: 'HC-C',
+    teamOrOrgName: 'Team UniCart',
+    representativeName: 'Priya Sharma',
+    members: ['Priya Sharma', 'Liam Nakamura', 'Sofia Reyes'],
+    email: 'priya.sharma@university.edu',
+    contactNumber: '+1 (555) 021-3344',
+    institutionOrOrg: 'National University of Technology',
+    description: 'AI-powered mobile app that plans optimized weekly grocery lists for university students based on meal preferences, dietary constraints, and campus store stock.',
+    problemStatement: 'University students face food insecurity and poor nutrition due to limited budgets and lack of meal planning tools.',
+    solutionSummary: 'Combines collaborative filtering recommendations with real-time campus store inventory APIs to minimize cost and maximize nutrition.',
+    tags: ['AI', 'Consumer App', 'Student Welfare', 'Mobile'],
+    roomNumber: 'Room 03',
+    status: 'active'
+  },
+  {
+    id: 'proj-stert-hcbs-1',
+    title: 'StartEdge - University Startup Legal Toolkit',
+    applicationId: 'BIIN-2026-020',
+    projectCode: 'STERT-HC-BS-001',
+    applicationType: 'Student-Tertiary',
+    headCategory: 'HC-BS',
+    teamOrOrgName: 'LawLab University',
+    representativeName: 'Omar Abdullah',
+    members: ['Omar Abdullah', 'Mei Lin'],
+    email: 'omar.a@lawlab.university.edu',
+    contactNumber: '+1 (555) 022-5566',
+    institutionOrOrg: 'Faculty of Business & Law',
+    description: 'A guided SaaS platform that walks university student founders through company registration, IP filing, co-founder agreements, and seed term sheets without a lawyer.',
+    problemStatement: 'Early-stage student startups delay incorporation due to high legal consultation fees and intimidating paperwork.',
+    solutionSummary: 'Step-by-step legal wizard with auto-generated NDAs, equity split calculators, and university accelerator templates.',
+    tags: ['LegalTech', 'Startup', 'SaaS', 'B2B'],
+    roomNumber: 'Room 03',
+    status: 'active'
+  },
+  {
+    id: 'proj-stert-hci-1',
+    title: 'SmartWeld - Computer Vision Weld Quality Inspector',
+    applicationId: 'BIIN-2026-021',
+    projectCode: 'STERT-HC-I-001',
+    applicationType: 'Student-Tertiary',
+    headCategory: 'HC-I',
+    teamOrOrgName: 'FabLab Robotics',
+    representativeName: 'Aditya Patel',
+    members: ['Aditya Patel', 'Yuki Tanaka', 'Fatima Al-Rashid'],
+    email: 'aditya.patel@fablab.edu',
+    contactNumber: '+1 (555) 023-7788',
+    institutionOrOrg: 'Engineering & Manufacturing Institute',
+    description: 'Real-time camera system mounted on industrial welding arms that uses deep learning to detect micro-cracks, porosity, and undercuts in weld beads during fabrication.',
+    problemStatement: 'Manual post-weld inspection misses 30% of micro-defects, causing product recalls and catastrophic structural failures.',
+    solutionSummary: 'ResNet-based defect classifier trained on 50K annotated weld images achieving 94.6% detection accuracy at 60 fps.',
+    tags: ['Computer Vision', 'Manufacturing', 'Deep Learning', 'IoT'],
+    roomNumber: 'Room 03',
+    status: 'active'
+  },
+  {
+    id: 'proj-stert-hcics-1',
+    title: 'IncluLearn - Adaptive Learning Platform for Neurodiverse Students',
+    applicationId: 'BIIN-2026-022',
+    projectCode: 'STERT-HC-ICS-001',
+    applicationType: 'Student-Tertiary',
+    headCategory: 'HC-ICS',
+    teamOrOrgName: 'NeuroBridge Team',
+    representativeName: 'Carla Mendez',
+    members: ['Carla Mendez', 'James Osei', 'Lin Wei'],
+    email: 'carla.m@neurobridge.edu',
+    contactNumber: '+1 (555) 024-9900',
+    institutionOrOrg: 'Education Technology Faculty',
+    description: 'An adaptive e-learning platform that dynamically adjusts content format, pacing, and presentation style for students with dyslexia, ADHD, and autism spectrum conditions.',
+    problemStatement: 'Mainstream learning platforms use one-size-fits-all content delivery, leaving neurodiverse students underserved and struggling.',
+    solutionSummary: 'ML-driven learner profiling engine that switches between visual, audio, and text modalities based on real-time engagement signals.',
+    tags: ['EdTech', 'Accessibility', 'AI', 'Inclusion'],
+    roomNumber: 'Room 03',
+    status: 'active'
+  },
+  {
+    id: 'proj-stert-hcpsg-1',
+    title: 'VoteChain - Blockchain University Election System',
+    applicationId: 'BIIN-2026-023',
+    projectCode: 'STERT-HC-PSG-001',
+    applicationType: 'Student-Tertiary',
+    headCategory: 'HC-PSG',
+    teamOrOrgName: 'CivicCode University',
+    representativeName: 'Blessing Adeyemi',
+    members: ['Blessing Adeyemi', 'Rin Sato'],
+    email: 'blessing.a@civiccode.edu',
+    contactNumber: '+1 (555) 025-1122',
+    institutionOrOrg: 'Department of Computer Science & Governance',
+    description: 'Permissioned blockchain-based voting system for university student council elections, ensuring tamper-proof ballots, anonymous voter privacy, and transparent real-time tallying.',
+    problemStatement: 'University election results are frequently disputed due to manual counting errors and lack of verifiable audit trails.',
+    solutionSummary: 'Hyperledger Fabric private blockchain with zero-knowledge identity proofs and public dashboard for open result verification.',
+    tags: ['Blockchain', 'E-Governance', 'Civic Tech', 'Privacy'],
+    roomNumber: 'Room 03',
     status: 'active'
   }
 ];

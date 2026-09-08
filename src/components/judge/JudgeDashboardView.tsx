@@ -1,7 +1,7 @@
 import React from 'react';
 import {
-  Sparkles, DoorOpen, CheckCircle2, Clock, Award,
-  ArrowRight, Eye, Lock, AlertTriangle, Layers
+  Sparkles, CheckCircle2, Clock, Award,
+  ArrowRight, Eye, Lock, Layers
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -24,13 +24,10 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
   const { currentUser } = useAuth();
   if (!currentUser) return null;
 
-  const roomNumber = currentUser.roomNumber;
-  const hasRoom = Boolean(roomNumber && roomNumber.trim());
-
-  const assignedProjects = getProjectsForJudge(roomNumber);
+  const assignedProjects = getProjectsForJudge();
   const myEvaluations = getEvaluationsByJudge(currentUser.email);
   const settings = getSystemSettings();
-  const stats = getDashboardStatsForJudge(currentUser.email, roomNumber);
+  const stats = getDashboardStatsForJudge(currentUser.email);
 
   return (
     <div className="space-y-8 pb-12">
@@ -46,18 +43,13 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
                 <Sparkles className="h-3.5 w-3.5" />
                 <span>Official BIIN Judge Workspace</span>
               </span>
-
-              <span className={`inline-flex items-center space-x-1 rounded-full px-3 py-1 text-xs font-mono font-bold border ${hasRoom ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/30' : 'bg-amber-500/20 text-amber-300 border-amber-400/30'}`}>
-                <DoorOpen className="h-3 w-3" />
-                <span>{hasRoom ? `Assigned: ${roomNumber}` : 'Awaiting Room Assignment'}</span>
-              </span>
             </div>
 
             <h1 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
               Welcome, {currentUser.fullName}!
             </h1>
             <p className="mt-2 max-w-2xl text-xs sm:text-sm text-indigo-100/90 leading-relaxed">
-              Evaluate nominated projects assigned to your room ({roomNumber || 'None'}) across Student, Organisation, and Individual/Group categories.
+              Evaluate nominated projects across Student, Student-Tertiary, Organisation, and Individual/Group categories.
             </p>
           </div>
 
@@ -66,7 +58,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
               onClick={() => onNavigate('projects')}
               className="btn-primary w-full sm:w-auto inline-flex items-center justify-center space-x-2 rounded-2xl px-6 py-3.5 font-bold text-white shadow-xl transition-all hover:scale-105 text-xs"
             >
-              <span>View Assigned Projects</span>
+              <span>View Projects</span>
               <ArrowRight className="h-4 w-4" />
             </button>
 
@@ -92,23 +84,12 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
         </div>
       )}
 
-      {/* Room Warning If Not Assigned */}
-      {!hasRoom && (
-        <div className="flex items-center space-x-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-500/30 p-4 text-xs text-amber-800 dark:text-amber-300 shadow-sm">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
-          <div>
-            <p className="font-bold">No Room Assigned Yet</p>
-            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">Your account has not been assigned to a judging room by the Administrator. Once assigned, your nominated projects will appear here.</p>
-          </div>
-        </div>
-      )}
-
       {/* Stats Cards Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
-          title="Assigned Projects"
+          title="Total Projects"
           value={stats.totalProjects}
-          subtitle={`In ${roomNumber || 'your arena'}`}
+          subtitle="Available for evaluation"
           icon={Layers}
           colorScheme="indigo"
         />
@@ -138,16 +119,16 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
         />
       </div>
 
-      {/* Assigned Projects Table in Judge's Room */}
+      {/* Projects Table */}
       <div className="glass-panel rounded-3xl p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
           <div>
             <h2 className="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center space-x-2">
               <Layers className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-              <span>Projects in My Room ({assignedProjects.length})</span>
+              <span>Projects ({assignedProjects.length})</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Strictly filtered to {roomNumber || 'your assigned arena'}
+              Browse and evaluate active projects across categories
             </p>
           </div>
 
@@ -162,7 +143,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
 
         {assignedProjects.length === 0 ? (
           <div className="text-center py-12 text-slate-500">
-            <p className="text-xs">No nominated projects assigned to your room currently.</p>
+            <p className="text-xs">No nominated projects found.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

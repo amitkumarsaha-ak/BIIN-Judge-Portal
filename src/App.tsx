@@ -9,7 +9,6 @@ import { AccessDenied } from './components/auth/AccessDenied';
 import { AdminLayout, type AdminTab } from './components/admin/AdminLayout';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { AdminProjectsView } from './components/admin/AdminProjectsView';
-import { AdminRoomsView } from './components/admin/AdminRoomsView';
 import { AdminJudgesView } from './components/admin/AdminJudgesView';
 import { AdminEvaluationsView } from './components/admin/AdminEvaluationsView';
 import { AdminResultsView } from './components/admin/AdminResultsView';
@@ -47,7 +46,7 @@ const MainAppContent: React.FC = () => {
 
       if (hash.startsWith('admin/')) {
         const tab = hash.replace('admin/', '') as AdminTab;
-        if (['dashboard', 'projects', 'rooms', 'judges', 'evaluations', 'results', 'audit'].includes(tab)) {
+        if (['dashboard', 'projects', 'judges', 'evaluations', 'results', 'audit'].includes(tab)) {
           setAdminTab(tab);
         }
       } else if (hash.startsWith('judge/')) {
@@ -228,11 +227,11 @@ const MainAppContent: React.FC = () => {
               </div>
               <h3 className="font-heading text-xl font-bold text-slate-900 dark:text-white">Central Admin Panel</h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                Full administrative authority over project nominations, judging room arenas, judge credential management, evaluation overrides, rankings, lock engines, and audit logs.
+                Full administrative authority over project nominations, category classifications, judge registration approvals, evaluations, rankings, lock engines, and audit logs.
               </p>
               <div className="flex flex-wrap gap-2 pt-2">
-                <span className="rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-300">Projects & Rooms</span>
-                <span className="rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-300">Judges & Credentials</span>
+                <span className="rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-300">Projects & Categories</span>
+                <span className="rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-300">Judge Approvals</span>
                 <span className="rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-300">Evaluation Locks</span>
               </div>
             </div>
@@ -318,11 +317,9 @@ const MainAppContent: React.FC = () => {
             onNavigate={handleSelectAdminTab}
             onOpenAddProject={() => handleSelectAdminTab('projects')}
             onOpenAddJudge={() => handleSelectAdminTab('judges')}
-            onOpenAddRoom={() => handleSelectAdminTab('rooms')}
           />
         )}
         {adminTab === 'projects' && <AdminProjectsView />}
-        {adminTab === 'rooms' && <AdminRoomsView />}
         {adminTab === 'judges' && <AdminJudgesView />}
         {adminTab === 'evaluations' && <AdminEvaluationsView />}
         {adminTab === 'results' && <AdminResultsView />}

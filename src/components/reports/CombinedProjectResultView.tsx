@@ -71,7 +71,7 @@ export const CombinedProjectResultView: React.FC<CombinedProjectResultViewProps>
               Combined Project Result Report
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Aggregated scoring across all independent room judges with live award designation calculation.
+              Aggregated scoring across all independent judges with live award designation calculation.
             </p>
           </div>
 
@@ -110,7 +110,7 @@ export const CombinedProjectResultView: React.FC<CombinedProjectResultViewProps>
         >
           {allProjects.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.title} ({p.applicationType} • {p.roomNumber || 'Room 01'})
+              {p.title} ({p.applicationType} • {p.headCategory})
             </option>
           ))}
         </select>
@@ -130,7 +130,7 @@ export const CombinedProjectResultView: React.FC<CombinedProjectResultViewProps>
             <div className="space-y-1">
               <div className="flex items-center space-x-2">
                 <span className="rounded-lg bg-indigo-50 dark:bg-indigo-500/20 px-3 py-1 text-xs font-mono font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
-                  {combinedResult.roomNumber}
+                  {combinedResult.project.headCategory}
                 </span>
                 <span className="rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                   {combinedResult.applicationType}

@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import {
-  ShieldCheck, FolderGit2, Users, DoorOpen, CheckSquare,
+  ShieldCheck, FolderGit2, Users, CheckSquare,
   Trophy, Lock, Unlock, Plus, History, ArrowRight,
   TrendingUp, Award
 } from 'lucide-react';
 import {
-  getProjects, getJudges, getRooms, getEvaluations,
+  getProjects, getJudges, getEvaluations,
   getSystemSettings, toggleEvaluationLock, toggleFinalResultLock,
   getAuditLogs
 } from '../../services/storage';
@@ -16,14 +16,12 @@ interface AdminDashboardProps {
   onNavigate: (tab: AdminTab) => void;
   onOpenAddProject: () => void;
   onOpenAddJudge: () => void;
-  onOpenAddRoom: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onNavigate,
   onOpenAddProject,
-  onOpenAddJudge,
-  onOpenAddRoom
+  onOpenAddJudge
 }) => {
   const { currentUser } = useAuth();
 
@@ -36,7 +34,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const projects = getProjects();
   const judges = getJudges();
-  const rooms = getRooms();
   const evaluations = getEvaluations();
   const auditLogs = getAuditLogs().slice(0, 5);
 
@@ -81,7 +78,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               Welcome, {currentUser?.fullName || 'Administrator'}!
             </h1>
             <p className="mt-2 max-w-2xl text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Full control over all nominated projects, judging rooms, judge accounts, live evaluations, award designation, and system locks.
+              Full control over all nominated projects, category classifications, judge registration approvals, live evaluations, award designation, and system locks.
             </p>
           </div>
 
@@ -98,21 +95,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               className="inline-flex items-center space-x-2 rounded-2xl bg-violet-600/40 hover:bg-violet-600/60 px-4 py-2.5 text-xs font-bold text-white border border-violet-400/30 transition-colors"
             >
               <Users className="h-4 w-4" />
-              <span>Add Judge</span>
-            </button>
-            <button
-              onClick={onOpenAddRoom}
-              className="inline-flex items-center space-x-2 rounded-2xl bg-cyan-600/40 hover:bg-cyan-600/60 px-4 py-2.5 text-xs font-bold text-white border border-cyan-400/30 transition-colors"
-            >
-              <DoorOpen className="h-4 w-4" />
-              <span>Add Room</span>
+              <span>Judge Approvals</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Global Metrics Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div
           onClick={() => onNavigate('projects')}
           className="cursor-pointer group rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 p-4 shadow-sm hover:border-violet-500/50 hover:shadow-md transition-all"
@@ -138,18 +128,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         <div
-          onClick={() => onNavigate('rooms')}
-          className="cursor-pointer group rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 p-4 shadow-sm hover:border-cyan-500/50 hover:shadow-md transition-all"
-        >
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Judging Rooms</span>
-            <DoorOpen className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
-          </div>
-          <p className="font-heading text-3xl font-extrabold text-slate-900 dark:text-white">{rooms.length}</p>
-          <p className="text-[11px] text-cyan-600 dark:text-cyan-400 font-medium mt-1">Active Arenas</p>
-        </div>
-
-        <div
           onClick={() => onNavigate('evaluations')}
           className="cursor-pointer group rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 p-4 shadow-sm hover:border-emerald-500/50 hover:shadow-md transition-all"
         >
@@ -163,7 +141,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         <div
           onClick={() => onNavigate('results')}
-          className="cursor-pointer group rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 p-4 shadow-sm hover:border-amber-500/50 hover:shadow-md transition-all col-span-2 sm:col-span-1"
+          className="cursor-pointer group rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 p-4 shadow-sm hover:border-amber-500/50 hover:shadow-md transition-all"
         >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
             <span className="text-[11px] font-semibold uppercase tracking-wider">Global Avg</span>
@@ -231,63 +209,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      {/* Room Status Overview Grid */}
-      <div className="glass-panel rounded-3xl p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center space-x-2">
-            <DoorOpen className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-            <h2 className="font-heading text-lg font-bold text-slate-900 dark:text-white">Room Overview & Assignments</h2>
-          </div>
-          <button
-            onClick={() => onNavigate('rooms')}
-            className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline flex items-center space-x-1"
-          >
-            <span>Manage All Rooms</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {rooms.map(room => {
-            const roomProjects = projects.filter(p => (p.roomNumber || '').toLowerCase().trim() === room.roomNumber.toLowerCase().trim());
-            const roomJudges = judges.filter(j => j.roomNumber?.toLowerCase().trim() === room.roomNumber.toLowerCase().trim());
-            const roomEvaluations = evaluations.filter(e => roomProjects.some(p => p.id === e.projectId));
-
-            return (
-              <div
-                key={room.id}
-                onClick={() => onNavigate('rooms')}
-                className="cursor-pointer rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 p-4 hover:border-cyan-400/40 transition-all space-y-3"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="inline-block rounded-md bg-cyan-100 dark:bg-cyan-500/20 px-2 py-0.5 text-xs font-mono font-bold text-cyan-800 dark:text-cyan-300">
-                      {room.roomNumber}
-                    </span>
-                    <h4 className="font-heading font-bold text-sm text-slate-900 dark:text-white mt-1 leading-snug">{room.name}</h4>
-                  </div>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{room.location || 'Main Venue'}</span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                  <div className="rounded-xl bg-white dark:bg-slate-900 p-2 border border-slate-200 dark:border-slate-800">
-                    <p className="text-[10px] text-slate-500">Judges</p>
-                    <p className="font-bold text-slate-900 dark:text-white mt-0.5">{roomJudges.length}</p>
-                  </div>
-                  <div className="rounded-xl bg-white dark:bg-slate-900 p-2 border border-slate-200 dark:border-slate-800">
-                    <p className="text-[10px] text-slate-500">Projects</p>
-                    <p className="font-bold text-slate-900 dark:text-white mt-0.5">{roomProjects.length}</p>
-                  </div>
-                  <div className="rounded-xl bg-white dark:bg-slate-900 p-2 border border-slate-200 dark:border-slate-800">
-                    <p className="text-[10px] text-slate-500">Evals</p>
-                    <p className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{roomEvaluations.length}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Two Column Section: Quick Reports & Recent Audit Log */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

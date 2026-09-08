@@ -1,5 +1,6 @@
 import type { User, Project, Evaluation, DashboardStats, Room, SystemSettings, AuditLog } from '../types';
 import { PRESEEDED_JUDGES, SAMPLE_PROJECTS } from '../data/mockData';
+import { ADMIN_CONFIG } from '../config/authConfig';
 
 const USERS_KEY = 'biin_portal_users';
 const CURRENT_USER_KEY = 'biin_portal_current_user';
@@ -67,8 +68,8 @@ export const DEFAULT_SETTINGS: SystemSettings = {
 export const DEFAULT_AUDIT_LOGS: AuditLog[] = [
   {
     id: 'audit-init-1',
-    actorEmail: 'admin@biin.org',
-    actorName: 'BIIN Administrator',
+    actorEmail: ADMIN_CONFIG.EMAIL,
+    actorName: ADMIN_CONFIG.NAME,
     action: 'SYSTEM_INITIALIZE',
     targetType: 'settings',
     details: 'System initialized with default rooms, nominated projects, and judges.',
@@ -80,32 +81,76 @@ export const DEFAULT_AUDIT_LOGS: AuditLog[] = [
 export const initializeStorage = () => {
   if (typeof window === 'undefined' && typeof localStorage === 'undefined') return;
 
-  // Initialize & Sync Users (Ensure admin@biin.org and all default judges are always present)
+  // Initialize & Sync Users (Ensure admin matches ADMIN_CONFIG and all default judges are approved)
   const existingUsersData = localStorage.getItem(USERS_KEY);
+  const normalizedPreseeded: User[] = PRESEEDED_JUDGES.map(j => {
+    if (j.role === 'admin') {
+      return {
+        ...j,
+        email: ADMIN_CONFIG.EMAIL,
+        fullName: ADMIN_CONFIG.NAME,
+        password: ADMIN_CONFIG.PASSWORD,
+        status: 'approved'
+      };
+    }
+    return {
+      ...j,
+      status: j.status || 'approved'
+    };
+  });
+
   if (!existingUsersData) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(PRESEEDED_JUDGES));
+    localStorage.setItem(USERS_KEY, JSON.stringify(normalizedPreseeded));
   } else {
     try {
-      const users: User[] = JSON.parse(existingUsersData);
+      let users: User[] = JSON.parse(existingUsersData);
       let modified = false;
-      for (const preseeded of PRESEEDED_JUDGES) {
-        const foundIndex = users.findIndex(
-          u => u.email?.trim().toLowerCase() === preseeded.email.trim().toLowerCase()
-        );
-        if (foundIndex === -1) {
-          users.push(preseeded);
+
+      // 1. Enforce ONLY ONE Admin matching ADMIN_CONFIG.EMAIL
+      const cleanAdminEmail = ADMIN_CONFIG.EMAIL.trim().toLowerCase();
+      users = users.map(u => {
+        if (u.email?.trim().toLowerCase() === cleanAdminEmail) {
+          if (u.role !== 'admin' || u.password !== ADMIN_CONFIG.PASSWORD || u.fullName !== ADMIN_CONFIG.NAME) {
+            modified = true;
+            return { ...u, role: 'admin', fullName: ADMIN_CONFIG.NAME, password: ADMIN_CONFIG.PASSWORD, status: 'approved' };
+          }
+          return u;
+        } else if (u.role === 'admin') {
+          // Any other user with admin role is demoted to judge to guarantee only ONE fixed Admin
           modified = true;
-        } else if (preseeded.role === 'admin' && users[foundIndex].role !== 'admin') {
-          // Repair admin role if altered
-          users[foundIndex] = { ...users[foundIndex], role: 'admin', password: preseeded.password };
-          modified = true;
+          return { ...u, role: 'judge', status: u.status || 'approved' };
         }
+        return u;
+      });
+
+      // Ensure Admin exists
+      if (!users.some(u => u.email?.trim().toLowerCase() === cleanAdminEmail)) {
+        users.unshift({
+          id: 'admin-fixed-1',
+          fullName: ADMIN_CONFIG.NAME,
+          email: ADMIN_CONFIG.EMAIL,
+          password: ADMIN_CONFIG.PASSWORD,
+          role: 'admin',
+          status: 'approved',
+          createdAt: '2026-07-01T08:00:00Z'
+        });
+        modified = true;
       }
+
+      // Ensure default mock judges have a status (default to approved)
+      users = users.map(u => {
+        if (u.role === 'judge' && !u.status) {
+          modified = true;
+          return { ...u, status: 'approved' };
+        }
+        return u;
+      });
+
       if (modified) {
         localStorage.setItem(USERS_KEY, JSON.stringify(users));
       }
     } catch {
-      localStorage.setItem(USERS_KEY, JSON.stringify(PRESEEDED_JUDGES));
+      localStorage.setItem(USERS_KEY, JSON.stringify(normalizedPreseeded));
     }
   }
 
@@ -374,16 +419,40 @@ export const getJudges = (): User[] => {
 export const findUserByEmail = (email: string): User | undefined => {
   if (!email) return undefined;
   const cleanEmail = email.trim().toLowerCase();
+
+  // Single fixed admin check
+  if (cleanEmail === ADMIN_CONFIG.EMAIL.trim().toLowerCase()) {
+    return {
+      id: 'admin-fixed-1',
+      fullName: ADMIN_CONFIG.NAME,
+      email: ADMIN_CONFIG.EMAIL,
+      password: ADMIN_CONFIG.PASSWORD,
+      role: 'admin',
+      status: 'approved',
+      createdAt: '2026-07-01T08:00:00Z'
+    };
+  }
+
   const users = getUsers();
   const found = users.find((u) => u.email?.trim().toLowerCase() === cleanEmail);
-  if (found) return found;
+  if (found) {
+    // If somehow a non-fixed admin has role === 'admin', force it to 'judge'
+    if (found.role === 'admin' && found.email?.trim().toLowerCase() !== ADMIN_CONFIG.EMAIL.trim().toLowerCase()) {
+      found.role = 'judge';
+    }
+    return found;
+  }
 
-  // Fallback check against PRESEEDED_JUDGES (guarantees admin@biin.org always works)
+  // Fallback check against PRESEEDED_JUDGES
   const preseeded = PRESEEDED_JUDGES.find((u) => u.email?.trim().toLowerCase() === cleanEmail);
-  if (preseeded) {
-    users.push(preseeded);
+  if (preseeded && preseeded.role !== 'admin') {
+    const judgeUser: User = {
+      ...preseeded,
+      status: preseeded.status || 'approved'
+    };
+    users.push(judgeUser);
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    return preseeded;
+    return judgeUser;
   }
 
   return undefined;
@@ -391,10 +460,42 @@ export const findUserByEmail = (email: string): User | undefined => {
 
 export const saveUser = (user: User, actor?: { email: string; name: string }): void => {
   const users = getUsers();
-  users.push(user);
+  
+  // Security guarantee: registration can NEVER create an Admin account
+  const safeUser: User = {
+    ...user,
+    role: 'judge',
+    status: user.status || 'pending'
+  };
+
+  users.push(safeUser);
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
   if (actor) {
-    logAuditAction(actor.email, actor.name, 'CREATE_USER', 'judge', `Created ${user.role} user account for ${user.fullName} (${user.email}).`);
+    logAuditAction(actor.email, actor.name, 'CREATE_USER', 'judge', `Registered judge account for ${safeUser.fullName} (${safeUser.email}) with status "${safeUser.status}".`);
+  }
+};
+
+export const approveJudge = (judgeId: string, actor?: { email: string; name: string }): void => {
+  const users = getUsers();
+  const idx = users.findIndex(u => u.id === judgeId);
+  if (idx >= 0) {
+    users[idx] = { ...users[idx], status: 'approved' };
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    if (actor) {
+      logAuditAction(actor.email, actor.name, 'APPROVE_JUDGE', 'judge', `Approved judge registration for ${users[idx].fullName} (${users[idx].email}).`);
+    }
+  }
+};
+
+export const rejectJudge = (judgeId: string, actor?: { email: string; name: string }): void => {
+  const users = getUsers();
+  const idx = users.findIndex(u => u.id === judgeId);
+  if (idx >= 0) {
+    users[idx] = { ...users[idx], status: 'rejected' };
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    if (actor) {
+      logAuditAction(actor.email, actor.name, 'REJECT_JUDGE', 'judge', `Rejected judge registration for ${users[idx].fullName} (${users[idx].email}).`);
+    }
   }
 };
 
@@ -402,10 +503,15 @@ export const updateUser = (updated: User, actor?: { email: string; name: string 
   const users = getUsers();
   const idx = users.findIndex(u => u.id === updated.id);
   if (idx >= 0) {
-    users[idx] = updated;
+    // Prevent changing role to admin
+    const safeUpdated: User = {
+      ...updated,
+      role: updated.email?.trim().toLowerCase() === ADMIN_CONFIG.EMAIL.trim().toLowerCase() ? 'admin' : 'judge'
+    };
+    users[idx] = safeUpdated;
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
     if (actor) {
-      logAuditAction(actor.email, actor.name, 'UPDATE_USER', 'judge', `Updated details for ${updated.fullName} (${updated.email}).`);
+      logAuditAction(actor.email, actor.name, 'UPDATE_USER', 'judge', `Updated details for ${safeUpdated.fullName} (${safeUpdated.email}).`);
     }
   }
 };
@@ -413,6 +519,10 @@ export const updateUser = (updated: User, actor?: { email: string; name: string 
 export const deleteUser = (id: string, actor?: { email: string; name: string }): void => {
   const users = getUsers();
   const target = users.find(u => u.id === id);
+  // Cannot delete the fixed Admin
+  if (target?.email?.trim().toLowerCase() === ADMIN_CONFIG.EMAIL.trim().toLowerCase()) {
+    return;
+  }
   const remaining = users.filter(u => u.id !== id);
   localStorage.setItem(USERS_KEY, JSON.stringify(remaining));
 
@@ -432,6 +542,7 @@ export const assignJudgeToRoom = (judgeEmail: string, roomNumber: string, actor?
     }
   }
 };
+
 
 export const getCurrentUser = (): User | null => {
   initializeStorage();
@@ -617,30 +728,28 @@ export const deleteEvaluation = (id: string, actor?: { email: string; name: stri
 // --- SCOPED RBAC ACCESS FOR JUDGE PANEL ---
 
 /**
- * Returns strictly ONLY active projects assigned to the Judge's assigned Room.
- * If the judge is not assigned to a room, returns an empty array.
+ * Returns active projects accessible to Judges, optionally filtered by applicationType and headCategory.
+ * Room-based restriction has been completely removed.
  */
-export const getProjectsForJudge = (roomNumber?: string): Project[] => {
-  if (!roomNumber || !roomNumber.trim()) {
-    return [];
-  }
+export const getProjectsForJudge = (applicationType?: string, headCategory?: string): Project[] => {
   const allProjects = getProjects();
-  return allProjects.filter(
-    p => p.status === 'active' && (p.roomNumber || '').toLowerCase().trim() === roomNumber.toLowerCase().trim()
-  );
+  return allProjects.filter(p => {
+    if (p.status !== 'active') return false;
+    if (applicationType && applicationType !== 'All' && p.applicationType !== applicationType) return false;
+    if (headCategory && headCategory !== 'All' && p.headCategory !== headCategory) return false;
+    return true;
+  });
 };
 
 /**
- * Returns stats scoped strictly to the Judge's assigned room and their own submissions.
+ * Returns stats for the Judge across all active projects and their own submissions.
  */
-export const getDashboardStatsForJudge = (judgeEmail: string, roomNumber?: string): DashboardStats => {
-  const assignedProjects = getProjectsForJudge(roomNumber);
+export const getDashboardStatsForJudge = (judgeEmail: string): DashboardStats => {
+  const allActiveProjects = getProjects().filter(p => p.status === 'active');
   const judgeEvaluations = getEvaluationsByJudge(judgeEmail);
 
-  const totalProjects = assignedProjects.length;
-  const evaluatedProjectsCount = judgeEvaluations.filter(e => 
-    assignedProjects.some(p => p.id === e.projectId)
-  ).length;
+  const totalProjects = allActiveProjects.length;
+  const evaluatedProjectsCount = judgeEvaluations.length;
   const remainingProjectsCount = Math.max(0, totalProjects - evaluatedProjectsCount);
 
   let averageScore = 0;

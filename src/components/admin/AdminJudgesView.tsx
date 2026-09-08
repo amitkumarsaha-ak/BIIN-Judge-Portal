@@ -1,217 +1,62 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-  Users, Plus, Search, Pencil, Trash2, DoorOpen,
-  Check, X, UserCheck, KeyRound
+  Users, Search, Check, X, UserCheck, Clock, XCircle,
+  ShieldCheck, Mail, Calendar, UserX, Trash2
 } from 'lucide-react';
-import type { User, Room } from '../../types';
-import {
-  getJudges, saveUser, updateUser, deleteUser,
-  getRooms, getEvaluationsByJudge, assignJudgeToRoom
-} from '../../services/storage';
+import type { User, JudgeStatus } from '../../types';
+import { getJudges, approveJudge, rejectJudge, deleteUser } from '../../services/storage';
 import { useAuth } from '../../context/AuthContext';
 
-const EMPTY_JUDGE_FORM: Omit<User, 'id' | 'createdAt'> = {
-  fullName: '',
-  email: '',
-  password: 'password123',
-  role: 'judge',
-  roomNumber: 'Room 01'
-};
-
-// --- JUDGE FORM MODAL ---
-interface JudgeFormModalProps {
-  mode: 'add' | 'edit';
-  initialData: Omit<User, 'id' | 'createdAt'> & { id?: string };
-  rooms: Room[];
-  onClose: () => void;
-  onSave: (data: User) => void;
-}
-
-const JudgeFormModal: React.FC<JudgeFormModalProps> = ({ mode, initialData, rooms, onClose, onSave }) => {
-  const [form, setForm] = useState({ ...initialData });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const validate = (): boolean => {
-    const errs: Record<string, string> = {};
-    if (!form.fullName.trim()) errs.fullName = 'Full name is required.';
-    if (!form.email.trim()) errs.email = 'Email address is required.';
-    if (!form.password || form.password.length < 4) errs.password = 'Password must be at least 4 characters.';
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleSave = () => {
-    if (!validate()) return;
-    const user: User = {
-      ...form,
-      id: form.id || `judge-${Date.now()}`,
-      role: 'judge',
-      createdAt: (form as User).createdAt || new Date().toISOString()
-    };
-    onSave(user);
-  };
-
-  const inputCls = (field: string) =>
-    `w-full rounded-xl border px-3.5 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 transition-all bg-slate-50 dark:bg-slate-950/60 ${errors[field] ? 'border-red-400 focus:ring-red-500/30' : 'border-slate-300 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20'}`;
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl p-6 space-y-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30">
-              {mode === 'add' ? <Plus className="h-5 w-5" /> : <Pencil className="h-5 w-5" />}
-            </div>
-            <div>
-              <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white">
-                {mode === 'add' ? 'Add New Judge' : 'Edit Judge Details'}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Configure credentials & room assignment</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-              Full Name *
-            </label>
-            <input
-              className={inputCls('fullName')}
-              value={form.fullName}
-              onChange={e => {
-                setForm(prev => ({ ...prev, fullName: e.target.value }));
-                if (errors.fullName) setErrors(prev => ({ ...prev, fullName: '' }));
-              }}
-              placeholder="e.g. Dr. Kazi Rahman"
-            />
-            {errors.fullName && <p className="mt-1 text-xs text-red-500">{errors.fullName}</p>}
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-              Email Address *
-            </label>
-            <input
-              type="email"
-              className={inputCls('email')}
-              value={form.email}
-              onChange={e => {
-                setForm(prev => ({ ...prev, email: e.target.value }));
-                if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
-              }}
-              placeholder="e.g. judge.rahman@biin.org"
-            />
-            {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-              Password *
-            </label>
-            <input
-              type="text"
-              className={inputCls('password')}
-              value={form.password}
-              onChange={e => {
-                setForm(prev => ({ ...prev, password: e.target.value }));
-                if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
-              }}
-              placeholder="••••••••"
-            />
-            {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-              Assigned Room
-            </label>
-            <select
-              className={inputCls('roomNumber')}
-              value={form.roomNumber || ''}
-              onChange={e => setForm(prev => ({ ...prev, roomNumber: e.target.value }))}
-            >
-              <option value="">-- Unassigned --</option>
-              {rooms.map(r => (
-                <option key={r.id} value={r.roomNumber}>
-                  {r.roomNumber} — {r.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end space-x-3 pt-2 border-t border-slate-200 dark:border-slate-800">
-          <button
-            onClick={onClose}
-            className="rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="btn-primary flex items-center space-x-2 rounded-xl px-5 py-2 text-xs font-bold text-white shadow-lg"
-          >
-            <Check className="h-4 w-4" />
-            <span>{mode === 'add' ? 'Create Judge' : 'Save Changes'}</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- MAIN ADMIN JUDGES VIEW ---
 export const AdminJudgesView: React.FC = () => {
   const { currentUser } = useAuth();
   const [judges, setJudges] = useState<User[]>(() => getJudges());
-  const [rooms, setRooms] = useState<Room[]>(() => getRooms());
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterRoom, setFilterRoom] = useState<string>('All');
-
-  const [formModal, setFormModal] = useState<{ mode: 'add' | 'edit'; data: Omit<User, 'id' | 'createdAt'> & { id?: string } } | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | JudgeStatus>('all');
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
   const refresh = useCallback(() => {
     setJudges(getJudges());
-    setRooms(getRooms());
   }, []);
 
-  const roomOptions = useMemo(() => {
-    const list = Array.from(new Set(rooms.map(r => r.roomNumber)));
-    return ['All', ...list.sort(), 'Unassigned'];
-  }, [rooms]);
+  const counts = useMemo(() => {
+    return {
+      all: judges.length,
+      pending: judges.filter(j => (j.status || 'approved') === 'pending').length,
+      approved: judges.filter(j => (j.status || 'approved') === 'approved').length,
+      rejected: judges.filter(j => j.status === 'rejected').length
+    };
+  }, [judges]);
 
   const filteredJudges = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    return judges.filter(j => {
-      if (filterRoom !== 'All') {
-        if (filterRoom === 'Unassigned') {
-          if (j.roomNumber && j.roomNumber.trim()) return false;
-        } else if (j.roomNumber !== filterRoom) {
-          return false;
-        }
+    return judges.filter(judge => {
+      const judgeStatus = judge.status || 'approved';
+      if (statusFilter !== 'all' && judgeStatus !== statusFilter) {
+        return false;
       }
       if (q) {
-        const hay = [j.fullName, j.email, j.roomNumber || ''].join(' ').toLowerCase();
-        if (!hay.includes(q)) return false;
+        const text = `${judge.fullName} ${judge.email}`.toLowerCase();
+        if (!text.includes(q)) return false;
       }
       return true;
     });
-  }, [judges, searchQuery, filterRoom]);
+  }, [judges, statusFilter, searchQuery]);
 
-  const handleSave = (user: User) => {
+  const handleApprove = (judge: User) => {
     const actor = currentUser ? { email: currentUser.email, name: currentUser.fullName } : undefined;
-    if (formModal?.mode === 'add') {
-      saveUser(user, actor);
-    } else {
-      updateUser(user, actor);
-    }
+    approveJudge(judge.id, actor);
     refresh();
-    setFormModal(null);
+    setActionFeedback(`Approved access for judge "${judge.fullName}". They can now log in.`);
+    setTimeout(() => setActionFeedback(null), 4000);
+  };
+
+  const handleReject = (judge: User) => {
+    const actor = currentUser ? { email: currentUser.email, name: currentUser.fullName } : undefined;
+    rejectJudge(judge.id, actor);
+    refresh();
+    setActionFeedback(`Declined access for judge "${judge.fullName}". Login access is denied.`);
+    setTimeout(() => setActionFeedback(null), 4000);
   };
 
   const handleDelete = () => {
@@ -220,46 +65,53 @@ export const AdminJudgesView: React.FC = () => {
     deleteUser(deleteTarget.id, actor);
     refresh();
     setDeleteTarget(null);
+    setActionFeedback(`Removed judge record for "${deleteTarget.fullName}".`);
+    setTimeout(() => setActionFeedback(null), 4000);
   };
 
-  const handleQuickRoomAssign = (judgeEmail: string, roomNumber: string) => {
-    const actor = currentUser ? { email: currentUser.email, name: currentUser.fullName } : undefined;
-    assignJudgeToRoom(judgeEmail, roomNumber, actor);
-    refresh();
+  const formatRegDate = (isoString?: string) => {
+    if (!isoString) return 'Pre-seeded / N/A';
+    try {
+      const d = new Date(isoString);
+      return d.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return isoString;
+    }
   };
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Modals */}
-      {formModal && (
-        <JudgeFormModal
-          mode={formModal.mode}
-          initialData={formModal.data}
-          rooms={rooms}
-          onClose={() => setFormModal(null)}
-          onSave={handleSave}
-        />
-      )}
-
+      {/* Delete Confirmation Modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
           <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-red-200 dark:border-red-500/30 p-6 space-y-4 shadow-2xl">
-            <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white">Delete Judge Account?</h3>
+            <div className="flex items-center space-x-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white">Delete Judge Record?</h3>
+            </div>
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              Are you sure you want to remove <strong>{deleteTarget.fullName} ({deleteTarget.email})</strong>?
+              Are you sure you want to completely remove <strong>{deleteTarget.fullName}</strong> ({deleteTarget.email}) from the system?
             </p>
             <div className="flex items-center justify-end space-x-3 pt-2">
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300"
+                className="rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                className="rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-lg"
+                className="rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-lg transition-colors"
               >
-                Delete Account
+                Delete Record
               </button>
             </div>
           </div>
@@ -269,146 +121,232 @@ export const AdminJudgesView: React.FC = () => {
       {/* Header Banner */}
       <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <div className="inline-flex items-center space-x-2 rounded-full bg-blue-50 dark:bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 mb-2">
-            <Users className="h-3.5 w-3.5" />
-            <span>Judge Personas & Permissions</span>
+          <div className="inline-flex items-center space-x-2 rounded-full bg-violet-50 dark:bg-violet-500/20 px-3 py-1 text-xs font-semibold text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30 mb-2">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>Administrator Access Control</span>
           </div>
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-            Judge Management
+            Judge Registration Approval
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Create and manage judge credentials, assign judges to evaluation rooms, and monitor evaluation progress.
+            Review self-registered judge requests, approve or reject portal access, and manage judge accounts.
           </p>
         </div>
 
-        <button
-          id="admin-add-judge-btn"
-          onClick={() => setFormModal({ mode: 'add', data: { ...EMPTY_JUDGE_FORM } })}
-          className="btn-primary inline-flex items-center space-x-2 rounded-2xl px-5 py-3 text-sm font-bold text-white shadow-xl shrink-0"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Add New Judge</span>
-        </button>
+        {/* Quick Stat Counter Cards */}
+        <div className="flex items-center gap-2">
+          <div className="rounded-2xl bg-slate-100 dark:bg-slate-800 px-3.5 py-2 text-center border border-slate-200 dark:border-slate-700">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total</p>
+            <p className="text-sm font-extrabold text-slate-900 dark:text-white">{counts.all}</p>
+          </div>
+          <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/40 px-3.5 py-2 text-center border border-amber-200 dark:border-amber-700/50">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Pending</p>
+            <p className="text-sm font-extrabold text-amber-700 dark:text-amber-300">{counts.pending}</p>
+          </div>
+          <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 px-3.5 py-2 text-center border border-emerald-200 dark:border-emerald-700/50">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Approved</p>
+            <p className="text-sm font-extrabold text-emerald-700 dark:text-emerald-300">{counts.approved}</p>
+          </div>
+          <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 px-3.5 py-2 text-center border border-rose-200 dark:border-rose-700/50">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Rejected</p>
+            <p className="text-sm font-extrabold text-rose-700 dark:text-rose-300">{counts.rejected}</p>
+          </div>
+        </div>
       </div>
 
-      {/* Search & Filter Bar */}
+      {/* Action Feedback Banner */}
+      {actionFeedback && (
+        <div className="flex items-center space-x-2 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 p-4 text-xs font-semibold text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 animate-in fade-in slide-in-from-top-1">
+          <Check className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <span>{actionFeedback}</span>
+        </div>
+      )}
+
+      {/* Search & Filter Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        {/* Search */}
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute inset-y-0 left-0 pl-3.5 h-full w-4 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search by judge name, email, or room..."
-            className="w-full rounded-xl bg-slate-50 dark:bg-slate-950/60 pl-10 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-blue-500"
+            placeholder="Search by judge name or email address..."
+            className="w-full rounded-xl bg-slate-50 dark:bg-slate-950/60 pl-10 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-violet-500"
           />
         </div>
 
-        <select
-          value={filterRoom}
-          onChange={e => setFilterRoom(e.target.value)}
-          className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500"
-        >
-          {roomOptions.map(r => (
-            <option key={r} value={r}>
-              {r === 'All' ? 'All Rooms' : r}
-            </option>
-          ))}
-        </select>
+        {/* Filter Tabs */}
+        <div className="flex items-center space-x-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 p-1 border border-slate-200 dark:border-slate-700">
+          {(['all', 'pending', 'approved', 'rejected'] as const).map(tab => {
+            const count = counts[tab];
+            const isActive = statusFilter === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setStatusFilter(tab)}
+                className={`flex items-center space-x-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all ${
+                  isActive
+                    ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <span>{tab}</span>
+                <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                  isActive ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Judges Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredJudges.map(judge => {
-          const evals = getEvaluationsByJudge(judge.email);
-          const hasRoom = Boolean(judge.roomNumber && judge.roomNumber.trim());
+      {/* Registrations List */}
+      {filteredJudges.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 p-12 text-center space-y-3 bg-white/50 dark:bg-slate-900/50">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400">
+            <Users className="h-6 w-6" />
+          </div>
+          <h3 className="font-heading text-sm font-bold text-slate-700 dark:text-slate-300">No Judges Found</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            {searchQuery
+              ? `No registered judges match the search term "${searchQuery}".`
+              : `No judge accounts currently match the filter "${statusFilter}".`}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredJudges.map(judge => {
+            const status: JudgeStatus = judge.status || 'approved';
 
-          let avgGiven = 0;
-          if (evals.length > 0) {
-            const sum = evals.reduce((a, c) => a + (c.convertedScore ?? c.percentage ?? 0), 0);
-            avgGiven = Number((sum / evals.length).toFixed(1));
-          }
-
-          return (
-            <div
-              key={judge.id}
-              className="glass-panel rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-md space-y-4 flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-500/30">
-                      <UserCheck className="h-5 w-5" />
+            return (
+              <div
+                key={judge.id}
+                className={`glass-panel rounded-3xl border p-5 shadow-sm transition-all space-y-4 flex flex-col justify-between bg-white dark:bg-slate-900 ${
+                  status === 'pending'
+                    ? 'border-amber-300 dark:border-amber-700/60 ring-1 ring-amber-400/20'
+                    : status === 'rejected'
+                    ? 'border-rose-200 dark:border-rose-900/40 opacity-80'
+                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
+                <div className="space-y-3">
+                  {/* Top Bar: Icon + Name + Status Badge */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold border ${
+                        status === 'approved'
+                          ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30'
+                          : status === 'pending'
+                          ? 'bg-amber-50 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/30'
+                          : 'bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/30'
+                      }`}>
+                        {status === 'approved' ? (
+                          <UserCheck className="h-5 w-5" />
+                        ) : status === 'pending' ? (
+                          <Clock className="h-5 w-5" />
+                        ) : (
+                          <UserX className="h-5 w-5" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-heading font-bold text-sm text-slate-900 dark:text-white leading-tight truncate">
+                          {judge.fullName}
+                        </h4>
+                        <div className="flex items-center space-x-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5 truncate">
+                          <Mail className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{judge.email}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-heading font-bold text-sm text-slate-900 dark:text-white leading-tight">{judge.fullName}</h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">{judge.email}</p>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={() => setFormModal({ mode: 'edit', data: { ...judge } })}
-                      title="Edit Judge"
-                      className="rounded-lg p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
                     <button
                       onClick={() => setDeleteTarget(judge)}
-                      title="Delete Judge"
-                      className="rounded-lg p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                      title="Delete record"
+                      className="text-slate-400 hover:text-red-500 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
+
+                  {/* Status & Registration Date Badges */}
+                  <div className="space-y-1.5 pt-1 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-slate-500">Account Status:</span>
+                      <span className={`inline-flex items-center space-x-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${
+                        status === 'approved'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-700'
+                          : status === 'pending'
+                          ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700'
+                          : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-700'
+                      }`}>
+                        {status === 'approved' && <Check className="h-3 w-3" />}
+                        {status === 'pending' && <Clock className="h-3 w-3" />}
+                        {status === 'rejected' && <XCircle className="h-3 w-3" />}
+                        <span className="capitalize">{status}</span>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span className="flex items-center space-x-1">
+                        <Calendar className="h-3 w-3" />
+                        <span>Registered:</span>
+                      </span>
+                      <span className="font-mono text-slate-700 dark:text-slate-300">
+                        {formatRegDate(judge.createdAt)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Credentials reminder & Room Assignment */}
-                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-                  <span className={`inline-flex items-center space-x-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${hasRoom ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/20' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/20'}`}>
-                    <DoorOpen className="h-3 w-3" />
-                    <span>{hasRoom ? judge.roomNumber : 'Unassigned Room'}</span>
-                  </span>
+                {/* Actions Bar */}
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2">
+                  {status === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => handleApprove(judge)}
+                        className="flex-1 flex items-center justify-center space-x-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-2 px-3 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition-colors"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        <span>Approve</span>
+                      </button>
+                      <button
+                        onClick={() => handleReject(judge)}
+                        className="flex-1 flex items-center justify-center space-x-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 py-2 px-3 text-xs font-bold text-white shadow-md shadow-rose-600/20 transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        <span>Reject</span>
+                      </button>
+                    </>
+                  )}
 
-                  <span className="inline-flex items-center space-x-1 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-[11px] font-mono text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                    <KeyRound className="h-3 w-3" />
-                    <span>{judge.password || '••••••••'}</span>
-                  </span>
+                  {status === 'approved' && (
+                    <button
+                      onClick={() => handleReject(judge)}
+                      className="w-full flex items-center justify-center space-x-1.5 rounded-xl border border-rose-300 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 py-2 px-3 text-xs font-semibold transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      <span>Revoke / Reject Access</span>
+                    </button>
+                  )}
+
+                  {status === 'rejected' && (
+                    <button
+                      onClick={() => handleApprove(judge)}
+                      className="w-full flex items-center justify-center space-x-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 py-2 px-3 text-xs font-semibold transition-colors"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      <span>Re-Approve Access</span>
+                    </button>
+                  )}
                 </div>
               </div>
-
-              {/* Evaluation stats & Quick Room Switch */}
-              <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-                <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                  <div className="rounded-xl bg-slate-50 dark:bg-slate-950/60 p-2 border border-slate-200 dark:border-slate-800">
-                    <p className="text-[10px] text-slate-500">Evaluations</p>
-                    <p className="font-bold text-slate-900 dark:text-white mt-0.5">{evals.length}</p>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 dark:bg-slate-950/60 p-2 border border-slate-200 dark:border-slate-800">
-                    <p className="text-[10px] text-slate-500">Avg Given</p>
-                    <p className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{avgGiven > 0 ? `${avgGiven}` : 'N/A'}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2 pt-1">
-                  <label className="text-[11px] text-slate-500 shrink-0">Room:</label>
-                  <select
-                    value={judge.roomNumber || ''}
-                    onChange={e => handleQuickRoomAssign(judge.email, e.target.value)}
-                    className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1 text-[11px] text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="">Unassigned</option>
-                    {rooms.map(r => (
-                      <option key={r.id} value={r.roomNumber}>{r.roomNumber}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

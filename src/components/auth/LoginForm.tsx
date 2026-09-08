@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, LogIn, AlertCircle, Sparkles, UserCheck, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, LogIn, AlertCircle, UserCheck, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface LoginFormProps {
@@ -32,29 +32,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     }
   };
 
-  const handleQuickDemo = (demoEmail: string, demoPass: string, role: 'judge' | 'admin') => {
-    setSelectedRole(role);
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setErrorMessage(null);
-    const result = login(demoEmail, demoPass);
-    if (result.success) {
-      onSuccess();
-    } else {
-      setErrorMessage(result.error || 'Quick login failed.');
-    }
-  };
 
   const switchTab = (role: 'judge' | 'admin') => {
     setSelectedRole(role);
     setErrorMessage(null);
-    if (role === 'admin') {
-      setEmail('admin@biin.org');
-      setPassword('admin123');
-    } else {
-      setEmail('');
-      setPassword('');
-    }
+    setEmail('');
+    setPassword('');
   };
 
   return (
@@ -106,49 +89,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             {selectedRole === 'admin'
               ? 'Sign in to access central management & scoring overrides'
-              : 'Sign in with your registered judge credentials'}
+              : 'Sign in with your approved judge account'}
           </p>
-        </div>
-
-        {/* Quick Demo Login Preset Banner */}
-        <div className="mb-6 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3.5 border border-slate-200 dark:border-slate-700 text-xs">
-          <div className="flex items-center space-x-1.5 text-slate-700 dark:text-slate-300 font-semibold mb-2">
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-            <span>Quick Login Presets (Click to Sign In):</span>
-          </div>
-          <div className="flex flex-col space-y-1.5">
-            <button
-              type="button"
-              onClick={() => handleQuickDemo('admin@biin.org', 'admin123', 'admin')}
-              className={`flex items-center justify-between rounded-lg px-2.5 py-2 text-slate-800 dark:text-slate-200 transition-all border ${
-                selectedRole === 'admin'
-                  ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-300 dark:border-violet-600 shadow-sm'
-                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-violet-50 dark:hover:bg-violet-900/20'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <ShieldCheck className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-                <span className="font-medium text-violet-700 dark:text-violet-300">BIIN Administrator (Super Admin)</span>
-              </div>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">admin@biin.org</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickDemo('judge@biin.org', 'password123', 'judge')}
-              className={`flex items-center justify-between rounded-lg px-2.5 py-2 text-slate-800 dark:text-slate-200 transition-all border ${
-                selectedRole === 'judge'
-                  ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-600 shadow-sm'
-                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <UserCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span className="font-medium">Dr. Sarah Jenkins (Room 01)</span>
-              </div>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">judge@biin.org</span>
-            </button>
-          </div>
         </div>
 
         {/* Error Alert */}
@@ -174,7 +116,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={selectedRole === 'admin' ? 'admin@biin.org' : 'judge@biin.org'}
+                placeholder={selectedRole === 'admin' ? 'admin@example.com' : 'judge@example.com'}
                 className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/90 pl-10 pr-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>

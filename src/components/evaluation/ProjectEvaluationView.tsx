@@ -55,7 +55,6 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
   // Re-read on every render so lock changes from admin are always reflected
   const settings = getSystemSettings();
   const isLocked = settings.evaluationsLocked || settings.lockedProjects.includes(project.id);
-  const isRoomMismatch = currentUser?.role === 'judge' && project.roomNumber && currentUser.roomNumber && project.roomNumber.toLowerCase().trim() !== currentUser.roomNumber.toLowerCase().trim();
 
   const rawTotalScore = calculateRawTotal(scores, activeCriteria);
   const convertedScore = calculateConvertedScore(rawTotalScore, maxRawScore);
@@ -73,11 +72,6 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
 
     if (isLocked) {
       setValidationError('Evaluations are currently locked by the Administrator.');
-      return;
-    }
-
-    if (isRoomMismatch) {
-      setValidationError(`You are assigned to ${currentUser?.roomNumber}, but this project is in ${project.roomNumber}. You cannot score projects outside your room.`);
       return;
     }
 
@@ -105,7 +99,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
       projectId: project.id,
       judgeEmail: currentUser.email,
       judgeName: currentUser.fullName,
-      roomNumber: project.roomNumber || currentUser.roomNumber || 'Room 01',
+      roomNumber: project.roomNumber || '',
       scores,
       feedback: feedback.trim() || undefined,
       rawTotalScore,
@@ -148,7 +142,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
 
         <div className="flex items-center space-x-3 text-xs">
           <span className="rounded-lg bg-indigo-50 dark:bg-indigo-500/20 px-2.5 py-1 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 font-semibold">
-            {project.roomNumber || 'Room 01'}
+            {project.applicationType}
           </span>
           <span className="text-slate-500 dark:text-slate-400 font-mono">
             Evaluating ID: <strong className="text-slate-900 dark:text-slate-200">{project.id}</strong>
