@@ -134,7 +134,7 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
   const presetValues = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
   return (
-    <div className="glass-panel rounded-3xl p-6 border transition-all shadow-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700">
+    <div className="glass-panel rounded-3xl p-4 sm:p-6 border transition-all shadow-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700">
       
       {/* Title & Criteria Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
@@ -143,7 +143,7 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
             <IconComponent className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+            <h3 className="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center space-x-2">
               <span className="text-xs text-indigo-600 dark:text-indigo-400 font-mono">0{index + 1}.</span>
               <span>{criteria.label}</span>
             </h3>
@@ -153,14 +153,14 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
 
         {/* Range Indicator */}
         <div className="flex items-center space-x-2 shrink-0 self-start sm:self-center">
-          <span className="rounded-lg bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20">
+          <span className="rounded-lg bg-indigo-50 dark:bg-indigo-500/10 px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20">
             Scale: 1 to 10 (Decimals Allowed)
           </span>
         </div>
       </div>
 
       {/* Interactive Controls Box */}
-      <div className="mt-4 rounded-2xl bg-slate-50 dark:bg-slate-900/80 p-4 border border-slate-200 dark:border-slate-800 space-y-4">
+      <div className="mt-4 rounded-2xl bg-slate-50 dark:bg-slate-900/80 p-3.5 sm:p-4 border border-slate-200 dark:border-slate-800 space-y-4">
         
         {/* Slider & Input Row */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -184,7 +184,7 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
           </div>
 
           {/* Manual Input Field */}
-          <div className="flex items-center space-x-2 shrink-0">
+          <div className="flex items-center justify-between sm:justify-start space-x-2 shrink-0">
             <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Score:</label>
             <div className="relative flex items-center">
               <input
@@ -208,13 +208,13 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-500 block mb-2">
             Quick Score Presets (1 to 10):
           </span>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
             {presetValues.map((val) => (
               <button
                 key={val}
                 type="button"
                 onClick={() => handleSelectPreset(val)}
-                className={`rounded-lg px-3 py-1 text-xs font-mono font-semibold transition-all ${
+                className={`flex items-center justify-center rounded-xl py-2 text-xs font-mono font-bold transition-all min-h-[40px] ${
                   score === val
                     ? 'bg-cyan-600 text-white dark:bg-cyan-500 dark:text-slate-950 shadow-md shadow-cyan-500/30 scale-105'
                     : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-600 hover:text-white border border-slate-300 dark:border-slate-700/60'

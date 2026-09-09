@@ -158,9 +158,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Evaluation Lock Toggle */}
         <div className={`rounded-3xl border p-5 sm:p-6 transition-all ${settings.evaluationsLocked ? 'bg-red-50/70 dark:bg-red-950/20 border-red-200 dark:border-red-500/30' : 'bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30'}`}>
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${settings.evaluationsLocked ? 'bg-red-100 dark:bg-red-500/20 text-red-600 border-red-200 dark:border-red-500/30' : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 border-emerald-200 dark:border-emerald-500/30'}`}>
+              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border shrink-0 ${settings.evaluationsLocked ? 'bg-red-100 dark:bg-red-500/20 text-red-600 border-red-200 dark:border-red-500/30' : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 border-emerald-200 dark:border-emerald-500/30'}`}>
                 {settings.evaluationsLocked ? <Lock className="h-6 w-6" /> : <Unlock className="h-6 w-6" />}
               </div>
               <div>
@@ -175,7 +175,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <button
               id="admin-toggle-eval-lock"
               onClick={handleToggleEvalLock}
-              className={`rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-md ${settings.evaluationsLocked ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}
+              className={`w-full sm:w-auto rounded-xl px-4 py-2.5 text-xs font-bold transition-all shadow-md min-h-[40px] shrink-0 text-center ${settings.evaluationsLocked ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}
             >
               {settings.evaluationsLocked ? 'Unlock Evaluations' : 'Lock All Evaluations'}
             </button>
@@ -184,9 +184,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* Final Results Lock Toggle */}
         <div className={`rounded-3xl border p-5 sm:p-6 transition-all ${settings.finalResultsLocked ? 'bg-purple-50/70 dark:bg-purple-950/20 border-purple-200 dark:border-purple-500/30' : 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-200 dark:border-amber-500/30'}`}>
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${settings.finalResultsLocked ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-600 border-purple-200 dark:border-purple-500/30' : 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 border-amber-200 dark:border-amber-500/30'}`}>
+              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border shrink-0 ${settings.finalResultsLocked ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-600 border-purple-200 dark:border-purple-500/30' : 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 border-amber-200 dark:border-amber-500/30'}`}>
                 {settings.finalResultsLocked ? <Trophy className="h-6 w-6" /> : <Award className="h-6 w-6" />}
               </div>
               <div>
@@ -201,7 +201,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <button
               id="admin-toggle-result-lock"
               onClick={handleToggleResultLock}
-              className={`rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-md ${settings.finalResultsLocked ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
+              className={`w-full sm:w-auto rounded-xl px-4 py-2.5 text-xs font-bold transition-all shadow-md min-h-[40px] shrink-0 text-center ${settings.finalResultsLocked ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
             >
               {settings.finalResultsLocked ? 'Unlock Results' : 'Lock Final Results'}
             </button>

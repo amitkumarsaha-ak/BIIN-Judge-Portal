@@ -42,7 +42,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
   return (
     <div className="mx-auto max-w-md w-full">
-      <div className="glass-panel rounded-2xl p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900">
+      <div className="p-1 sm:p-2">
         
         {/* Role Selector Tabs */}
         <div className="grid grid-cols-2 p-1 mb-6 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">

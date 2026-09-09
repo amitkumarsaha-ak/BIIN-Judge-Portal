@@ -235,8 +235,8 @@ export const CombinedProjectResultView: React.FC<CombinedProjectResultViewProps>
               <span className="text-xs uppercase tracking-widest text-indigo-200 block font-mono">
                 FINAL COMBINED SCORE
               </span>
-              <div className="font-mono text-5xl font-black text-white tracking-tight">
-                {formatScoreNumber(combinedResult.finalAverageScore)} <span className="text-2xl text-indigo-300">/ 100</span>
+              <div className="font-mono text-4xl sm:text-5xl font-black text-white tracking-tight">
+                {formatScoreNumber(combinedResult.finalAverageScore)} <span className="text-xl sm:text-2xl text-indigo-300">/ 100</span>
               </div>
             </div>
 
@@ -245,8 +245,8 @@ export const CombinedProjectResultView: React.FC<CombinedProjectResultViewProps>
                 AWARD DESIGNATION
               </span>
 
-              <div className={`inline-flex items-center space-x-2 rounded-2xl px-6 py-2.5 text-lg uppercase tracking-wider ${getAwardBadgeStyle(combinedResult.award)}`}>
-                <AwardIcon className="h-6 w-6 shrink-0" />
+              <div className={`inline-flex items-center space-x-2 rounded-2xl px-4 sm:px-6 py-2.5 text-sm sm:text-lg uppercase tracking-wider ${getAwardBadgeStyle(combinedResult.award)}`}>
+                <AwardIcon className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
                 <span>AWARD: {combinedResult.award}</span>
               </div>
 

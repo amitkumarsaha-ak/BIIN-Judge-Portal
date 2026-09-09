@@ -47,18 +47,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-violet-500 selection:text-white transition-colors duration-200">
       {/* Top Admin Navigation Header */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md transition-colors shadow-sm">
-        <div className="w-full max-w-[1700px] mx-auto flex items-center justify-between gap-3 lg:gap-6 px-4 py-3.5 sm:px-6 lg:px-8">
+        <div className="w-full max-w-[1700px] mx-auto flex items-center justify-between gap-2 sm:gap-3 lg:gap-6 px-3 py-2.5 sm:px-6 lg:px-8 sm:py-3.5">
           
           {/* Left Brand */}
           <div
             onClick={() => onSelectTab('dashboard')}
-            className="flex cursor-pointer items-center gap-3 transition-opacity hover:opacity-90 shrink-0"
+            className="flex cursor-pointer items-center gap-2 sm:gap-3 transition-opacity hover:opacity-90 shrink-0"
           >
             <BiinLogo size="md" />
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-heading text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">BIIN</span>
-                <span className="rounded-md bg-violet-100 dark:bg-violet-500/20 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="font-heading text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">BIIN</span>
+                <span className="rounded-md bg-violet-100 dark:bg-violet-500/20 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">
                   Admin Panel
                 </span>
               </div>
@@ -119,10 +119,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               id="admin-logout-btn"
               onClick={logout}
               title="Logout from Admin Panel"
-              className="flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3.5 py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors shrink-0 shadow-xs"
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 sm:px-3.5 py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors shrink-0 shadow-xs min-h-[38px]"
             >
               <LogOut className="h-4 w-4" />
-              <span>Logout</span>
+              <span className="hidden min-[380px]:inline">Logout</span>
             </button>
           </div>
 

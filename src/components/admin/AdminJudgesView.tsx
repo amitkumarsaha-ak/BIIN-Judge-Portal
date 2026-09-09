@@ -134,7 +134,7 @@ export const AdminJudgesView: React.FC = () => {
         </div>
 
         {/* Quick Stat Counter Cards */}
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
           <div className="rounded-2xl bg-slate-100 dark:bg-slate-800 px-3.5 py-2 text-center border border-slate-200 dark:border-slate-700">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total</p>
             <p className="text-sm font-extrabold text-slate-900 dark:text-white">{counts.all}</p>
@@ -307,14 +307,14 @@ export const AdminJudgesView: React.FC = () => {
                     <>
                       <button
                         onClick={() => handleApprove(judge)}
-                        className="flex-1 flex items-center justify-center space-x-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-2 px-3 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition-colors"
+                        className="flex-1 flex items-center justify-center space-x-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-2.5 px-3 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition-colors min-h-[40px]"
                       >
                         <Check className="h-3.5 w-3.5" />
                         <span>Approve</span>
                       </button>
                       <button
                         onClick={() => handleReject(judge)}
-                        className="flex-1 flex items-center justify-center space-x-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 py-2 px-3 text-xs font-bold text-white shadow-md shadow-rose-600/20 transition-colors"
+                        className="flex-1 flex items-center justify-center space-x-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 py-2.5 px-3 text-xs font-bold text-white shadow-md shadow-rose-600/20 transition-colors min-h-[40px]"
                       >
                         <X className="h-3.5 w-3.5" />
                         <span>Reject</span>
@@ -325,7 +325,7 @@ export const AdminJudgesView: React.FC = () => {
                   {status === 'approved' && (
                     <button
                       onClick={() => handleReject(judge)}
-                      className="w-full flex items-center justify-center space-x-1.5 rounded-xl border border-rose-300 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 py-2 px-3 text-xs font-semibold transition-colors"
+                      className="w-full flex items-center justify-center space-x-1.5 rounded-xl border border-rose-300 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 py-2.5 px-3 text-xs font-semibold transition-colors min-h-[40px]"
                     >
                       <X className="h-3.5 w-3.5" />
                       <span>Revoke / Reject Access</span>
@@ -335,7 +335,7 @@ export const AdminJudgesView: React.FC = () => {
                   {status === 'rejected' && (
                     <button
                       onClick={() => handleApprove(judge)}
-                      className="w-full flex items-center justify-center space-x-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 py-2 px-3 text-xs font-semibold transition-colors"
+                      className="w-full flex items-center justify-center space-x-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 py-2.5 px-3 text-xs font-semibold transition-colors min-h-[40px]"
                     >
                       <Check className="h-3.5 w-3.5" />
                       <span>Re-Approve Access</span>

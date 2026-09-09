@@ -37,8 +37,8 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   const activeCriteria = getCriteriaForApplicationType(project.applicationType);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl p-6 sm:p-8 space-y-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl p-5 sm:p-8 space-y-5 sm:space-y-6 max-h-[92vh] overflow-y-auto touch-scroll">
         
         {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
@@ -105,11 +105,11 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         </div>
 
         {/* Buttons */}
-        <div className="flex items-center justify-end space-x-3 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-2">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl bg-slate-100 dark:bg-slate-800 px-5 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
+            className="rounded-xl bg-slate-100 dark:bg-slate-800 px-5 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 min-h-[40px] text-center"
           >
             Cancel
           </button>
@@ -117,7 +117,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           <button
             type="button"
             onClick={onConfirm}
-            className="btn-primary rounded-xl px-6 py-2.5 text-xs font-bold text-white shadow-lg flex items-center space-x-2"
+            className="btn-primary rounded-xl px-6 py-2.5 text-xs font-bold text-white shadow-lg flex items-center justify-center space-x-2 min-h-[40px]"
           >
             <Check className="h-4 w-4" />
             <span>Confirm Submission</span>

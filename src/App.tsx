@@ -108,13 +108,13 @@ const MainAppContent: React.FC = () => {
         
         {/* Landing Topbar */}
         <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
-            <div className="flex items-center space-x-3">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5">
+            <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
               <BiinLogo size="md" />
               <div>
-                <div className="flex items-center space-x-2">
-                  <span className="font-heading text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">BIIN</span>
-                  <span className="rounded bg-indigo-50 dark:bg-indigo-500/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
+                <div className="flex items-center space-x-1.5 sm:space-x-2">
+                  <span className="font-heading text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">BIIN</span>
+                  <span className="rounded bg-indigo-50 dark:bg-indigo-500/20 px-2 py-0.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
                     Evaluation System
                   </span>
                 </div>
@@ -122,11 +122,11 @@ const MainAppContent: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
               <button
                 onClick={toggleTheme}
                 title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                className="flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-2 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                className="flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-2 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm min-h-[38px] min-w-[38px]"
               >
                 {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-indigo-600" />}
               </button>
@@ -134,7 +134,7 @@ const MainAppContent: React.FC = () => {
               <button
                 id="admin-login-nav-btn"
                 onClick={() => handleOpenLogin('admin')}
-                className="hidden sm:flex items-center space-x-1.5 rounded-xl border border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-950/50 px-3.5 py-2 text-xs font-bold text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors shadow-sm"
+                className="hidden sm:flex items-center space-x-1.5 rounded-xl border border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-950/50 px-3.5 py-2 text-xs font-bold text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors shadow-sm min-h-[38px]"
               >
                 <ShieldCheck className="h-4 w-4" />
                 <span>Admin Login</span>
@@ -143,42 +143,42 @@ const MainAppContent: React.FC = () => {
               <button
                 id="judge-login-nav-btn"
                 onClick={() => handleOpenLogin('judge')}
-                className="btn-primary flex items-center space-x-2 rounded-xl px-5 py-2 text-xs font-bold text-white shadow-lg"
+                className="btn-primary flex items-center space-x-1.5 sm:space-x-2 rounded-xl px-3 sm:px-5 py-2 text-xs font-bold text-white shadow-lg min-h-[38px]"
               >
                 <LogIn className="h-4 w-4" />
-                <span>Judge Login</span>
+                <span><span className="hidden min-[380px]:inline">Judge </span>Login</span>
               </button>
             </div>
           </div>
         </header>
 
         {/* Hero & Content */}
-        <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 space-y-12">
+        <main className="flex-1 mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 py-6 sm:py-12 space-y-8 sm:space-y-12">
           
           {/* Hero Banner */}
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-950 p-8 sm:p-14 border border-slate-200 dark:border-slate-800 shadow-2xl text-center text-white">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-950 p-6 sm:p-10 md:p-14 border border-slate-200 dark:border-slate-800 shadow-2xl text-center text-white">
             <div className="absolute -left-20 -top-20 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
             <div className="absolute -right-20 -bottom-20 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl pointer-events-none" />
 
-            <div className="relative z-10 max-w-3xl mx-auto space-y-5">
-              <div className="inline-flex items-center space-x-2 rounded-full bg-indigo-500/20 px-4 py-1.5 text-xs font-semibold text-indigo-300 border border-indigo-400/30">
+            <div className="relative z-10 max-w-3xl mx-auto space-y-4 sm:space-y-5">
+              <div className="inline-flex items-center space-x-2 rounded-full bg-indigo-500/20 px-3.5 sm:px-4 py-1.5 text-xs font-semibold text-indigo-300 border border-indigo-400/30">
                 <Sparkles className="h-4 w-4" />
                 <span>BIIN Role-Based Access Engine</span>
               </div>
 
-              <h1 className="font-heading text-4xl font-extrabold text-white sm:text-5xl tracking-tight leading-tight">
+              <h1 className="font-heading text-2xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight">
                 Project Evaluation & Central Administration
               </h1>
 
-              <p className="text-sm text-slate-200 sm:text-base max-w-2xl mx-auto leading-relaxed">
+              <p className="text-xs sm:text-base text-slate-200 max-w-2xl mx-auto leading-relaxed">
                 Dedicated Admin Control Center and Isolated Judge Workspace with strict role permissions, room scoping, evaluation lock engines, and official report sheets.
               </p>
 
-              <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <div className="pt-2 sm:pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                 <button
                   id="hero-judge-login-btn"
                   onClick={() => handleOpenLogin('judge')}
-                  className="btn-primary w-full sm:w-auto inline-flex items-center justify-center space-x-2 rounded-2xl px-8 py-3.5 text-sm font-bold text-white shadow-xl hover:scale-105 transition-transform"
+                  className="btn-primary w-full sm:w-auto inline-flex items-center justify-center space-x-2 rounded-2xl px-6 sm:px-8 py-3.5 text-xs sm:text-sm font-bold text-white shadow-xl hover:scale-105 transition-transform min-h-[44px]"
                 >
                   <span>Judge Panel Login</span>
                   <ArrowRight className="h-4 w-4" />
@@ -187,7 +187,7 @@ const MainAppContent: React.FC = () => {
                 <button
                   id="hero-admin-login-btn"
                   onClick={() => handleOpenLogin('admin')}
-                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 rounded-2xl bg-violet-600/30 hover:bg-violet-600/40 px-8 py-3.5 text-sm font-semibold text-white transition-colors border border-violet-400/30 shadow-lg"
+                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 rounded-2xl bg-violet-600/30 hover:bg-violet-600/40 px-6 sm:px-8 py-3.5 text-xs sm:text-sm font-semibold text-white transition-colors border border-violet-400/30 shadow-lg min-h-[44px]"
                 >
                   <ShieldCheck className="h-4 w-4 text-violet-300" />
                   <span>Admin Panel Login</span>
@@ -198,7 +198,7 @@ const MainAppContent: React.FC = () => {
                     setAuthMode('register');
                     setIsLoginModalOpen(true);
                   }}
-                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 rounded-2xl bg-white/10 dark:bg-slate-800/90 px-8 py-3.5 text-sm font-semibold text-white hover:bg-white/20 transition-colors border border-white/20 dark:border-slate-700"
+                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 rounded-2xl bg-white/10 dark:bg-slate-800/90 px-6 sm:px-8 py-3.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/20 transition-colors border border-white/20 dark:border-slate-700 min-h-[44px]"
                 >
                   <span>Register Judge</span>
                 </button>
@@ -266,30 +266,41 @@ const MainAppContent: React.FC = () => {
 
         {/* Auth Modal Container */}
         {isLoginModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="relative w-full max-w-md">
-              <button
-                onClick={() => setIsLoginModalOpen(false)}
-                className="absolute -top-10 right-0 text-slate-300 hover:text-white text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-800/80"
-              >
-                ✕ Close
-              </button>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="relative w-full max-w-md max-h-[92vh] flex flex-col rounded-3xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+              
+              {/* Modal Top Bar with Clean Close Button */}
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {authMode === 'login' ? 'Authentication Required' : 'Create Judge Account'}
+                </span>
+                <button
+                  onClick={() => setIsLoginModalOpen(false)}
+                  className="rounded-lg p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                  aria-label="Close dialog"
+                >
+                  ✕
+                </button>
+              </div>
 
-              {authMode === 'login' ? (
-                <LoginForm
-                  initialRole={loginRole}
-                  onSwitchToRegister={() => setAuthMode('register')}
-                  onSuccess={() => setIsLoginModalOpen(false)}
-                />
-              ) : (
-                <RegisterForm
-                  onSwitchToLogin={() => {
-                    setLoginRole('judge');
-                    setAuthMode('login');
-                  }}
-                  onSuccess={() => setIsLoginModalOpen(false)}
-                />
-              )}
+              {/* Scrollable Modal Body */}
+              <div className="overflow-y-auto p-4 sm:p-6 touch-scroll">
+                {authMode === 'login' ? (
+                  <LoginForm
+                    initialRole={loginRole}
+                    onSwitchToRegister={() => setAuthMode('register')}
+                    onSuccess={() => setIsLoginModalOpen(false)}
+                  />
+                ) : (
+                  <RegisterForm
+                    onSwitchToLogin={() => {
+                      setLoginRole('judge');
+                      setAuthMode('login');
+                    }}
+                    onSuccess={() => setIsLoginModalOpen(false)}
+                  />
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -346,7 +357,7 @@ const MainAppContent: React.FC = () => {
     // If Judge is scoring a project
     if (selectedProject) {
       return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 sm:p-8">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-3 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-5xl">
             <ProjectEvaluationView
               project={selectedProject}

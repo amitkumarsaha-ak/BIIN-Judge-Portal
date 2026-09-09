@@ -509,16 +509,16 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const failedRowCount = new Set(rowErrors.map(e => e.rowNumber)).size;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-2.5 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="w-full max-w-3xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center space-x-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shrink-0">
               <FileSpreadsheet className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+              <h3 className="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center space-x-2">
                 <span>Category-Wise Excel Import</span>
                 {sessionImportedTotal > 0 && (
                   <span className="rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold px-2 py-0.5 border border-emerald-200 dark:border-emerald-800">
@@ -551,7 +551,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="overflow-y-auto p-6 space-y-6">
+        <div className="overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6 touch-scroll">
 
           {/* Success Screen after an import */}
           {lastImportedCount !== null && (
@@ -836,19 +836,19 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between p-4 border-t border-slate-200 dark:border-slate-800">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 sm:p-4 border-t border-slate-200 dark:border-slate-800">
           <button
             onClick={onClose}
-            className="rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
+            className="rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 min-h-[40px] text-center"
           >
             {sessionImportedTotal > 0 ? 'Close & View Projects' : 'Cancel'}
           </button>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
             {validProjects.length > 0 && (
               <button
                 onClick={handleConfirmImport}
-                className="btn-primary flex items-center space-x-2 rounded-xl px-6 py-2.5 text-xs font-bold text-white shadow-xl hover:scale-105 transition-transform"
+                className="btn-primary w-full sm:w-auto flex items-center justify-center space-x-2 rounded-xl px-6 py-2.5 text-xs font-bold text-white shadow-xl hover:scale-105 transition-transform min-h-[40px]"
               >
                 <Check className="h-4 w-4" />
                 <span>Import {validProjects.length} Valid Project{validProjects.length !== 1 ? 's' : ''}</span>

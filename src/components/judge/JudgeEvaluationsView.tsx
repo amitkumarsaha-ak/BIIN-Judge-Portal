@@ -93,26 +93,28 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
                     </p>
                   </div>
 
-                  <div className="flex items-center space-x-4 shrink-0">
-                    <div className="text-right">
-                      <p className="text-[10px] text-slate-400 uppercase font-semibold">Raw Score</p>
-                      <span className="font-heading font-bold text-base text-slate-800 dark:text-slate-200 font-mono">
-                        {rawScore.toFixed(1)} / {maxRaw}
-                      </span>
-                    </div>
+                  <div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-3 shrink-0 w-full sm:w-auto">
+                    <div className="flex items-center space-x-3">
+                      <div className="text-left sm:text-right">
+                        <p className="text-[10px] text-slate-400 uppercase font-semibold">Raw Score</p>
+                        <span className="font-heading font-bold text-base text-slate-800 dark:text-slate-200 font-mono">
+                          {rawScore.toFixed(1)} / {maxRaw}
+                        </span>
+                      </div>
 
-                    <div className="text-right">
-                      <p className="text-[10px] text-emerald-600 uppercase font-bold">Converted Mark</p>
-                      <span className="font-heading font-black text-2xl text-emerald-600 dark:text-emerald-400 font-mono">
-                        {converted.toFixed(1)} / 100
-                      </span>
+                      <div className="text-left sm:text-right pl-2 border-l border-slate-200 dark:border-slate-800 sm:border-l-0 sm:pl-0">
+                        <p className="text-[10px] text-emerald-600 uppercase font-bold">Converted</p>
+                        <span className="font-heading font-black text-2xl text-emerald-600 dark:text-emerald-400 font-mono">
+                          {converted.toFixed(1)} / 100
+                        </span>
+                      </div>
                     </div>
 
                     {project && (
                       <button
                         onClick={() => onSelectProjectForEvaluation(project)}
                         disabled={settings.evaluationsLocked}
-                        className="btn-primary flex items-center space-x-1.5 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-md disabled:opacity-50"
+                        className="btn-primary flex items-center justify-center space-x-1.5 rounded-xl px-3.5 sm:px-4 py-2 text-xs font-bold text-white shadow-md disabled:opacity-50 min-h-[38px] ml-auto sm:ml-0"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                         <span>Edit Score</span>

@@ -144,10 +144,10 @@ export const AdminResultsView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center space-x-3 shrink-0 no-print">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shrink-0 no-print w-full sm:w-auto">
           <button
             onClick={handlePrintFullTable}
-            className="btn-primary inline-flex items-center space-x-2 rounded-2xl px-5 py-3 text-xs font-bold text-white shadow-xl hover:scale-105 transition-transform"
+            className="btn-primary inline-flex items-center justify-center space-x-2 rounded-2xl px-5 py-3 text-xs font-bold text-white shadow-xl hover:scale-105 transition-transform min-h-[40px]"
           >
             <Printer className="h-4 w-4" />
             <span>Print Results Report</span>
@@ -155,7 +155,7 @@ export const AdminResultsView: React.FC = () => {
 
           <button
             onClick={handleToggleLock}
-            className={`inline-flex items-center space-x-2 rounded-2xl px-5 py-3 text-xs font-bold transition-all shadow-xl ${settings.finalResultsLocked ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}`}
+            className={`inline-flex items-center justify-center space-x-2 rounded-2xl px-5 py-3 text-xs font-bold transition-all shadow-xl min-h-[40px] ${settings.finalResultsLocked ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}`}
           >
             {settings.finalResultsLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4 text-emerald-500" />}
             <span>{settings.finalResultsLocked ? 'Final Results Locked' : 'Lock Final Results'}</span>
@@ -351,18 +351,18 @@ export const AdminResultsView: React.FC = () => {
                         className="rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 p-4 text-xs space-y-2.5"
                       >
                         {/* Judge Header */}
-                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-slate-800/80">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-200/80 dark:border-slate-800/80 gap-2">
                           <div className="flex items-center space-x-2">
-                            <UserCheck className="h-4 w-4 text-indigo-500" />
-                            <div>
-                              <span className="font-bold text-slate-900 dark:text-white">
+                            <UserCheck className="h-4 w-4 text-indigo-500 shrink-0" />
+                            <div className="min-w-0">
+                              <span className="font-bold text-slate-900 dark:text-white truncate block">
                                 Judge {idx + 1}: {je.judgeName}
                               </span>
-                              <span className="text-[10px] text-slate-400 font-mono block">{je.judgeEmail}</span>
+                              <span className="text-[10px] text-slate-400 font-mono block truncate">{je.judgeEmail}</span>
                             </div>
                           </div>
 
-                          <div className="flex items-center space-x-3 text-right">
+                          <div className="flex items-center justify-between sm:justify-end space-x-3 text-right">
                             <div>
                               <span className="text-[10px] uppercase font-bold text-slate-400 block">Raw Total</span>
                               <span className="font-mono font-bold text-slate-800 dark:text-slate-200">

@@ -131,16 +131,16 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
     <div className="space-y-8 pb-24">
       
       {/* Top Back Navigation Bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <button
           onClick={onBack}
-          className="inline-flex items-center space-x-2 rounded-xl bg-white dark:bg-slate-800/80 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors border border-slate-200 dark:border-slate-700/60 shadow-sm"
+          className="inline-flex items-center space-x-2 rounded-xl bg-white dark:bg-slate-800/80 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors border border-slate-200 dark:border-slate-700/60 shadow-sm self-start min-h-[38px]"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Back to Project Selection</span>
         </button>
 
-        <div className="flex items-center space-x-3 text-xs">
+        <div className="flex items-center space-x-2 sm:space-x-3 text-xs self-start sm:self-auto flex-wrap">
           <span className="rounded-lg bg-indigo-50 dark:bg-indigo-500/20 px-2.5 py-1 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 font-semibold">
             {project.applicationType}
           </span>
@@ -245,7 +245,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
             type="button"
             onClick={handleOpenSubmissionModal}
             disabled={isLocked}
-            className={`w-full sm:w-auto inline-flex items-center justify-center space-x-3 rounded-2xl px-8 py-4 text-sm font-bold text-white shadow-2xl transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${isLocked ? 'bg-slate-500' : 'btn-primary'}`}
+            className={`w-full sm:w-auto inline-flex items-center justify-center space-x-3 rounded-2xl px-6 sm:px-8 py-3.5 sm:py-4 text-xs sm:text-sm font-bold text-white shadow-2xl transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-h-[48px] ${isLocked ? 'bg-slate-500' : 'btn-primary'}`}
           >
             {isLocked ? <Lock className="h-5 w-5" /> : <Send className="h-5 w-5" />}
             <span>{isLocked ? 'Submissions Locked' : `Submit Evaluation (${formatScoreNumber(rawTotalScore)} / ${maxRawScore} Raw → ${formatScoreNumber(convertedScore)} / 100)`}</span>
