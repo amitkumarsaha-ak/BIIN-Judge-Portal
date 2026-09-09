@@ -32,15 +32,26 @@ export interface DbStatus {
 let isPostgresConnected = false;
 let connectionErrorMessage = '';
 
-const pool = new Pool({
-  host: process.env.PGHOST || 'localhost',
-  port: parseInt(process.env.PGPORT || '5432', 10),
-  user: process.env.PGUSER || 'postgres',
-  password: process.env.PGPASSWORD || 'postgres',
-  database: process.env.PGDATABASE || 'biin_judge_portal',
-  connectionTimeoutMillis: 3000,
-  max: 10
-});
+const isCloudDb = Boolean(process.env.DATABASE_URL);
+
+const pool = new Pool(
+  process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
+        connectionTimeoutMillis: 10000,
+        max: 10
+      }
+    : {
+        host: process.env.PGHOST || 'localhost',
+        port: parseInt(process.env.PGPORT || '5432', 10),
+        user: process.env.PGUSER || 'postgres',
+        password: process.env.PGPASSWORD || 'postgres',
+        database: process.env.PGDATABASE || 'biin_judge_portal',
+        connectionTimeoutMillis: 4000,
+        max: 10
+      }
+);
 
 // In-memory store fallback
 const memoryStore = {
@@ -53,6 +64,10 @@ const memoryStore = {
 };
 
 async function ensureDatabaseExists() {
+  if (isCloudDb) {
+    // Cloud managed DB already exists
+    return;
+  }
   const targetDb = process.env.PGDATABASE || 'biin_judge_portal';
   const adminClient = new pg.Client({
     host: process.env.PGHOST || 'localhost',

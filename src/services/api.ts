@@ -1,6 +1,8 @@
 import type { User, Project, Evaluation, Room, SystemSettings, AuditLog } from '../types';
 
-const API_BASE = '/api';
+const API_BASE = (import.meta as any).env?.VITE_API_URL 
+  ? `${(import.meta as any).env.VITE_API_URL.replace(/\/$/, '')}/api` 
+  : '/api';
 
 /**
  * Helper to execute JSON fetch requests

@@ -12,7 +12,11 @@ export const AdminJudgesView: React.FC = () => {
   const { currentUser } = useAuth();
   const [judges, setJudges] = useState<User[]>(() => getJudges());
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | JudgeStatus>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | JudgeStatus>(() => {
+    const initial = getJudges();
+    const hasPending = initial.some(j => (j.status || 'approved') === 'pending');
+    return hasPending ? 'pending' : 'all';
+  });
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -181,24 +185,59 @@ export const AdminJudgesView: React.FC = () => {
           </p>
         </div>
 
-        {/* Quick Stat Counter Cards */}
+        {/* Quick Stat Counter Cards - Clickable Filters */}
         <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
-          <div className="rounded-2xl bg-slate-100 dark:bg-slate-800 px-3.5 py-2 text-center border border-slate-200 dark:border-slate-700">
+          <button
+            type="button"
+            onClick={() => setStatusFilter('all')}
+            className={`rounded-2xl px-3.5 py-2 text-center border transition-all cursor-pointer ${
+              statusFilter === 'all'
+                ? 'bg-slate-200 dark:bg-slate-700 border-slate-400 dark:border-slate-500 shadow-sm'
+                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/70 dark:hover:bg-slate-750 border-slate-200 dark:border-slate-700'
+            }`}
+          >
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total</p>
             <p className="text-sm font-extrabold text-slate-900 dark:text-white">{counts.all}</p>
-          </div>
-          <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/40 px-3.5 py-2 text-center border border-amber-200 dark:border-amber-700/50">
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('pending')}
+            className={`rounded-2xl px-3.5 py-2 text-center border transition-all cursor-pointer ${
+              statusFilter === 'pending'
+                ? 'bg-amber-100 dark:bg-amber-900/60 border-amber-400 dark:border-amber-600 shadow-sm ring-2 ring-amber-400/30'
+                : 'bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100/70 border-amber-200 dark:border-amber-700/50'
+            } ${counts.pending > 0 ? 'animate-pulse' : ''}`}
+          >
             <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Pending</p>
             <p className="text-sm font-extrabold text-amber-700 dark:text-amber-300">{counts.pending}</p>
-          </div>
-          <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 px-3.5 py-2 text-center border border-emerald-200 dark:border-emerald-700/50">
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('approved')}
+            className={`rounded-2xl px-3.5 py-2 text-center border transition-all cursor-pointer ${
+              statusFilter === 'approved'
+                ? 'bg-emerald-100 dark:bg-emerald-900/60 border-emerald-400 dark:border-emerald-600 shadow-sm'
+                : 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100/70 border-emerald-200 dark:border-emerald-700/50'
+            }`}
+          >
             <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Approved</p>
             <p className="text-sm font-extrabold text-emerald-700 dark:text-emerald-300">{counts.approved}</p>
-          </div>
-          <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 px-3.5 py-2 text-center border border-rose-200 dark:border-rose-700/50">
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('rejected')}
+            className={`rounded-2xl px-3.5 py-2 text-center border transition-all cursor-pointer ${
+              statusFilter === 'rejected'
+                ? 'bg-rose-100 dark:bg-rose-900/60 border-rose-400 dark:border-rose-600 shadow-sm'
+                : 'bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100/70 border-rose-200 dark:border-rose-700/50'
+            }`}
+          >
             <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Rejected</p>
             <p className="text-sm font-extrabold text-rose-700 dark:text-rose-300">{counts.rejected}</p>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -207,6 +246,36 @@ export const AdminJudgesView: React.FC = () => {
         <div className="flex items-center space-x-2 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 p-4 text-xs font-semibold text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 animate-in fade-in slide-in-from-top-1">
           <Check className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <span>{actionFeedback}</span>
+        </div>
+      )}
+
+      {/* Pending Judge Attention Alert Banner */}
+      {counts.pending > 0 && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl bg-amber-500/15 border border-amber-500/30 p-4 animate-in fade-in duration-300 shadow-sm">
+          <div className="flex items-center space-x-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-extrabold shadow-sm">
+              <Clock className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-heading text-sm font-bold text-slate-900 dark:text-white">
+                {counts.pending} Judge Registration{counts.pending > 1 ? 's' : ''} Awaiting Approval
+              </h3>
+              <p className="text-xs text-amber-900 dark:text-amber-200/80">
+                New judges have registered and require administrator authorization before they can log in.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('pending')}
+            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all shrink-0 ${
+              statusFilter === 'pending'
+                ? 'bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-400'
+                : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 border border-amber-500/40'
+            }`}
+          >
+            {statusFilter === 'pending' ? 'Currently Filtering Pending' : 'View Pending Applications'}
+          </button>
         </div>
       )}
 
