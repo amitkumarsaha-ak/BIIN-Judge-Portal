@@ -1,6 +1,7 @@
 import type { User, Project, Evaluation, DashboardStats, Room, SystemSettings, AuditLog } from '../types';
 import { PRESEEDED_JUDGES, SAMPLE_PROJECTS } from '../data/mockData';
 import { ADMIN_CONFIG } from '../config/authConfig';
+import { api } from './api';
 
 const USERS_KEY = 'biin_portal_users';
 const CURRENT_USER_KEY = 'biin_portal_current_user';
@@ -272,6 +273,56 @@ export const initializeStorage = () => {
   }
 };
 
+/**
+ * Sync all data with the PostgreSQL REST backend
+ */
+export const syncWithBackend = async (): Promise<boolean> => {
+  try {
+    const health = await api.health();
+    if (health.status !== 'online') return false;
+
+    const [projectsRes, evalsRes, judgesRes, roomsRes, settingsRes, auditRes] = await Promise.allSettled([
+      api.getProjects(),
+      api.getEvaluations(),
+      api.getJudges(),
+      api.getRooms(),
+      api.getSettings(),
+      api.getAuditLogs()
+    ]);
+
+    if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value) && projectsRes.value.length > 0) {
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projectsRes.value));
+    }
+    if (evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value) && evalsRes.value.length > 0) {
+      localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evalsRes.value));
+    }
+    if (judgesRes.status === 'fulfilled' && Array.isArray(judgesRes.value)) {
+      const existing = getUsers().filter(u => u.role === 'admin');
+      const combined = [...existing, ...judgesRes.value];
+      localStorage.setItem(USERS_KEY, JSON.stringify(combined));
+    }
+    if (roomsRes.status === 'fulfilled' && Array.isArray(roomsRes.value) && roomsRes.value.length > 0) {
+      localStorage.setItem(ROOMS_KEY, JSON.stringify(roomsRes.value));
+    }
+    if (settingsRes.status === 'fulfilled' && settingsRes.value) {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsRes.value));
+    }
+    if (auditRes.status === 'fulfilled' && Array.isArray(auditRes.value) && auditRes.value.length > 0) {
+      localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(auditRes.value));
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// Auto-trigger sync on module load in browser
+if (typeof window !== 'undefined') {
+  initializeStorage();
+  syncWithBackend().catch(() => {});
+}
+
 // --- AUDIT LOGGING ---
 
 export const getAuditLogs = (): AuditLog[] => {
@@ -298,7 +349,10 @@ export const logAuditAction = (
     timestamp: new Date().toISOString()
   };
   logs.unshift(entry);
-  localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(logs.slice(0, 200))); // keep last 200 logs
+  localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(logs.slice(0, 200)));
+
+  // Forward to backend
+  api.logAudit(actorEmail, actorName, action, targetType, details).catch(() => {});
 };
 
 // --- SYSTEM SETTINGS & LOCK ENGINE ---
@@ -311,6 +365,7 @@ export const getSystemSettings = (): SystemSettings => {
 
 export const updateSystemSettings = (settings: SystemSettings, actor?: { email: string; name: string }): void => {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  api.updateSettings(settings, actor).catch(() => {});
   if (actor) {
     logAuditAction(actor.email, actor.name, 'UPDATE_SETTINGS', 'settings', `Updated system configuration & lock rules.`);
   }
@@ -320,12 +375,14 @@ export const toggleEvaluationLock = (locked: boolean, actor?: { email: string; n
   const settings = getSystemSettings();
   settings.evaluationsLocked = locked;
   updateSystemSettings(settings, actor);
+  api.toggleEvaluationLock(locked, actor).catch(() => {});
 };
 
 export const toggleFinalResultLock = (locked: boolean, actor?: { email: string; name: string }): void => {
   const settings = getSystemSettings();
   settings.finalResultsLocked = locked;
   updateSystemSettings(settings, actor);
+  api.toggleFinalResultLock(locked, actor).catch(() => {});
 };
 
 export const toggleProjectLock = (projectId: string, actor?: { email: string; name: string }): boolean => {
@@ -337,6 +394,7 @@ export const toggleProjectLock = (projectId: string, actor?: { email: string; na
     settings.lockedProjects.push(projectId);
   }
   updateSystemSettings(settings, actor);
+  api.toggleProjectLock(projectId, actor).catch(() => {});
   return !isCurrentlyLocked;
 };
 
@@ -356,6 +414,7 @@ export const addRoom = (room: Room, actor?: { email: string; name: string }): vo
   const rooms = getRooms();
   rooms.push(room);
   localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
+  api.createRoom(room, actor).catch(() => {});
   if (actor) {
     logAuditAction(actor.email, actor.name, 'CREATE_ROOM', 'room', `Created new room "${room.name}" (${room.roomNumber}).`);
   }
@@ -367,6 +426,7 @@ export const updateRoom = (updated: Room, actor?: { email: string; name: string 
   if (idx >= 0) {
     rooms[idx] = updated;
     localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
+    api.updateRoom(updated, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'UPDATE_ROOM', 'room', `Updated room details for "${updated.roomNumber}".`);
     }
@@ -397,6 +457,8 @@ export const deleteRoom = (id: string, actor?: { email: string; name: string }):
       return u;
     });
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
+
+    api.deleteRoom(id, actor).catch(() => {});
 
     if (actor) {
       logAuditAction(actor.email, actor.name, 'DELETE_ROOM', 'room', `Deleted room "${target.roomNumber}" and unassigned connected entities.`);
@@ -436,7 +498,6 @@ export const findUserByEmail = (email: string): User | undefined => {
   const users = getUsers();
   const found = users.find((u) => u.email?.trim().toLowerCase() === cleanEmail);
   if (found) {
-    // If somehow a non-fixed admin has role === 'admin', force it to 'judge'
     if (found.role === 'admin' && found.email?.trim().toLowerCase() !== ADMIN_CONFIG.EMAIL.trim().toLowerCase()) {
       found.role = 'judge';
     }
@@ -461,7 +522,6 @@ export const findUserByEmail = (email: string): User | undefined => {
 export const saveUser = (user: User, actor?: { email: string; name: string }): void => {
   const users = getUsers();
   
-  // Security guarantee: registration can NEVER create an Admin account
   const safeUser: User = {
     ...user,
     role: 'judge',
@@ -470,6 +530,10 @@ export const saveUser = (user: User, actor?: { email: string; name: string }): v
 
   users.push(safeUser);
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  
+  // Forward to backend API
+  api.register(safeUser.fullName, safeUser.email, safeUser.password || 'password123').catch(() => {});
+
   if (actor) {
     logAuditAction(actor.email, actor.name, 'CREATE_USER', 'judge', `Registered judge account for ${safeUser.fullName} (${safeUser.email}) with status "${safeUser.status}".`);
   }
@@ -481,6 +545,7 @@ export const approveJudge = (judgeId: string, actor?: { email: string; name: str
   if (idx >= 0) {
     users[idx] = { ...users[idx], status: 'approved' };
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    api.approveJudge(judgeId, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'APPROVE_JUDGE', 'judge', `Approved judge registration for ${users[idx].fullName} (${users[idx].email}).`);
     }
@@ -493,6 +558,7 @@ export const rejectJudge = (judgeId: string, actor?: { email: string; name: stri
   if (idx >= 0) {
     users[idx] = { ...users[idx], status: 'rejected' };
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    api.rejectJudge(judgeId, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'REJECT_JUDGE', 'judge', `Rejected judge registration for ${users[idx].fullName} (${users[idx].email}).`);
     }
@@ -503,7 +569,6 @@ export const updateUser = (updated: User, actor?: { email: string; name: string 
   const users = getUsers();
   const idx = users.findIndex(u => u.id === updated.id);
   if (idx >= 0) {
-    // Prevent changing role to admin
     const safeUpdated: User = {
       ...updated,
       role: updated.email?.trim().toLowerCase() === ADMIN_CONFIG.EMAIL.trim().toLowerCase() ? 'admin' : 'judge'
@@ -519,12 +584,13 @@ export const updateUser = (updated: User, actor?: { email: string; name: string 
 export const deleteUser = (id: string, actor?: { email: string; name: string }): void => {
   const users = getUsers();
   const target = users.find(u => u.id === id);
-  // Cannot delete the fixed Admin
   if (target?.email?.trim().toLowerCase() === ADMIN_CONFIG.EMAIL.trim().toLowerCase()) {
     return;
   }
   const remaining = users.filter(u => u.id !== id);
   localStorage.setItem(USERS_KEY, JSON.stringify(remaining));
+
+  api.deleteJudge(id, actor).catch(() => {});
 
   if (target && actor) {
     logAuditAction(actor.email, actor.name, 'DELETE_USER', 'judge', `Deleted ${target.role} user account for ${target.fullName} (${target.email}).`);
@@ -537,12 +603,12 @@ export const assignJudgeToRoom = (judgeEmail: string, roomNumber: string, actor?
   if (idx >= 0) {
     users[idx] = { ...users[idx], roomNumber: roomNumber.trim() };
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    api.assignJudgeRoom(users[idx].id, roomNumber, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'ASSIGN_JUDGE_ROOM', 'judge', `Assigned Judge ${users[idx].fullName} to ${roomNumber}.`);
     }
   }
 };
-
 
 export const getCurrentUser = (): User | null => {
   initializeStorage();
@@ -575,6 +641,7 @@ export const addProject = (project: Project, actor?: { email: string; name: stri
   const projects = getProjects();
   projects.push(project);
   localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+  api.createProject(project, actor).catch(() => {});
   if (actor) {
     logAuditAction(actor.email, actor.name, 'CREATE_PROJECT', 'project', `Created project "${project.title}" (${project.applicationId}).`);
   }
@@ -586,6 +653,7 @@ export const updateProject = (updated: Project, actor?: { email: string; name: s
   if (idx >= 0) {
     projects[idx] = updated;
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    api.updateProject(updated, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'UPDATE_PROJECT', 'project', `Updated project "${updated.title}" (${updated.applicationId}).`);
     }
@@ -602,6 +670,8 @@ export const deleteProject = (id: string, actor?: { email: string; name: string 
   const evaluations = getEvaluations().filter((e) => e.projectId !== id);
   localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evaluations));
 
+  api.deleteProject(id, actor).catch(() => {});
+
   if (target && actor) {
     logAuditAction(actor.email, actor.name, 'DELETE_PROJECT', 'project', `Deleted project "${target.title}" and purged all associated evaluations.`);
   }
@@ -617,6 +687,7 @@ export const toggleProjectStatus = (id: string, actor?: { email: string; name: s
       status: nextStatus
     };
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    api.toggleProjectStatus(id, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'TOGGLE_PROJECT_STATUS', 'project', `Changed status of "${projects[idx].title}" to ${nextStatus}.`);
     }
@@ -629,6 +700,7 @@ export const assignProjectToRoom = (id: string, roomNumber: string, actor?: { em
   if (idx >= 0) {
     projects[idx] = { ...projects[idx], roomNumber: roomNumber.trim() };
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    api.assignProjectRoom(id, roomNumber, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'ASSIGN_PROJECT_ROOM', 'project', `Assigned project "${projects[idx].title}" to ${roomNumber}.`);
     }
@@ -642,6 +714,7 @@ export const removeProjectFromRoom = (id: string, actor?: { email: string; name:
     const oldRoom = projects[idx].roomNumber;
     projects[idx] = { ...projects[idx], roomNumber: '' };
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    api.assignProjectRoom(id, '', actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'REMOVE_PROJECT_ROOM', 'project', `Removed project "${projects[idx].title}" from ${oldRoom}.`);
     }
@@ -702,6 +775,9 @@ export const saveEvaluation = (evaluation: Evaluation, actor?: { email: string; 
   }
 
   localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evaluations));
+  
+  // Forward to backend REST API
+  api.saveEvaluation(evaluation, actor).catch(() => {});
 
   if (actor) {
     logAuditAction(
@@ -720,6 +796,8 @@ export const deleteEvaluation = (id: string, actor?: { email: string; name: stri
   const remaining = evaluations.filter(e => e.id !== id);
   localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(remaining));
 
+  api.deleteEvaluation(id, actor).catch(() => {});
+
   if (target && actor) {
     logAuditAction(actor.email, actor.name, 'DELETE_EVALUATION', 'evaluation', `Deleted evaluation submission ${id} for project ${target.projectId}.`);
   }
@@ -729,7 +807,6 @@ export const deleteEvaluation = (id: string, actor?: { email: string; name: stri
 
 /**
  * Returns active projects accessible to Judges, optionally filtered by applicationType and headCategory.
- * Room-based restriction has been completely removed.
  */
 export const getProjectsForJudge = (applicationType?: string, headCategory?: string): Project[] => {
   const allProjects = getProjects();
