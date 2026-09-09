@@ -21,6 +21,7 @@ import { JudgeProjectsView } from './components/judge/JudgeProjectsView';
 import { JudgeEvaluationsView } from './components/judge/JudgeEvaluationsView';
 import { JudgeOwnReportView } from './components/judge/JudgeOwnReportView';
 import { ProjectEvaluationView } from './components/evaluation/ProjectEvaluationView';
+import { BiinLogo } from './components/common/BiinLogo';
 
 import type { Project } from './types';
 import { ArrowRight, Sparkles, Award, Sun, Moon, LogIn, ShieldCheck } from 'lucide-react';
@@ -109,9 +110,7 @@ const MainAppContent: React.FC = () => {
         <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
             <div className="flex items-center space-x-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 p-2 shadow-lg shadow-indigo-500/30 text-white">
-                <Award className="h-6 w-6" />
-              </div>
+              <BiinLogo size="md" />
               <div>
                 <div className="flex items-center space-x-2">
                   <span className="font-heading text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">BIIN</span>

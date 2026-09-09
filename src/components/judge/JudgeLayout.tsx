@@ -3,6 +3,7 @@ import {
   Award, LayoutDashboard, FolderGit2, CheckCircle2,
   FileText, Sun, Moon, LogOut
 } from 'lucide-react';
+import { BiinLogo } from '../common/BiinLogo';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -40,9 +41,7 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
             onClick={() => onSelectTab('dashboard')}
             className="flex cursor-pointer items-center space-x-3 transition-opacity hover:opacity-90 shrink-0"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 p-2 shadow-lg shadow-indigo-500/20 text-white">
-              <Award className="h-6 w-6" />
-            </div>
+            <BiinLogo size="md" />
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-heading text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">BIIN</span>
