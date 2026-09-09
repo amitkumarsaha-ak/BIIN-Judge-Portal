@@ -21,22 +21,22 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenL
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md transition-colors duration-200 shadow-sm">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 xl:gap-6 px-4 py-2.5 sm:px-6 lg:px-8">
         
         {/* Left Side: BIIN Logo & Branding */}
         <div 
           onClick={() => onSelectTab('dashboard')} 
-          className="flex cursor-pointer items-center space-x-3 transition-opacity hover:opacity-90 shrink-0"
+          className="flex cursor-pointer items-center gap-3 transition-opacity hover:opacity-90 shrink-0"
         >
           <BiinLogo size="md" />
           <div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <span className="font-heading text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">BIIN</span>
               <span className="rounded bg-indigo-50 dark:bg-indigo-500/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
                 Judging Portal
               </span>
             </div>
-            <p className="hidden text-xs text-slate-500 dark:text-slate-400 sm:block">Multi-Judge Evaluation Engine</p>
+            <p className="hidden text-xs text-slate-500 dark:text-slate-400 xl:block">Multi-Judge Evaluation Engine</p>
           </div>
         </div>
 

@@ -34,22 +34,22 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-200">
       {/* Top Judge Navigation Header */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md transition-colors shadow-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 xl:gap-6 px-4 py-2.5 sm:px-6 lg:px-8">
           
           {/* Left Brand */}
           <div
             onClick={() => onSelectTab('dashboard')}
-            className="flex cursor-pointer items-center space-x-3 transition-opacity hover:opacity-90 shrink-0"
+            className="flex cursor-pointer items-center gap-3 transition-opacity hover:opacity-90 shrink-0"
           >
             <BiinLogo size="md" />
             <div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 <span className="font-heading text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">BIIN</span>
                 <span className="rounded-md bg-indigo-50 dark:bg-indigo-500/20 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
                   Judge Portal
                 </span>
               </div>
-              <p className="hidden text-[11px] text-slate-500 dark:text-slate-400 sm:block">Official Project Evaluation Workspace</p>
+              <p className="hidden text-[11px] text-slate-500 dark:text-slate-400 xl:block">Official Project Evaluation Workspace</p>
             </div>
           </div>
 
