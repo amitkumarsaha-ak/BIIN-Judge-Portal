@@ -148,11 +148,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     : 'Memory Fallback Active'
                 }`}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold tracking-tight border shadow-xs transition-colors shrink-0 ${
-                  backendStatus.connected
+                  backendStatus.connected && backendStatus.type === 'postgres'
                     ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
                     : backendStatus.type === 'offline'
                     ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                    : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                    : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
                 }`}
               >
                 <span
@@ -161,11 +161,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                       ? 'bg-emerald-500 animate-pulse'
                       : backendStatus.type === 'offline'
                       ? 'bg-slate-400'
-                      : 'bg-amber-500'
+                      : 'bg-emerald-500'
                   }`}
                 />
                 <Database className="h-3 w-3 shrink-0 opacity-70" />
-                <span className="hidden sm:inline">{backendStatus.connected ? 'PostgreSQL' : backendStatus.type === 'offline' ? 'Offline' : 'API Active'}</span>
+                <span className="hidden sm:inline">
+                  {backendStatus.connected && backendStatus.type === 'postgres'
+                    ? 'PostgreSQL'
+                    : backendStatus.type === 'offline'
+                    ? 'Offline'
+                    : 'API Active'}
+                </span>
               </div>
             )}
 
