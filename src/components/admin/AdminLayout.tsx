@@ -136,7 +136,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           </nav>
 
           {/* Right Controls - Guaranteed 100% inside viewport on all screen resolutions */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Live Database / Backend Status */}
             {backendStatus && (
               <div
@@ -147,7 +147,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     ? 'Backend Offline (Using Local Cache)'
                     : 'Memory Fallback Active'
                 }`}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold tracking-tight border shadow-xs transition-colors shrink-0 ${
+                className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-[11px] font-bold tracking-tight border shadow-xs transition-colors shrink-0 ${
                   backendStatus.connected && backendStatus.type === 'postgres'
                     ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
                     : backendStatus.type === 'offline'
@@ -164,8 +164,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                       : 'bg-emerald-500'
                   }`}
                 />
-                <Database className="h-3 w-3 shrink-0 opacity-70" />
-                <span className="hidden sm:inline">
+                <Database className="h-3 w-3 shrink-0 opacity-70 hidden min-[420px]:inline" />
+                <span className="hidden min-[420px]:inline">
                   {backendStatus.connected && backendStatus.type === 'postgres'
                     ? 'PostgreSQL'
                     : backendStatus.type === 'offline'
@@ -179,7 +179,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             <button
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              className="flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-2 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm shrink-0 min-h-[36px] min-w-[36px]"
+              aria-label="Toggle Dark and Light Mode"
+              className="flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-2 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm shrink-0 min-h-[38px] min-w-[38px]"
             >
               {theme === 'dark' ? (
                 <Sun className="h-4 w-4 text-amber-400" />
@@ -204,17 +205,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               id="admin-logout-btn"
               onClick={logout}
               title="Logout from Admin Panel"
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3.5 py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors shrink-0 shadow-xs min-h-[36px]"
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 sm:px-3.5 py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors shrink-0 shadow-xs min-h-[38px]"
             >
               <LogOut className="h-3.5 w-3.5 shrink-0" />
-              <span>Logout</span>
+              <span className="hidden min-[360px]:inline">Logout</span>
             </button>
           </div>
 
         </div>
 
-        {/* Mobile Navigation Scrollbar (Only on small mobile phones < 768px) */}
-        <div className="flex md:hidden items-center gap-2 overflow-x-auto border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 px-3 py-2 no-scrollbar text-xs backdrop-blur-sm">
+        {/* Mobile Navigation Scrollbar (Only on small screens < 768px) */}
+        <div className="flex md:hidden items-center gap-1.5 overflow-x-auto border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 px-2.5 py-2 no-scrollbar text-xs backdrop-blur-sm touch-scroll">
           {navItems.map(({ id, shortLabel, icon: Icon }) => {
             const isActive = currentTab === id;
             const hasPending = id === 'judges' && pendingJudgesCount > 0;
@@ -222,7 +223,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               <button
                 key={id}
                 onClick={() => onSelectTab(id)}
-                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-semibold whitespace-nowrap transition-all shrink-0 ${
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-2 font-semibold whitespace-nowrap transition-all shrink-0 min-h-[38px] ${
                   isActive
                     ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30 font-bold'
                     : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -242,7 +243,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="flex-1 mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {children}
       </main>
 

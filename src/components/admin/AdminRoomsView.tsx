@@ -217,20 +217,20 @@ const RoomInspectModal: React.FC<RoomInspectModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-start justify-between p-4 sm:p-6 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center space-x-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-500/30">
-              <DoorOpen className="h-6 w-6" />
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-cyan-50 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-500/30 shrink-0">
+              <DoorOpen className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-mono text-xs font-bold rounded-md bg-cyan-100 dark:bg-cyan-500/20 px-2 py-0.5 text-cyan-800 dark:text-cyan-300">
                   {room.roomNumber}
                 </span>
-                <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white leading-tight">{room.name}</h3>
+                <h3 className="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">{room.name}</h3>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{room.location || 'Main Venue'} · Capacity: {room.capacity || 10}</p>
             </div>
@@ -240,8 +240,8 @@ const RoomInspectModal: React.FC<RoomInspectModalProps> = ({
           </button>
         </div>
 
-        {/* Tab Toggle */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 px-6 pt-3 space-x-4">
+        {/* Sub-tab switch */}
+        <div className="flex border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 pt-2 space-x-6">
           <button
             onClick={() => setActiveSubTab('projects')}
             className={`pb-3 text-xs font-bold border-b-2 flex items-center space-x-1.5 transition-colors ${activeSubTab === 'projects' ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}
@@ -259,11 +259,11 @@ const RoomInspectModal: React.FC<RoomInspectModalProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="overflow-y-auto p-6 space-y-5 flex-1">
+        <div className="overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1 touch-scroll">
           {activeSubTab === 'projects' ? (
             <div className="space-y-4">
               {/* Quick Add Project dropdown */}
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <select
                   value={selectedAddProjectId}
                   onChange={e => setSelectedAddProjectId(e.target.value)}
@@ -279,7 +279,7 @@ const RoomInspectModal: React.FC<RoomInspectModalProps> = ({
                 <button
                   onClick={handleAddProject}
                   disabled={!selectedAddProjectId}
-                  className="btn-primary rounded-xl px-4 py-2 text-xs font-bold text-white shadow-md disabled:opacity-50"
+                  className="btn-primary rounded-xl px-4 py-2 text-xs font-bold text-white shadow-md disabled:opacity-50 min-h-[38px] shrink-0"
                 >
                   Assign
                 </button>
@@ -315,7 +315,7 @@ const RoomInspectModal: React.FC<RoomInspectModalProps> = ({
           ) : (
             <div className="space-y-4">
               {/* Quick Add Judge dropdown */}
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <select
                   value={selectedAddJudgeEmail}
                   onChange={e => setSelectedAddJudgeEmail(e.target.value)}
@@ -331,7 +331,7 @@ const RoomInspectModal: React.FC<RoomInspectModalProps> = ({
                 <button
                   onClick={handleAddJudge}
                   disabled={!selectedAddJudgeEmail}
-                  className="btn-primary rounded-xl px-4 py-2 text-xs font-bold text-white shadow-md disabled:opacity-50"
+                  className="btn-primary rounded-xl px-4 py-2 text-xs font-bold text-white shadow-md disabled:opacity-50 min-h-[38px] shrink-0"
                 >
                   Assign
                 </button>

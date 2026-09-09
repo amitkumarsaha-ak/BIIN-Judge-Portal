@@ -57,7 +57,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           <button
             type="button"
             onClick={() => switchTab('judge')}
-            className={`flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center justify-center space-x-2 py-2.5 rounded-lg text-xs font-bold transition-all min-h-[40px] touch-manipulation ${
               selectedRole === 'judge'
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -69,7 +69,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           <button
             type="button"
             onClick={() => switchTab('admin')}
-            className={`flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center justify-center space-x-2 py-2.5 rounded-lg text-xs font-bold transition-all min-h-[40px] touch-manipulation ${
               selectedRole === 'admin'
                 ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'

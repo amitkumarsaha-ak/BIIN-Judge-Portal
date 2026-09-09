@@ -137,33 +137,33 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
     <div className="glass-panel rounded-3xl p-4 sm:p-6 border transition-all shadow-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700">
       
       {/* Title & Criteria Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-        <div className="flex items-center space-x-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-500/30 shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mb-3">
+        <div className="flex items-start sm:items-center space-x-3 min-w-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-500/30 shrink-0 mt-0.5 sm:mt-0">
             <IconComponent className="h-5 w-5" />
           </div>
-          <div>
-            <h3 className="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center space-x-2 flex-wrap">
               <span className="text-xs text-indigo-600 dark:text-indigo-400 font-mono">0{index + 1}.</span>
-              <span>{criteria.label}</span>
+              <span className="break-words">{criteria.label}</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{criteria.description}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{criteria.description}</p>
           </div>
         </div>
 
         {/* Range Indicator */}
         <div className="flex items-center space-x-2 shrink-0 self-start sm:self-center">
           <span className="rounded-lg bg-indigo-50 dark:bg-indigo-500/10 px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20">
-            Scale: 1 to 10 (Decimals Allowed)
+            Scale: 1 – 10
           </span>
         </div>
       </div>
 
       {/* Interactive Controls Box */}
-      <div className="mt-4 rounded-2xl bg-slate-50 dark:bg-slate-900/80 p-3.5 sm:p-4 border border-slate-200 dark:border-slate-800 space-y-4">
+      <div className="mt-4 rounded-2xl bg-slate-50 dark:bg-slate-900/80 p-3 sm:p-4 border border-slate-200 dark:border-slate-800 space-y-4">
         
         {/* Slider & Input Row */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           
           {/* Slider */}
           <div className="flex-1 space-y-1">
@@ -179,13 +179,13 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
               step="0.25"
               value={isNaN(numVal) ? 1 : Math.max(1, Math.min(10, numVal))}
               onChange={handleSliderChange}
-              className="w-full accent-cyan-600 dark:accent-cyan-400 bg-slate-200 dark:bg-slate-800 rounded-lg h-2 cursor-pointer"
+              className="w-full accent-cyan-600 dark:accent-cyan-400 bg-slate-200 dark:bg-slate-800 rounded-lg h-2.5 cursor-pointer touch-manipulation"
             />
           </div>
 
           {/* Manual Input Field */}
-          <div className="flex items-center justify-between sm:justify-start space-x-2 shrink-0">
-            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Score:</label>
+          <div className="flex items-center justify-between sm:justify-start space-x-2 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-200/80 dark:border-slate-800">
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Score:</label>
             <div className="relative flex items-center">
               <input
                 type="text"
@@ -195,7 +195,7 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
                 onKeyDown={handleKeyDown}
                 onBlur={handleBlur}
                 placeholder="1 - 10"
-                className="w-24 rounded-xl bg-white dark:bg-slate-950 px-3 py-2 text-center font-mono text-lg font-bold border border-indigo-300 dark:border-indigo-500/50 text-cyan-700 dark:text-cyan-300 focus:border-cyan-500 focus:outline-none transition-colors"
+                className="w-24 rounded-xl bg-white dark:bg-slate-950 px-3 py-2 text-center font-mono text-lg font-bold border border-indigo-300 dark:border-indigo-500/50 text-cyan-700 dark:text-cyan-300 focus:border-cyan-500 focus:outline-none transition-colors min-h-[42px]"
               />
               <span className="ml-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">/ 10</span>
             </div>
@@ -205,7 +205,7 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
 
         {/* Quick Presets Buttons (1 to 10) */}
         <div>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-500 block mb-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-2">
             Quick Score Presets (1 to 10):
           </span>
           <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
@@ -214,9 +214,9 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
                 key={val}
                 type="button"
                 onClick={() => handleSelectPreset(val)}
-                className={`flex items-center justify-center rounded-xl py-2 text-xs font-mono font-bold transition-all min-h-[40px] ${
+                className={`flex items-center justify-center rounded-xl py-2.5 text-xs font-mono font-bold transition-all min-h-[42px] touch-manipulation active:scale-95 ${
                   score === val
-                    ? 'bg-cyan-600 text-white dark:bg-cyan-500 dark:text-slate-950 shadow-md shadow-cyan-500/30 scale-105'
+                    ? 'bg-cyan-600 text-white dark:bg-cyan-500 dark:text-slate-950 shadow-md shadow-cyan-500/30 font-black ring-2 ring-cyan-400/50'
                     : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-600 hover:text-white border border-slate-300 dark:border-slate-700/60'
                 }`}
               >

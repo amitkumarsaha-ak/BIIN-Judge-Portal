@@ -52,7 +52,7 @@ export const JudgeOwnReportView: React.FC = () => {
       `}</style>
 
       {/* Header Banner */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4 no-print">
+      <div className="glass-panel rounded-3xl p-5 sm:p-8 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4 no-print">
         <div>
           <div className="inline-flex items-center space-x-2 rounded-full bg-indigo-50 dark:bg-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 mb-2">
             <FileText className="h-3.5 w-3.5" />
@@ -68,7 +68,7 @@ export const JudgeOwnReportView: React.FC = () => {
 
         <button
           onClick={handlePrint}
-          className="btn-primary inline-flex items-center space-x-2 rounded-2xl px-5 py-3 text-xs font-bold text-white shadow-xl hover:scale-105 transition-transform shrink-0"
+          className="btn-primary inline-flex items-center justify-center space-x-2 rounded-2xl px-5 py-3 text-xs font-bold text-white shadow-xl hover:scale-105 transition-transform shrink-0 min-h-[40px] w-full sm:w-auto"
         >
           <Printer className="h-4 w-4" />
           <span>Print / Save PDF Report</span>
@@ -76,7 +76,7 @@ export const JudgeOwnReportView: React.FC = () => {
       </div>
 
       {/* Overview Statistics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 print:grid-cols-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 print:grid-cols-3">
         <div className="rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 p-4 text-center">
           <p className="text-[10px] uppercase font-bold text-indigo-700 dark:text-indigo-400">Total Scored Projects</p>
           <p className="font-heading text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">{myEvaluations.length}</p>
@@ -95,10 +95,10 @@ export const JudgeOwnReportView: React.FC = () => {
       </div>
 
       {/* Printable Report Table */}
-      <div className="glass-panel print-card rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden p-6 space-y-4">
+      <div className="glass-panel print-card rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden p-4 sm:p-6 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
           <div>
-            <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white">Detailed Score Breakdown</h3>
+            <h3 className="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white">Detailed Score Breakdown</h3>
             <p className="text-xs text-slate-500 font-mono mt-0.5">Judge: {currentUser.fullName} ({currentUser.email})</p>
           </div>
           <span className="text-xs font-mono font-bold text-slate-500">{new Date().toLocaleDateString()}</span>
@@ -146,14 +146,14 @@ export const JudgeOwnReportView: React.FC = () => {
                       </p>
                     </div>
 
-                    <div className="flex items-center space-x-4 text-right shrink-0">
-                      <div>
+                    <div className="flex items-center justify-between sm:justify-end space-x-4 text-right shrink-0 w-full sm:w-auto pt-1 sm:pt-0">
+                      <div className="text-left sm:text-right">
                         <span className="text-[10px] uppercase font-bold text-slate-400 block">Raw Score</span>
                         <span className="font-mono font-bold text-sm text-slate-800 dark:text-slate-200">
                           {formatScoreNumber(rawScore)} / {maxRaw}
                         </span>
                       </div>
-                      <div>
+                      <div className="text-left sm:text-right">
                         <span className="text-[10px] uppercase font-bold text-emerald-600 block">Converted Mark</span>
                         <span className="font-mono font-black text-lg text-emerald-600 dark:text-emerald-400">
                           {formatScoreNumber(converted)} / 100
@@ -163,7 +163,7 @@ export const JudgeOwnReportView: React.FC = () => {
                   </div>
 
                   {/* Criteria Scores Matrix */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs">
+                  <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs">
                     {criteria.map((crit) => {
                       const val = e.scores[crit.key] ?? 0;
                       return (

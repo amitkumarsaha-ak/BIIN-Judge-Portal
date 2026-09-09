@@ -88,7 +88,7 @@ export const AdminAuditView: React.FC = () => {
         <select
           value={filterType}
           onChange={e => setFilterType(e.target.value)}
-          className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-violet-500"
+          className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-violet-500"
         >
           <option value="All">All Entity Types</option>
           <option value="project">Project Events</option>
@@ -100,7 +100,7 @@ export const AdminAuditView: React.FC = () => {
       </div>
 
       {/* Audit Logs Stream */}
-      <div className="glass-panel rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-6 space-y-4">
+      <div className="glass-panel rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-4 sm:p-6 space-y-4">
         {filteredLogs.length === 0 ? (
           <div className="text-center py-12 text-slate-500">
             <History className="mx-auto h-12 w-12 text-slate-400 mb-3" />
@@ -131,7 +131,7 @@ export const AdminAuditView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0 text-slate-400 font-mono text-[11px]">
+                  <div className="text-left sm:text-right shrink-0 text-slate-400 font-mono text-[11px] pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/80 dark:border-slate-800/80">
                     <p>{new Date(log.timestamp).toLocaleDateString()}</p>
                     <p className="text-[10px]">{new Date(log.timestamp).toLocaleTimeString()}</p>
                   </div>

@@ -91,11 +91,11 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
             </button>
 
             {/* Judge Badge & Logout */}
-            <div className="flex items-center gap-1.5 sm:gap-2 border-l border-slate-200 dark:border-slate-800 pl-2 sm:pl-3">
-              <span className="inline-flex items-center space-x-1.5 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-bold border bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30">
+            <div className="flex items-center gap-1.5 sm:gap-2 border-l border-slate-200 dark:border-slate-800 pl-1.5 sm:pl-3">
+              <span className="inline-flex items-center space-x-1 sm:space-x-1.5 rounded-xl px-2 sm:px-3 py-1.5 text-xs font-bold border bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30">
                 <Award className="h-3.5 w-3.5 shrink-0" />
                 <span className="hidden sm:inline truncate max-w-[120px]">{currentUser?.fullName || 'Judge'}</span>
-                <span className="sm:hidden">Judge</span>
+                <span className="sm:hidden text-[11px]">Judge</span>
               </span>
 
               {/* Logout */}
@@ -103,10 +103,10 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
                 id="judge-logout-btn"
                 onClick={logout}
                 title="Logout Session"
-                className="flex items-center space-x-1.5 rounded-xl border border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors min-h-[40px] shrink-0"
+                className="flex items-center space-x-1 sm:space-x-1.5 rounded-xl border border-red-500/30 bg-red-50 dark:bg-red-500/10 px-2.5 sm:px-3 py-2 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors min-h-[38px] shrink-0"
               >
                 <LogOut className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Logout</span>
+                <span className="hidden min-[360px]:inline">Logout</span>
               </button>
             </div>
           </div>
@@ -114,16 +114,16 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
         </div>
 
         {/* Mobile Nav Row (< md) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 px-3 py-2 md:hidden no-scrollbar text-xs backdrop-blur-sm">
+        <div className="flex items-center gap-1.5 overflow-x-auto border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 px-2.5 py-2 md:hidden no-scrollbar text-xs backdrop-blur-sm touch-scroll">
           {navItems.map(({ id, label, icon: Icon }) => {
             const isActive = currentTab === id;
             return (
               <button
                 key={id}
                 onClick={() => onSelectTab(id)}
-                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-semibold whitespace-nowrap transition-all shrink-0 min-h-[38px] ${
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-2 font-semibold whitespace-nowrap transition-all shrink-0 min-h-[38px] ${
                   isActive
-                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
+                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30 font-bold'
                     : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
@@ -136,7 +136,7 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="flex-1 mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {children}
       </main>
 

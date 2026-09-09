@@ -245,10 +245,21 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
             type="button"
             onClick={handleOpenSubmissionModal}
             disabled={isLocked}
-            className={`w-full sm:w-auto inline-flex items-center justify-center space-x-3 rounded-2xl px-6 sm:px-8 py-3.5 sm:py-4 text-xs sm:text-sm font-bold text-white shadow-2xl transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-h-[48px] ${isLocked ? 'bg-slate-500' : 'btn-primary'}`}
+            className={`w-full sm:w-auto inline-flex items-center justify-center space-x-2 sm:space-x-3 rounded-2xl px-5 sm:px-8 py-3.5 sm:py-4 text-xs sm:text-sm font-bold text-white shadow-2xl transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-h-[48px] ${isLocked ? 'bg-slate-500' : 'btn-primary'}`}
           >
-            {isLocked ? <Lock className="h-5 w-5" /> : <Send className="h-5 w-5" />}
-            <span>{isLocked ? 'Submissions Locked' : `Submit Evaluation (${formatScoreNumber(rawTotalScore)} / ${maxRawScore} Raw → ${formatScoreNumber(convertedScore)} / 100)`}</span>
+            {isLocked ? <Lock className="h-4 w-4 sm:h-5 sm:w-5" /> : <Send className="h-4 w-4 sm:h-5 sm:w-5" />}
+            {isLocked ? (
+              <span>Submissions Locked</span>
+            ) : (
+              <>
+                <span className="sm:hidden">
+                  Submit Score ({formatScoreNumber(rawTotalScore)}/{maxRawScore} → {formatScoreNumber(convertedScore)}%)
+                </span>
+                <span className="hidden sm:inline">
+                  Submit Evaluation ({formatScoreNumber(rawTotalScore)} / {maxRawScore} Raw → {formatScoreNumber(convertedScore)} / 100)
+                </span>
+              </>
+            )}
           </button>
         </div>
       </div>

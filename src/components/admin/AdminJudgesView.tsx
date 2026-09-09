@@ -294,8 +294,8 @@ export const AdminJudgesView: React.FC = () => {
         </div>
 
         {/* Filter Tabs & Refresh */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center space-x-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 p-1 border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center gap-2 flex-wrap max-w-full">
+          <div className="flex items-center space-x-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 p-1 border border-slate-200 dark:border-slate-700 overflow-x-auto touch-scroll max-w-full">
             {(['all', 'pending', 'approved', 'rejected'] as const).map(tab => {
               const count = counts[tab];
               const isActive = statusFilter === tab;
@@ -303,7 +303,7 @@ export const AdminJudgesView: React.FC = () => {
                 <button
                   key={tab}
                   onClick={() => setStatusFilter(tab)}
-                  className={`flex items-center space-x-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all ${
+                  className={`flex items-center space-x-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all shrink-0 min-h-[36px] ${
                     isActive
                       ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'

@@ -121,15 +121,15 @@ const DetailModal: React.FC<DetailModalProps> = ({ project, evalCount, onClose, 
   const isActive = project.status === 'active';
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col max-h-[90vh]">
-        <div className="flex items-start justify-between p-6 border-b border-slate-200 dark:border-slate-800">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col max-h-[92vh]">
+        <div className="flex items-start justify-between p-4 sm:p-6 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center space-x-3 min-w-0">
-            <div className="flex-shrink-0 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/30">
-              <AppTypeIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+            <div className="flex-shrink-0 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/30">
+              <AppTypeIcon className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white leading-tight line-clamp-2">{project.title}</h3>
+              <h3 className="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight line-clamp-2">{project.title}</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">{project.applicationId} · {project.projectCode}</p>
             </div>
           </div>
@@ -141,7 +141,7 @@ const DetailModal: React.FC<DetailModalProps> = ({ project, evalCount, onClose, 
           </button>
         </div>
 
-        <div className="overflow-y-auto p-6 space-y-5">
+        <div className="overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 touch-scroll">
           {/* Badges */}
           <div className="flex flex-wrap gap-2">
             <span className={`inline-flex items-center space-x-1.5 rounded-full px-3 py-1 text-xs font-semibold border ${getAppTypeColor(project.applicationType)}`}>
@@ -169,54 +169,70 @@ const DetailModal: React.FC<DetailModalProps> = ({ project, evalCount, onClose, 
               <p className="text-slate-900 dark:text-white font-medium mt-0.5">{project.teamOrOrgName}</p>
             </div>
             <div>
-              <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Representative</p>
+              <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Authorized Representative</p>
               <p className="text-slate-900 dark:text-white font-medium mt-0.5">{project.representativeName}</p>
             </div>
-            {project.institutionOrOrg && (
-              <div>
-                <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Institution / Organization</p>
-                <p className="text-slate-900 dark:text-white font-medium mt-0.5">{project.institutionOrOrg}</p>
-              </div>
-            )}
             <div>
-              <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Email</p>
+              <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Email Address</p>
               <p className="text-slate-900 dark:text-white font-medium mt-0.5">{project.email || 'N/A'}</p>
             </div>
             <div>
               <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Contact Number</p>
               <p className="text-slate-900 dark:text-white font-medium mt-0.5">{project.contactNumber || 'N/A'}</p>
             </div>
-            {project.members && project.members.length > 0 && (
+            {project.institutionOrOrg && (
               <div className="sm:col-span-2">
-                <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Team Members</p>
-                <p className="text-slate-900 dark:text-white font-medium mt-0.5">{project.members.join(', ')}</p>
+                <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Institution / Affiliation</p>
+                <p className="text-slate-900 dark:text-white font-medium mt-0.5">{project.institutionOrOrg}</p>
               </div>
             )}
           </div>
 
-          {/* Description & Problem / Solution */}
-          <div className="rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 p-4 space-y-3">
+          {/* Members */}
+          {project.members && project.members.length > 0 && (
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Project Description</p>
-              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">{project.description}</p>
+              <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px] mb-1.5">Team Members</p>
+              <div className="flex flex-wrap gap-1.5">
+                {project.members.map(member => (
+                  <span key={member} className="rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs text-slate-700 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700">
+                    {member}
+                  </span>
+                ))}
+              </div>
             </div>
-            {project.problemStatement && (
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Problem Statement</p>
-                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">{project.problemStatement}</p>
-              </div>
-            )}
-            {project.solutionSummary && (
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Solution Summary</p>
-                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">{project.solutionSummary}</p>
-              </div>
-            )}
-          </div>
+          )}
+
+          {/* Description */}
+          {project.description && (
+            <div>
+              <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px] mb-1">Project Description</p>
+              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-950/60 rounded-xl p-3.5 border border-slate-200 dark:border-slate-800">
+                {project.description}
+              </p>
+            </div>
+          )}
+
+          {/* Problem & Solution */}
+          {project.problemStatement && (
+            <div>
+              <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px] mb-1">Problem Statement</p>
+              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-950/60 rounded-xl p-3.5 border border-slate-200 dark:border-slate-800">
+                {project.problemStatement}
+              </p>
+            </div>
+          )}
+          {project.solutionSummary && (
+            <div>
+              <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px] mb-1">Proposed Solution</p>
+              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-950/60 rounded-xl p-3.5 border border-slate-200 dark:border-slate-800">
+                {project.solutionSummary}
+              </p>
+            </div>
+          )}
 
           {/* Tags */}
           {project.tags && project.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 pt-1">
               {project.tags.map(tag => (
                 <span key={tag} className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] text-slate-600 dark:text-slate-400 font-mono border border-slate-200 dark:border-slate-700">
                   #{tag}
@@ -226,16 +242,16 @@ const DetailModal: React.FC<DetailModalProps> = ({ project, evalCount, onClose, 
           )}
         </div>
 
-        <div className="flex items-center justify-end space-x-2 p-4 border-t border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-end space-x-2 p-3.5 sm:p-4 border-t border-slate-200 dark:border-slate-800">
           <button
             onClick={onClose}
-            className="rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
+            className="rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 min-h-[38px]"
           >
             Close
           </button>
           <button
             onClick={onEdit}
-            className="btn-primary flex items-center space-x-2 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-lg"
+            className="btn-primary flex items-center space-x-2 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-lg min-h-[38px]"
           >
             <Pencil className="h-3.5 w-3.5" />
             <span>Edit Project</span>
@@ -296,15 +312,15 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
   const labelCls = 'block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1';
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col max-h-[92vh]">
-        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center space-x-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-500/20 border border-violet-200 dark:border-violet-500/30">
               {mode === 'add' ? <Plus className="h-5 w-5 text-violet-600 dark:text-violet-400" /> : <Pencil className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
             </div>
             <div>
-              <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white">
+              <h3 className="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white">
                 {mode === 'add' ? 'Add New Project' : 'Edit Project'}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">Fill in the project details below</p>
@@ -315,7 +331,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
           </button>
         </div>
 
-        <div className="overflow-y-auto p-6 space-y-5">
+        <div className="overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 touch-scroll">
           {/* Project Name */}
           <div>
             <label className={labelCls}>Project / Application Name *</label>
@@ -637,25 +653,25 @@ export const AdminProjectsView: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="rounded-2xl border bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/20 p-4">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Projects</p>
-          <p className="font-heading text-3xl font-extrabold mt-1 text-indigo-600 dark:text-indigo-400">{projects.length}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="rounded-2xl border bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/20 p-3.5 sm:p-4">
+          <p className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Projects</p>
+          <p className="font-heading text-2xl sm:text-3xl font-extrabold mt-1 text-indigo-600 dark:text-indigo-400">{projects.length}</p>
         </div>
 
-        <div className="rounded-2xl border bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 p-4">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active</p>
-          <p className="font-heading text-3xl font-extrabold mt-1 text-emerald-600 dark:text-emerald-400">{totalActive}</p>
+        <div className="rounded-2xl border bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 p-3.5 sm:p-4">
+          <p className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active</p>
+          <p className="font-heading text-2xl sm:text-3xl font-extrabold mt-1 text-emerald-600 dark:text-emerald-400">{totalActive}</p>
         </div>
 
-        <div className="rounded-2xl border bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 p-4">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Inactive</p>
-          <p className="font-heading text-3xl font-extrabold mt-1 text-slate-600 dark:text-slate-400">{totalInactive}</p>
+        <div className="rounded-2xl border bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
+          <p className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Inactive</p>
+          <p className="font-heading text-2xl sm:text-3xl font-extrabold mt-1 text-slate-600 dark:text-slate-400">{totalInactive}</p>
         </div>
 
-        <div className="rounded-2xl border bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/20 p-4">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Head Categories</p>
-          <p className="font-heading text-3xl font-extrabold mt-1 text-cyan-600 dark:text-cyan-400">{HEAD_CATEGORIES.length}</p>
+        <div className="rounded-2xl border bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/20 p-3.5 sm:p-4">
+          <p className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Head Categories</p>
+          <p className="font-heading text-2xl sm:text-3xl font-extrabold mt-1 text-cyan-600 dark:text-cyan-400">{HEAD_CATEGORIES.length}</p>
         </div>
       </div>
 
@@ -678,11 +694,11 @@ export const AdminProjectsView: React.FC = () => {
           </div>
 
           {/* Filter Dropdowns */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2">
             <select
               value={filterType}
               onChange={e => setFilterType(e.target.value as ApplicationType | 'All')}
-              className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500"
+              className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500"
             >
               <option value="All">All Application Types</option>
               <option value="Student">Student</option>
@@ -694,7 +710,7 @@ export const AdminProjectsView: React.FC = () => {
             <select
               value={filterCategory}
               onChange={e => setFilterCategory(e.target.value as HeadCategoryCode | 'All')}
-              className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500"
+              className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500"
             >
               <option value="All">All Head Categories</option>
               {HEAD_CATEGORIES.map(h => (
@@ -705,7 +721,7 @@ export const AdminProjectsView: React.FC = () => {
             <select
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value as ProjectStatus | 'All')}
-              className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500"
+              className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500"
             >
               <option value="All">All Status</option>
               <option value="active">Active</option>
@@ -715,7 +731,7 @@ export const AdminProjectsView: React.FC = () => {
             {hasFilters && (
               <button
                 onClick={resetFilters}
-                className="flex items-center space-x-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors"
+                className="flex items-center justify-center space-x-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors min-h-[38px]"
               >
                 <RotateCcw className="h-3 w-3" />
                 <span>Reset</span>
@@ -834,7 +850,7 @@ export const AdminProjectsView: React.FC = () => {
                   </div>
 
                   {/* Actions buttons */}
-                  <div className="flex items-center gap-2 flex-wrap justify-end sm:justify-start w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800/80">
+                  <div className="flex items-center gap-1.5 sm:gap-2 justify-between sm:justify-start w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800/80">
                     {/* Status Toggle */}
                     <button
                       id={`admin-toggle-status-${project.id}`}
@@ -843,38 +859,40 @@ export const AdminProjectsView: React.FC = () => {
                       className={`group flex items-center space-x-1.5 rounded-xl px-3 py-2 text-xs font-semibold border transition-all min-h-[38px] ${isActive ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 dark:border-red-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-emerald-500/20'}`}
                     >
                       {isActive ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-                      <span className="hidden sm:inline">{isActive ? 'Active' : 'Inactive'}</span>
+                      <span className="hidden min-[400px]:inline">{isActive ? 'Active' : 'Inactive'}</span>
                     </button>
 
-                    {/* View Details */}
-                    <button
-                      id={`admin-view-${project.id}`}
-                      onClick={() => setDetailTarget(project)}
-                      title="View Project Details"
-                      className="flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-500/20 transition-all min-h-[38px] min-w-[38px]"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      {/* View Details */}
+                      <button
+                        id={`admin-view-${project.id}`}
+                        onClick={() => setDetailTarget(project)}
+                        title="View Project Details"
+                        className="flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-500/20 transition-all min-h-[38px] min-w-[38px]"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
 
-                    {/* Edit Project */}
-                    <button
-                      id={`admin-edit-${project.id}`}
-                      onClick={() => openEdit(project)}
-                      title="Edit Project"
-                      className="flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 text-slate-600 dark:text-slate-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400 hover:border-amber-200 dark:hover:border-amber-500/20 transition-all min-h-[38px] min-w-[38px]"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
+                      {/* Edit Project */}
+                      <button
+                        id={`admin-edit-${project.id}`}
+                        onClick={() => openEdit(project)}
+                        title="Edit Project"
+                        className="flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 text-slate-600 dark:text-slate-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400 hover:border-amber-200 dark:hover:border-amber-500/20 transition-all min-h-[38px] min-w-[38px]"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
 
-                    {/* Delete Project */}
-                    <button
-                      id={`admin-delete-${project.id}`}
-                      onClick={() => setDeleteTarget(project)}
-                      title="Delete Project"
-                      className="flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 text-slate-600 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-500/20 transition-all min-h-[38px] min-w-[38px]"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                      {/* Delete Project */}
+                      <button
+                        id={`admin-delete-${project.id}`}
+                        onClick={() => setDeleteTarget(project)}
+                        title="Delete Project"
+                        className="flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 text-slate-600 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-500/20 transition-all min-h-[38px] min-w-[38px]"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

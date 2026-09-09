@@ -67,7 +67,7 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
             return (
               <div
                 key={e.id}
-                className="glass-panel rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-md hover:shadow-xl transition-all space-y-4"
+                className="glass-panel rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-md hover:shadow-xl transition-all space-y-4"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
                   <div>
@@ -124,7 +124,7 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
                 </div>
 
                 {/* Scores Matrix Breakdown */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs">
+                <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs">
                   {criteria.map((crit) => {
                     const val = e.scores[crit.key] ?? 0;
                     return (

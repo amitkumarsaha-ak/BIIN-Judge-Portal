@@ -87,7 +87,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   return (
     <div className="space-y-8 pb-12">
       {/* Hero Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-violet-900 via-indigo-950 to-slate-950 p-6 sm:p-8 border border-violet-500/30 shadow-2xl text-white">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-violet-900 via-indigo-950 to-slate-950 p-5 sm:p-8 border border-violet-500/30 shadow-2xl text-white">
         <div className="absolute -right-10 -top-10 h-64 w-64 rounded-full bg-violet-500/20 blur-3xl pointer-events-none" />
         <div className="absolute right-20 -bottom-10 h-48 w-48 rounded-full bg-cyan-500/20 blur-2xl pointer-events-none" />
 
@@ -98,7 +98,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <span>Administrator Command Center</span>
             </div>
 
-            <h1 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
+            <h1 className="font-heading text-2xl sm:text-4xl font-extrabold text-white">
               Welcome, {currentUser?.fullName || 'Administrator'}!
             </h1>
             <p className="mt-2 max-w-2xl text-xs sm:text-sm text-slate-300 leading-relaxed">
@@ -106,17 +106,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2 shrink-0">
+          <div className="flex flex-col min-[380px]:flex-row flex-wrap gap-2 shrink-0 w-full sm:w-auto">
             <button
               onClick={onOpenAddProject}
-              className="inline-flex items-center space-x-2 rounded-2xl bg-white text-slate-900 px-4 py-2.5 text-xs font-bold shadow-lg hover:bg-slate-100 transition-transform hover:scale-105"
+              className="inline-flex items-center justify-center space-x-2 rounded-2xl bg-white text-slate-900 px-4 py-2.5 text-xs font-bold shadow-lg hover:bg-slate-100 transition-transform hover:scale-105 min-h-[40px]"
             >
               <Plus className="h-4 w-4 text-violet-600" />
               <span>Add Project</span>
             </button>
             <button
               onClick={onOpenAddJudge}
-              className="inline-flex items-center space-x-2 rounded-2xl bg-violet-600/40 hover:bg-violet-600/60 px-4 py-2.5 text-xs font-bold text-white border border-violet-400/30 transition-colors"
+              className="inline-flex items-center justify-center space-x-2 rounded-2xl bg-violet-600/40 hover:bg-violet-600/60 px-4 py-2.5 text-xs font-bold text-white border border-violet-400/30 transition-colors min-h-[40px]"
             >
               <Users className="h-4 w-4" />
               <span>Judge Approvals</span>
@@ -126,7 +126,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       {/* Global Metrics Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div
           onClick={() => onNavigate('projects')}
           className="cursor-pointer group rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 p-4 shadow-sm hover:border-violet-500/50 hover:shadow-md transition-all"
@@ -257,7 +257,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               Generate 3-Judge converted mark averages, automated Champion/Winner/Merit designations, and 1-click A4 Printable Result Sheets.
             </p>
 
-            <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3 border border-amber-200 dark:border-amber-500/20">
                 <span className="font-bold text-amber-700 dark:text-amber-300">Champion Tier</span>
                 <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">Top project in each category (Score ≥ 85%)</p>
@@ -271,7 +271,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={() => onNavigate('results')}
-            className="btn-primary w-full rounded-2xl py-3 text-xs font-bold text-white flex items-center justify-center space-x-2 shadow-lg"
+            className="btn-primary w-full rounded-2xl py-3 text-xs font-bold text-white flex items-center justify-center space-x-2 shadow-lg min-h-[44px]"
           >
             <span>Open Results & Awards Center</span>
             <ArrowRight className="h-4 w-4" />

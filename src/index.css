@@ -140,7 +140,26 @@ html.light ::-webkit-scrollbar-thumb {
 /* Mobile responsive enhancements */
 html {
   overflow-x: hidden;
+  width: 100%;
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  width: 100%;
+  overflow-x: hidden;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Touch-friendly manipulation */
+button, 
+a, 
+input, 
+select, 
+textarea {
+  touch-action: manipulation;
 }
 
 @media (max-width: 640px) {
@@ -153,6 +172,22 @@ html {
   textarea {
     font-size: 16px !important;
   }
+}
+
+/* Responsive Table Wrapper */
+.table-responsive-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Safe Area Insets for modern devices with notches / home indicators */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0.75rem);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0.75rem);
 }
 
 /* Touch-friendly smooth scroll */

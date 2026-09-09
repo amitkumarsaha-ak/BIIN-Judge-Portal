@@ -104,7 +104,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
         <select
           value={filterType}
           onChange={e => setFilterType(e.target.value as ApplicationType | 'All')}
-          className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+          className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
         >
           <option value="All">All Application Types</option>
           <option value="Student">Student</option>
@@ -116,7 +116,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
         <select
           value={filterCategory}
           onChange={e => setFilterCategory(e.target.value)}
-          className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+          className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
         >
           <option value="All">All Head Categories</option>
           {HEAD_CATEGORIES.map(hc => (

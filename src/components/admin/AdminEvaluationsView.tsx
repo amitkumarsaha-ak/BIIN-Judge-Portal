@@ -353,7 +353,7 @@ export const AdminEvaluationsView: React.FC = () => {
         <select
           value={filterType}
           onChange={e => setFilterType(e.target.value as ApplicationType | 'All')}
-          className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold"
+          className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold"
         >
           <option value="All">All Application Types</option>
           <option value="Student">Student</option>
@@ -366,7 +366,7 @@ export const AdminEvaluationsView: React.FC = () => {
         <select
           value={filterCategory}
           onChange={e => setFilterCategory(e.target.value as HeadCategoryCode | 'All')}
-          className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold"
+          className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold"
         >
           <option value="All">All Head Categories</option>
           {HEAD_CATEGORIES.map(hc => (
@@ -380,7 +380,7 @@ export const AdminEvaluationsView: React.FC = () => {
         <select
           value={filterJudge}
           onChange={e => setFilterJudge(e.target.value)}
-          className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold"
+          className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold"
         >
           <option value="All">All Judges</option>
           {judges.map(j => (
@@ -491,9 +491,9 @@ export const AdminEvaluationsView: React.FC = () => {
                               </div>
                             </div>
 
-                            <div className="flex items-center space-x-4 shrink-0">
+                            <div className="flex items-center justify-between sm:justify-end space-x-3 sm:space-x-4 shrink-0 w-full sm:w-auto pt-1 sm:pt-0">
                               {/* Raw Score */}
-                              <div className="text-right">
+                              <div className="text-left sm:text-right">
                                 <span className="text-[10px] uppercase font-bold text-slate-400 block">Raw Total</span>
                                 <span className="font-mono font-bold text-slate-800 dark:text-slate-200 text-sm">
                                   {formatScoreNumber(rawScore)} / {maxRaw}
@@ -501,7 +501,7 @@ export const AdminEvaluationsView: React.FC = () => {
                               </div>
 
                               {/* Converted Score */}
-                              <div className="text-right">
+                              <div className="text-left sm:text-right">
                                 <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block">Converted</span>
                                 <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400 text-base">
                                   {formatScoreNumber(converted)} / 100
@@ -513,14 +513,14 @@ export const AdminEvaluationsView: React.FC = () => {
                                 <button
                                   onClick={() => setEditTarget(e)}
                                   title="Edit Evaluation"
-                                  className="rounded-lg p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
+                                  className="rounded-lg p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                   onClick={() => setDeleteTarget(e)}
                                   title="Delete Submission"
-                                  className="rounded-lg p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                                  className="rounded-lg p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
@@ -529,7 +529,7 @@ export const AdminEvaluationsView: React.FC = () => {
                           </div>
 
                           {/* Individual Criteria Scores Matrix */}
-                          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs">
+                          <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2 text-xs">
                             {criteria.map((crit) => {
                               const mark = e.scores[crit.key] ?? 0;
                               return (

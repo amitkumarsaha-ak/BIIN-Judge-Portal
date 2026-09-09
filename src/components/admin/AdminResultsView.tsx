@@ -180,7 +180,7 @@ export const AdminResultsView: React.FC = () => {
         <select
           value={filterType}
           onChange={e => setFilterType(e.target.value as ApplicationType | 'All')}
-          className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-500 font-semibold"
+          className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-500 font-semibold"
         >
           <option value="All">All Application Types</option>
           <option value="Student">Student</option>
@@ -193,7 +193,7 @@ export const AdminResultsView: React.FC = () => {
         <select
           value={filterCategory}
           onChange={e => setFilterCategory(e.target.value as HeadCategoryCode | 'All')}
-          className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-500 font-semibold"
+          className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-500 font-semibold"
         >
           <option value="All">All Head Categories</option>
           {HEAD_CATEGORIES.map(hc => (
@@ -232,7 +232,7 @@ export const AdminResultsView: React.FC = () => {
             <span className="text-[11px] text-slate-500 font-mono">Sorted: Highest → Lowest</span>
           </div>
 
-          <div className="space-y-2.5 max-h-[640px] overflow-y-auto pr-1">
+          <div className="space-y-2.5 max-h-[640px] overflow-y-auto pr-1 touch-scroll">
             {rankedResults.length === 0 ? (
               <div className="py-12 text-center text-slate-500">
                 <p className="text-xs">No projects match the selected category filters.</p>
@@ -344,7 +344,7 @@ export const AdminResultsView: React.FC = () => {
                     No evaluations submitted yet for this project.
                   </p>
                 ) : (
-                  <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                  <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1 touch-scroll">
                     {selectedResult.judgesEvaluations.map((je, idx) => (
                       <div
                         key={je.judgeEmail}
@@ -362,7 +362,7 @@ export const AdminResultsView: React.FC = () => {
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between sm:justify-end space-x-3 text-right">
+                          <div className="flex items-center justify-between sm:justify-end space-x-3 text-right w-full sm:w-auto pt-1 sm:pt-0">
                             <div>
                               <span className="text-[10px] uppercase font-bold text-slate-400 block">Raw Total</span>
                               <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
@@ -379,7 +379,7 @@ export const AdminResultsView: React.FC = () => {
                         </div>
 
                         {/* Individual Criteria Marks */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-1.5 text-[11px]">
+                        <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-1.5 text-[11px]">
                           {criteriaForSelected.map(crit => {
                             const val = je.scores[crit.key] ?? 0;
                             return (

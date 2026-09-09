@@ -222,18 +222,18 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenL
       )}
 
       {/* Swipeable Quick Tab Bar on Tablet / Mobile (< lg) */}
-      <div className="flex items-center gap-2 overflow-x-auto border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 px-3 py-2 lg:hidden no-scrollbar text-xs backdrop-blur-sm">
+      <div className="flex items-center gap-1.5 overflow-x-auto border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 px-2.5 py-2 lg:hidden no-scrollbar text-xs backdrop-blur-sm touch-scroll">
         {navLinks.map(({ id, label, icon: Icon, adminOnly }) => {
           const isActive = currentTab === id;
           return (
             <button
               key={id}
               onClick={() => onSelectTab(id)}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-semibold whitespace-nowrap transition-all shrink-0 min-h-[38px] ${
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-2 font-semibold whitespace-nowrap transition-all shrink-0 min-h-[38px] ${
                 isActive
                   ? adminOnly
-                    ? 'bg-violet-600 text-white shadow-sm shadow-violet-600/30'
-                    : 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
+                    ? 'bg-violet-600 text-white shadow-sm shadow-violet-600/30 font-bold'
+                    : 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30 font-bold'
                   : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
               }`}
             >

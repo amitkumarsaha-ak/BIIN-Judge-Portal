@@ -156,7 +156,7 @@ const MainAppContent: React.FC = () => {
         <main className="flex-1 mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 py-6 sm:py-12 space-y-8 sm:space-y-12">
           
           {/* Hero Banner */}
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-950 p-6 sm:p-10 md:p-14 border border-slate-200 dark:border-slate-800 shadow-2xl text-center text-white">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-950 p-5 sm:p-10 md:p-14 border border-slate-200 dark:border-slate-800 shadow-2xl text-center text-white">
             <div className="absolute -left-20 -top-20 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
             <div className="absolute -right-20 -bottom-20 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl pointer-events-none" />
 
