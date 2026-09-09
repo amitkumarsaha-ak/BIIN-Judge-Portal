@@ -297,8 +297,26 @@ export const syncWithBackend = async (): Promise<boolean> => {
       localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evalsRes.value));
     }
     if (judgesRes.status === 'fulfilled' && Array.isArray(judgesRes.value)) {
-      const existing = getUsers().filter(u => u.role === 'admin');
-      const combined = [...existing, ...judgesRes.value];
+      const existingUsers = getUsers();
+      const existingAdmins = existingUsers.filter(u => u.role === 'admin');
+      
+      // Merge remote judges while keeping existing passwords if known locally
+      const mergedJudges = judgesRes.value.map(remoteJudge => {
+        const localJudge = existingUsers.find(
+          u => u.id === remoteJudge.id || u.email?.toLowerCase() === remoteJudge.email?.toLowerCase()
+        );
+        return {
+          ...remoteJudge,
+          password: localJudge?.password || remoteJudge.password
+        };
+      });
+
+      // Keep any local pending judges that haven't synced to remote yet
+      const localOnlyJudges = existingUsers.filter(
+        u => u.role === 'judge' && !judgesRes.value.some(r => r.id === u.id || r.email?.toLowerCase() === u.email?.toLowerCase())
+      );
+
+      const combined = [...existingAdmins, ...mergedJudges, ...localOnlyJudges];
       localStorage.setItem(USERS_KEY, JSON.stringify(combined));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_users_updated'));

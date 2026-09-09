@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from '../types';
-import { getCurrentUser, setCurrentUserSession, findUserByEmail, saveUser } from '../services/storage';
+import { getCurrentUser, setCurrentUserSession, findUserByEmail, saveUser, getUsers } from '../services/storage';
 import { ADMIN_CONFIG } from '../config/authConfig';
+import { api } from '../services/api';
 
 interface AuthContextType {
   currentUser: User | null;
   isAdmin: boolean;
-  login: (email: string, pass: string) => { success: boolean; error?: string };
-  register: (fullName: string, email: string, pass: string, confirmPass: string) => { success: boolean; error?: string };
+  login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
+  register: (fullName: string, email: string, pass: string, confirmPass: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   switchUser: (user: User) => void;
 }
@@ -31,17 +32,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // If judge session is pending or rejected, invalidate session
       if (user.role === 'judge') {
         const freshUser = findUserByEmail(user.email);
-        if (!freshUser || freshUser.status !== 'approved') {
+        if (freshUser && freshUser.status !== 'approved') {
           setCurrentUser(null);
           setCurrentUserSession(null);
           return;
         }
+        // Async verify status with backend
+        api.getMe(user.email).then(remoteUser => {
+          if (remoteUser && remoteUser.status !== 'approved') {
+            setCurrentUser(null);
+            setCurrentUserSession(null);
+          }
+        }).catch(() => {});
       }
       setCurrentUser(user);
     }
   }, []);
 
-  const login = (email: string, pass: string) => {
+  const login = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
     const trimmedEmail = email.trim().toLowerCase();
     const cleanPass = pass.trim();
     if (!trimmedEmail || !cleanPass) {
@@ -63,13 +71,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       setCurrentUser(adminUser);
       setCurrentUserSession(adminUser);
+      api.login(trimmedEmail, pass).catch(() => {});
       return { success: true };
     }
 
-    // 2. Judge Authentication
+    // 2. Judge Authentication - Attempt backend API first
+    try {
+      const response = await api.login(trimmedEmail, cleanPass);
+      if (response && response.success && response.user) {
+        const loggedJudge: User = {
+          ...response.user,
+          password: cleanPass // cache password locally for seamless offline capability
+        };
+
+        // Update local storage so cache is synced
+        const users = getUsers();
+        const idx = users.findIndex(u => u.email?.toLowerCase() === trimmedEmail || u.id === loggedJudge.id);
+        if (idx >= 0) {
+          users[idx] = { ...users[idx], ...loggedJudge };
+        } else {
+          users.push(loggedJudge);
+        }
+        localStorage.setItem('biin_judge_portal_users', JSON.stringify(users));
+
+        setCurrentUser(loggedJudge);
+        setCurrentUserSession(loggedJudge);
+        return { success: true };
+      }
+    } catch (apiErr: any) {
+      const errMsg = apiErr?.message || '';
+      // If server returned an explicit auth error, bubble it up directly to user
+      const isExplicitAuthError = 
+        errMsg.includes('Invalid') ||
+        errMsg.includes('password') ||
+        errMsg.includes('approval') ||
+        errMsg.includes('pending') ||
+        errMsg.includes('rejected') ||
+        errMsg.includes('No user account found') ||
+        errMsg.includes('reserved');
+
+      if (isExplicitAuthError) {
+        return { success: false, error: errMsg };
+      }
+      // If network / server error, fallback to offline localStorage verification below
+    }
+
+    // 3. Offline LocalStorage Fallback
     const existingUser = findUserByEmail(trimmedEmail);
     if (!existingUser) {
       return { success: false, error: 'Invalid email or password.' };
+    }
+
+    // If local record doesn't have a cached password (synced without password), server must be reached
+    if (!existingUser.password) {
+      return { success: false, error: 'Unable to connect to server. Please check your network connection and try again.' };
     }
 
     if (existingUser.password !== pass && existingUser.password !== cleanPass) {
@@ -102,7 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
-  const register = (fullName: string, email: string, pass: string, confirmPass: string) => {
+  const register = async (fullName: string, email: string, pass: string, confirmPass: string): Promise<{ success: boolean; error?: string }> => {
     const nameTrimmed = fullName.trim();
     const emailTrimmed = email.trim().toLowerCase();
 
@@ -138,9 +193,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'An account with this email address already exists.' };
     }
 
-    // New judge registration: strictly role 'judge', status 'pending'
+    // Attempt backend registration
+    let remoteUserId: string | undefined;
+    try {
+      const regRes = await api.register(nameTrimmed, emailTrimmed, pass);
+      if (regRes?.user?.id) {
+        remoteUserId = regRes.user.id;
+      }
+    } catch (apiErr: any) {
+      const errMsg = apiErr?.message || '';
+      if (errMsg.includes('already exists') || errMsg.includes('reserved')) {
+        return { success: false, error: errMsg };
+      }
+      // Continue locally even if server is offline
+    }
+
+    // Save locally
     const newUser: User = {
-      id: `judge-${Date.now()}`,
+      id: remoteUserId || `judge-${Date.now()}`,
       fullName: nameTrimmed,
       email: emailTrimmed,
       password: pass,
@@ -150,7 +220,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     saveUser(newUser);
-    // DO NOT automatically log in pending judges
     return { success: true };
   };
 

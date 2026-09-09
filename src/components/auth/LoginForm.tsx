@@ -19,16 +19,24 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setIsLoading(true);
 
-    const result = login(email, password);
-    if (!result.success) {
-      setErrorMessage(result.error || 'Login failed. Please verify credentials.');
-    } else {
-      onSuccess();
+    try {
+      const result = await login(email, password);
+      if (!result.success) {
+        setErrorMessage(result.error || 'Login failed. Please verify credentials.');
+      } else {
+        onSuccess();
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Login failed. Please verify credentials.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -150,14 +158,29 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
           <button
             type="submit"
+            disabled={isLoading}
             className={`w-full rounded-xl py-3 text-sm font-semibold text-white shadow-lg flex items-center justify-center space-x-2 mt-6 transition-all ${
+              isLoading ? 'opacity-70 cursor-not-allowed' : ''
+            } ${
               selectedRole === 'admin'
                 ? 'bg-violet-600 hover:bg-violet-700 shadow-violet-600/30'
                 : 'btn-primary'
             }`}
           >
-            {selectedRole === 'admin' ? <ShieldCheck className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
-            <span>{selectedRole === 'admin' ? 'Login as Administrator' : 'Login to Judge Portal'}</span>
+            {isLoading ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : selectedRole === 'admin' ? (
+              <ShieldCheck className="h-4 w-4" />
+            ) : (
+              <LogIn className="h-4 w-4" />
+            )}
+            <span>
+              {isLoading
+                ? 'Authenticating...'
+                : selectedRole === 'admin'
+                ? 'Login as Administrator'
+                : 'Login to Judge Portal'}
+            </span>
           </button>
         </form>
 

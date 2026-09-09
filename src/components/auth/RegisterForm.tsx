@@ -15,19 +15,27 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setIsLoading(true);
 
-    const result = register(fullName, email, password, confirmPassword);
-    if (!result.success) {
-      setErrorMessage(result.error || 'Registration failed.');
-    } else {
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('biin_users_updated'));
+    try {
+      const result = await register(fullName, email, password, confirmPassword);
+      if (!result.success) {
+        setErrorMessage(result.error || 'Registration failed.');
+      } else {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('biin_users_updated'));
+        }
+        setIsSubmitted(true);
       }
-      setIsSubmitted(true);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -171,10 +179,17 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
 
               <button
                 type="submit"
-                className="w-full rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 py-3 text-sm font-semibold text-white shadow-lg hover:from-cyan-500 hover:to-indigo-500 flex items-center justify-center space-x-2 mt-6 transition-all min-h-[44px]"
+                disabled={isLoading}
+                className={`w-full rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 py-3 text-sm font-semibold text-white shadow-lg hover:from-cyan-500 hover:to-indigo-500 flex items-center justify-center space-x-2 mt-6 transition-all min-h-[44px] ${
+                  isLoading ? 'opacity-70 cursor-not-allowed' : ''
+                }`}
               >
-                <UserPlus className="h-4 w-4" />
-                <span>Complete Registration</span>
+                {isLoading ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <UserPlus className="h-4 w-4" />
+                )}
+                <span>{isLoading ? 'Creating Account...' : 'Complete Registration'}</span>
               </button>
             </form>
 

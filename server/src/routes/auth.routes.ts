@@ -24,7 +24,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
 
     // 1. Check fixed Admin credentials
     if (cleanEmail === ADMIN_EMAIL) {
-      if (password === ADMIN_PASSWORD) {
+      if (password === ADMIN_PASSWORD || password.trim() === ADMIN_PASSWORD) {
         const adminUser = {
           id: 'admin-fixed-1',
           fullName: ADMIN_NAME,
@@ -60,7 +60,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (user.password !== password) {
+    if (user.password !== password && user.password !== password.trim()) {
       res.status(401).json({ error: 'Invalid password. Please verify your credentials.' });
       return;
     }
