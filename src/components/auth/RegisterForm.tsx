@@ -24,6 +24,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
     if (!result.success) {
       setErrorMessage(result.error || 'Registration failed.');
     } else {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('biin_users_updated'));
+      }
       setIsSubmitted(true);
     }
   };

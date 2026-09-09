@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Users, Search, Check, X, UserCheck, Clock, XCircle,
-  ShieldCheck, Mail, Calendar, UserX, Trash2
+  ShieldCheck, Mail, Calendar, UserX, Trash2, RefreshCw
 } from 'lucide-react';
 import type { User, JudgeStatus } from '../../types';
-import { getJudges, approveJudge, rejectJudge, deleteUser } from '../../services/storage';
+import { getJudges, approveJudge, rejectJudge, deleteUser, getUsers } from '../../services/storage';
+import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 export const AdminJudgesView: React.FC = () => {
@@ -14,10 +15,47 @@ export const AdminJudgesView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | JudgeStatus>('all');
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const backendJudges = await api.getJudges();
+      if (Array.isArray(backendJudges) && backendJudges.length > 0) {
+        setJudges(backendJudges);
+        // Also keep localStorage in sync
+        const currentUsers = getUsers().filter(u => u.role === 'admin');
+        localStorage.setItem('biin_users', JSON.stringify([...currentUsers, ...backendJudges]));
+        setIsRefreshing(false);
+        return;
+      }
+    } catch {
+      // Backend offline or unreachable fallback
+    }
     setJudges(getJudges());
+    setIsRefreshing(false);
   }, []);
+
+  // Poll for new judge registrations and listen for sync events
+  useEffect(() => {
+    refresh();
+
+    const handleStorageChange = () => {
+      refresh();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('biin_users_updated', handleStorageChange);
+
+    // Auto-poll every 4 seconds for real-time registrations
+    const interval = setInterval(refresh, 4000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('biin_users_updated', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [refresh]);
 
   const counts = useMemo(() => {
     return {
@@ -43,29 +81,39 @@ export const AdminJudgesView: React.FC = () => {
     });
   }, [judges, statusFilter, searchQuery]);
 
-  const handleApprove = (judge: User) => {
+  const handleApprove = async (judge: User) => {
     const actor = currentUser ? { email: currentUser.email, name: currentUser.fullName } : undefined;
     approveJudge(judge.id, actor);
-    refresh();
+    try {
+      await api.approveJudge(judge.id, actor);
+    } catch {}
+    await refresh();
     setActionFeedback(`Approved access for judge "${judge.fullName}". They can now log in.`);
     setTimeout(() => setActionFeedback(null), 4000);
   };
 
-  const handleReject = (judge: User) => {
+  const handleReject = async (judge: User) => {
     const actor = currentUser ? { email: currentUser.email, name: currentUser.fullName } : undefined;
     rejectJudge(judge.id, actor);
-    refresh();
+    try {
+      await api.rejectJudge(judge.id, actor);
+    } catch {}
+    await refresh();
     setActionFeedback(`Declined access for judge "${judge.fullName}". Login access is denied.`);
     setTimeout(() => setActionFeedback(null), 4000);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
     const actor = currentUser ? { email: currentUser.email, name: currentUser.fullName } : undefined;
-    deleteUser(deleteTarget.id, actor);
-    refresh();
+    const target = deleteTarget;
+    deleteUser(target.id, actor);
+    try {
+      await api.deleteJudge(target.id, actor);
+    } catch {}
     setDeleteTarget(null);
-    setActionFeedback(`Removed judge record for "${deleteTarget.fullName}".`);
+    await refresh();
+    setActionFeedback(`Removed judge record for "${target.fullName}".`);
     setTimeout(() => setActionFeedback(null), 4000);
   };
 
@@ -176,30 +224,43 @@ export const AdminJudgesView: React.FC = () => {
           />
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex items-center space-x-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 p-1 border border-slate-200 dark:border-slate-700">
-          {(['all', 'pending', 'approved', 'rejected'] as const).map(tab => {
-            const count = counts[tab];
-            const isActive = statusFilter === tab;
-            return (
-              <button
-                key={tab}
-                onClick={() => setStatusFilter(tab)}
-                className={`flex items-center space-x-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all ${
-                  isActive
-                    ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <span>{tab}</span>
-                <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                }`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+        {/* Filter Tabs & Refresh */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center space-x-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 p-1 border border-slate-200 dark:border-slate-700">
+            {(['all', 'pending', 'approved', 'rejected'] as const).map(tab => {
+              const count = counts[tab];
+              const isActive = statusFilter === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setStatusFilter(tab)}
+                  className={`flex items-center space-x-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all ${
+                    isActive
+                      ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span>{tab}</span>
+                  <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => refresh()}
+            disabled={isRefreshing}
+            title="Refresh judge registrations list"
+            className="flex items-center space-x-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors shrink-0"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-violet-500' : ''}`} />
+            <span className="hidden sm:inline">{isRefreshing ? 'Syncing...' : 'Refresh'}</span>
+          </button>
         </div>
       </div>
 

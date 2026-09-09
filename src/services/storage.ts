@@ -300,6 +300,9 @@ export const syncWithBackend = async (): Promise<boolean> => {
       const existing = getUsers().filter(u => u.role === 'admin');
       const combined = [...existing, ...judgesRes.value];
       localStorage.setItem(USERS_KEY, JSON.stringify(combined));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('biin_users_updated'));
+      }
     }
     if (roomsRes.status === 'fulfilled' && Array.isArray(roomsRes.value) && roomsRes.value.length > 0) {
       localStorage.setItem(ROOMS_KEY, JSON.stringify(roomsRes.value));
@@ -530,6 +533,9 @@ export const saveUser = (user: User, actor?: { email: string; name: string }): v
 
   users.push(safeUser);
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('biin_users_updated'));
+  }
   
   // Forward to backend API
   api.register(safeUser.fullName, safeUser.email, safeUser.password || 'password123').catch(() => {});
@@ -545,6 +551,9 @@ export const approveJudge = (judgeId: string, actor?: { email: string; name: str
   if (idx >= 0) {
     users[idx] = { ...users[idx], status: 'approved' };
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('biin_users_updated'));
+    }
     api.approveJudge(judgeId, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'APPROVE_JUDGE', 'judge', `Approved judge registration for ${users[idx].fullName} (${users[idx].email}).`);
@@ -558,6 +567,9 @@ export const rejectJudge = (judgeId: string, actor?: { email: string; name: stri
   if (idx >= 0) {
     users[idx] = { ...users[idx], status: 'rejected' };
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('biin_users_updated'));
+    }
     api.rejectJudge(judgeId, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'REJECT_JUDGE', 'judge', `Rejected judge registration for ${users[idx].fullName} (${users[idx].email}).`);
@@ -575,6 +587,9 @@ export const updateUser = (updated: User, actor?: { email: string; name: string 
     };
     users[idx] = safeUpdated;
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('biin_users_updated'));
+    }
     if (actor) {
       logAuditAction(actor.email, actor.name, 'UPDATE_USER', 'judge', `Updated details for ${safeUpdated.fullName} (${safeUpdated.email}).`);
     }
@@ -589,6 +604,9 @@ export const deleteUser = (id: string, actor?: { email: string; name: string }):
   }
   const remaining = users.filter(u => u.id !== id);
   localStorage.setItem(USERS_KEY, JSON.stringify(remaining));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('biin_users_updated'));
+  }
 
   api.deleteJudge(id, actor).catch(() => {});
 

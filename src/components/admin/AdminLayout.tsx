@@ -30,6 +30,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const { currentUser, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [backendStatus, setBackendStatus] = useState<{ connected: boolean; type: string } | null>(null);
+  const [pendingJudgesCount, setPendingJudgesCount] = useState(0);
 
   useEffect(() => {
     const checkStatus = () => {
@@ -37,9 +38,39 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         .then(res => setBackendStatus({ connected: res.database?.connected ?? true, type: res.database?.type || 'postgres' }))
         .catch(() => setBackendStatus({ connected: false, type: 'offline' }));
     };
+
+    const updatePendingCount = async () => {
+      try {
+        const judges = await api.getJudges();
+        if (Array.isArray(judges)) {
+          setPendingJudgesCount(judges.filter(j => (j.status || 'approved') === 'pending').length);
+          return;
+        }
+      } catch {}
+      try {
+        const raw = localStorage.getItem('biin_users');
+        if (raw) {
+          const list = JSON.parse(raw);
+          setPendingJudgesCount(list.filter((j: any) => j.role === 'judge' && (j.status || 'approved') === 'pending').length);
+        }
+      } catch {}
+    };
+
     checkStatus();
-    const interval = setInterval(checkStatus, 15000);
-    return () => clearInterval(interval);
+    updatePendingCount();
+
+    window.addEventListener('storage', updatePendingCount);
+    window.addEventListener('biin_users_updated', updatePendingCount);
+
+    const intervalStatus = setInterval(checkStatus, 15000);
+    const intervalPending = setInterval(updatePendingCount, 4000);
+
+    return () => {
+      clearInterval(intervalStatus);
+      clearInterval(intervalPending);
+      window.removeEventListener('storage', updatePendingCount);
+      window.removeEventListener('biin_users_updated', updatePendingCount);
+    };
   }, []);
 
   const navItems: {
@@ -80,12 +111,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           <nav className="hidden md:flex items-center gap-1 rounded-2xl bg-slate-100 dark:bg-slate-800/90 p-1 border border-slate-200/80 dark:border-slate-700/70 shadow-inner shrink-0">
             {navItems.map(({ id, shortLabel, icon: Icon }) => {
               const isActive = currentTab === id;
+              const hasPending = id === 'judges' && pendingJudgesCount > 0;
               return (
                 <button
                   key={id}
                   id={`admin-nav-${id}`}
                   onClick={() => onSelectTab(id)}
-                  className={`flex items-center gap-1.5 rounded-xl px-2.5 lg:px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
+                  className={`relative flex items-center gap-1.5 rounded-xl px-2.5 lg:px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
                     isActive
                       ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30 font-bold'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700/70 hover:text-slate-900 dark:hover:text-white'
@@ -93,6 +125,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0" />
                   <span>{shortLabel}</span>
+                  {hasPending && (
+                    <span className="flex items-center justify-center rounded-full bg-amber-500 text-slate-950 font-extrabold text-[10px] px-1.5 py-0.2 min-w-[16px] shadow-sm animate-pulse">
+                      {pendingJudgesCount}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -174,6 +211,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         <div className="flex md:hidden items-center gap-2 overflow-x-auto border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 px-3 py-2 no-scrollbar text-xs backdrop-blur-sm">
           {navItems.map(({ id, shortLabel, icon: Icon }) => {
             const isActive = currentTab === id;
+            const hasPending = id === 'judges' && pendingJudgesCount > 0;
             return (
               <button
                 key={id}
@@ -186,6 +224,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" />
                 <span>{shortLabel}</span>
+                {hasPending && (
+                  <span className="flex items-center justify-center rounded-full bg-amber-500 text-slate-950 font-extrabold text-[10px] px-1.5 py-0.2 min-w-[16px] shadow-sm animate-pulse">
+                    {pendingJudgesCount}
+                  </span>
+                )}
               </button>
             );
           })}

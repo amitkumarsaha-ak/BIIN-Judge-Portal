@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   ShieldCheck, FolderGit2, Users, CheckSquare,
   Trophy, Lock, Unlock, Plus, History, ArrowRight,
@@ -9,6 +9,7 @@ import {
   getSystemSettings, toggleEvaluationLock, toggleFinalResultLock,
   getAuditLogs
 } from '../../services/storage';
+import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import type { AdminTab } from './AdminLayout';
 
@@ -27,15 +28,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Use state so lock toggles trigger a re-render
   const [settings, setSettings] = useState(() => getSystemSettings());
+  const [judges, setJudges] = useState(() => getJudges());
 
-  const refreshData = useCallback(() => {
+  const refreshData = useCallback(async () => {
     setSettings(getSystemSettings());
+    try {
+      const backendJudges = await api.getJudges();
+      if (Array.isArray(backendJudges)) {
+        setJudges(backendJudges);
+        return;
+      }
+    } catch {}
+    setJudges(getJudges());
   }, []);
 
+  useEffect(() => {
+    refreshData();
+    window.addEventListener('storage', refreshData);
+    window.addEventListener('biin_users_updated', refreshData);
+    const interval = setInterval(refreshData, 5000);
+    return () => {
+      window.removeEventListener('storage', refreshData);
+      window.removeEventListener('biin_users_updated', refreshData);
+      clearInterval(interval);
+    };
+  }, [refreshData]);
+
   const projects = getProjects();
-  const judges = getJudges();
   const evaluations = getEvaluations();
   const auditLogs = getAuditLogs().slice(0, 5);
+
+  const pendingJudgesCount = judges.filter(j => (j.status || 'approved') === 'pending').length;
+  const approvedJudgesCount = judges.filter(j => (j.status || 'approved') === 'approved').length;
 
   const totalActiveProjects = projects.filter(p => p.status === 'active').length;
   const totalEvaluationsCount = evaluations.length;
@@ -123,8 +147,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <span className="text-[11px] font-semibold uppercase tracking-wider">Judges</span>
             <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           </div>
-          <p className="font-heading text-3xl font-extrabold text-slate-900 dark:text-white">{judges.length}</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">Configured Personas</p>
+          <div className="flex items-baseline justify-between">
+            <p className="font-heading text-3xl font-extrabold text-slate-900 dark:text-white">{judges.length}</p>
+            {pendingJudgesCount > 0 && (
+              <span className="rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-extrabold text-xs px-2 py-0.5 border border-amber-300 dark:border-amber-700/60 animate-pulse">
+                {pendingJudgesCount} Pending
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
+            {approvedJudgesCount} Approved {pendingJudgesCount > 0 ? `· ${pendingJudgesCount} Awaiting Review` : ''}
+          </p>
         </div>
 
         <div
