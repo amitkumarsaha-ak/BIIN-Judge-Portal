@@ -120,7 +120,7 @@ export interface Evaluation {
   updatedAt?: string;
 }
 
-export type AwardDesignation = 'Champion' | 'Winner' | 'Merit' | 'Participant';
+export type AwardDesignation = 'Champion' | 'Winner' | 'Merit' | 'No Award' | 'Participant';
 
 export interface JudgeScoreBreakdown {
   judgeEmail: string;

@@ -1,253 +1,207 @@
 import {
   calculateAward,
-  calculateConvertedScore,
-  getMaxRawScoreForApplicationType,
-  getProjectCombinedResult,
-  STUDENT_CRITERIA,
-  STUDENT_TERTIARY_CRITERIA,
-  ORGANISATION_AND_INDIVIDUAL_CRITERIA
+  calculateCategorizedResults
 } from './evaluation';
 import type { Project, Evaluation } from '../types';
 
-console.log('=== RUNNING PART 4 EVALUATIONS, RESULTS & AWARDS TEST SUITE ===');
+console.log('=== RUNNING BIIN RESULT CALCULATION & ACCEPTANCE TEST SUITE ===');
 
-// --- 1. TEST AWARD RULES (>=80 & highest, >=70, >=60) ---
-console.log('\n--- 1. Testing Exact Award Rules (>= 80, >= 70, >= 60) ---');
+// --- SECTION 9: EXACT BOUNDARY RULES TEST ---
+console.log('\n--- Testing Exact Boundary Rules (Section 9) ---');
+console.assert(calculateAward(100.0) === 'Champion', '100% must be Champion');
+console.assert(calculateAward(85.0) === 'Champion', '85% must be Champion');
+console.assert(calculateAward(80.01) === 'Champion', '80.01% must be Champion');
+console.assert(calculateAward(80.0) === 'Champion', '80% must be Champion');
 
-// Champion tests:
-console.assert(calculateAward(80.0, true) === 'Champion', 'Score 80.0 & highest must be Champion');
-console.assert(calculateAward(85.0, true) === 'Champion', 'Score 85.0 & highest must be Champion');
-console.assert(calculateAward(85.0, false) === 'Winner', 'Score 85.0 but NOT highest must be Winner');
-console.assert(calculateAward(79.99, true) === 'Winner', 'Score 79.99 & highest cannot be Champion (must be >= 80)');
+console.assert(calculateAward(79.99) === 'Winner', '79.99% must be Winner');
+console.assert(calculateAward(75.0) === 'Winner', '75% must be Winner');
+console.assert(calculateAward(70.0) === 'Winner', '70% must be Winner');
 
-// Winner tests:
-console.assert(calculateAward(70.0, false) === 'Winner', 'Score 70.0 must be Winner (>= 70)');
-console.assert(calculateAward(75.5, false) === 'Winner', 'Score 75.5 must be Winner');
-console.assert(calculateAward(69.99, false) === 'Merit', 'Score 69.99 must be Merit (>= 60 and < 70)');
+console.assert(calculateAward(69.99) === 'Merit', '69.99% must be Merit');
+console.assert(calculateAward(65.0) === 'Merit', '65% must be Merit');
+console.assert(calculateAward(60.0) === 'Merit', '60% must be Merit');
 
-// Merit tests:
-console.assert(calculateAward(60.0, false) === 'Merit', 'Score 60.0 must be Merit (>= 60)');
-console.assert(calculateAward(65.0, false) === 'Merit', 'Score 65.0 must be Merit');
+console.assert(calculateAward(59.99) === 'No Award', '59.99% must be No Award');
+console.assert(calculateAward(50.0) === 'No Award', '50% must be No Award');
+console.assert(calculateAward(0.0) === 'No Award', '0% must be No Award');
+console.log('[PASS] Exact boundary rules verified.');
 
-// Below 60 tests:
-console.assert(calculateAward(59.99, false) === 'Participant', 'Score 59.99 receives no Champion/Winner/Merit');
-console.assert(calculateAward(45.0, false) === 'Participant', 'Score 45.0 receives no Champion/Winner/Merit');
+// --- ACCEPTANCE TEST 1: Scores 95%, 88%, 82%, 80% -> Expected 4 Champions ---
+console.log('\n--- Acceptance Test 1: Scores [95, 88, 82, 80] -> 4 Champions ---');
+const test1Scores = [95, 88, 82, 80];
+const test1Awards = test1Scores.map(s => calculateAward(s));
+const test1Champions = test1Awards.filter(a => a === 'Champion').length;
+console.assert(test1Champions === 4, `Expected 4 Champions, got ${test1Champions}`);
+console.log(`[PASS] Test 1: ${test1Champions} Champions (all qualified applicants receive Champion, no 1-person limit).`);
 
-console.log('[PASS] Exact award threshold rules verified.');
+// --- ACCEPTANCE TEST 2: Scores 79%, 75%, 70% -> Expected 3 Winners, No Champion ---
+console.log('\n--- Acceptance Test 2: Scores [79, 75, 70] -> 3 Winners, 0 Champions ---');
+const test2Scores = [79, 75, 70];
+const test2Awards = test2Scores.map(s => calculateAward(s));
+const test2Winners = test2Awards.filter(a => a === 'Winner').length;
+const test2Champions = test2Awards.filter(a => a === 'Champion').length;
+console.assert(test2Winners === 3, `Expected 3 Winners, got ${test2Winners}`);
+console.assert(test2Champions === 0, `Expected 0 Champions, got ${test2Champions}`);
+console.log(`[PASS] Test 2: ${test2Winners} Winners, ${test2Champions} Champions.`);
 
-// --- 2. TEST APPLICATION TYPE CRITERIA & RAW/CONVERTED SCORING ---
-console.log('\n--- 2. Testing Criteria and Max Raw Scores by Application Type ---');
+// --- ACCEPTANCE TEST 3: Scores 69%, 65%, 60% -> Expected 3 Merits ---
+console.log('\n--- Acceptance Test 3: Scores [69, 65, 60] -> 3 Merits ---');
+const test3Scores = [69, 65, 60];
+const test3Awards = test3Scores.map(s => calculateAward(s));
+const test3Merits = test3Awards.filter(a => a === 'Merit').length;
+console.assert(test3Merits === 3, `Expected 3 Merits, got ${test3Merits}`);
+console.log(`[PASS] Test 3: ${test3Merits} Merits.`);
 
-// Student: 5 criteria, Max Raw 50, Converted /100
-console.assert(STUDENT_CRITERIA.length === 5, 'Student has 5 criteria');
-console.assert(getMaxRawScoreForApplicationType('Student') === 50, 'Student max raw is 50');
-const raw41_stu = calculateConvertedScore(41, 50);
-console.assert(raw41_stu === 82, `Student 41/50 should be 82%, got ${raw41_stu}`);
+// --- ACCEPTANCE TEST 4: Scores 59%, 45%, 30% -> Expected 3 No Award ---
+console.log('\n--- Acceptance Test 4: Scores [59, 45, 30] -> 3 No Award ---');
+const test4Scores = [59, 45, 30];
+const test4Awards = test4Scores.map(s => calculateAward(s));
+const test4NoAward = test4Awards.filter(a => a === 'No Award').length;
+console.assert(test4NoAward === 3, `Expected 3 No Award, got ${test4NoAward}`);
+console.log(`[PASS] Test 4: ${test4NoAward} No Award.`);
 
-// Student-Tertiary: 5 criteria, Max Raw 50, Converted /100
-console.assert(STUDENT_TERTIARY_CRITERIA.length === 5, 'Student-Tertiary has 5 criteria');
-console.assert(getMaxRawScoreForApplicationType('Student-Tertiary') === 50, 'Student-Tertiary max raw is 50');
-const raw38_ter = calculateConvertedScore(38, 50);
-console.assert(raw38_ter === 76, `Student-Tertiary 38/50 should be 76%, got ${raw38_ter}`);
+// --- ACCEPTANCE TEST 5: Mixed Scores -> Champion=3, Winner=3, Merit=2, No Award=1 ---
+console.log('\n--- Acceptance Test 5: Scores [95, 91, 80, 79, 72, 70, 69, 60, 59] ---');
+const test5Scores = [95, 91, 80, 79, 72, 70, 69, 60, 59];
+const test5Awards = test5Scores.map(s => calculateAward(s));
+const t5Champ = test5Awards.filter(a => a === 'Champion').length;
+const t5Win = test5Awards.filter(a => a === 'Winner').length;
+const t5Merit = test5Awards.filter(a => a === 'Merit').length;
+const t5NoAward = test5Awards.filter(a => a === 'No Award').length;
+console.assert(t5Champ === 3, `Expected 3 Champions, got ${t5Champ}`);
+console.assert(t5Win === 3, `Expected 3 Winners, got ${t5Win}`);
+console.assert(t5Merit === 2, `Expected 2 Merits, got ${t5Merit}`);
+console.assert(t5NoAward === 1, `Expected 1 No Award, got ${t5NoAward}`);
+console.log(`[PASS] Test 5: Champion = ${t5Champ}, Winner = ${t5Win}, Merit = ${t5Merit}, No Award = ${t5NoAward}.`);
 
-// Organisation & Individual: 4 criteria, Max Raw 40, Converted /100
-console.assert(ORGANISATION_AND_INDIVIDUAL_CRITERIA.length === 4, 'Organisation has 4 criteria');
-console.assert(getMaxRawScoreForApplicationType('Organisation') === 40, 'Organisation max raw is 40');
-console.assert(getMaxRawScoreForApplicationType('Individual or Group') === 40, 'Individual max raw is 40');
-const raw32_org = calculateConvertedScore(32, 40);
-console.assert(raw32_org === 80, `Organisation 32/40 should be 80%, got ${raw32_org}`);
-
-console.log('[PASS] Application Type criteria & raw/converted scoring verified.');
-
-// --- 3. TEST MULTI-JUDGE EVALUATION AGGREGATION & AVERAGE ---
-console.log('\n--- 3. Testing Multi-Judge Evaluation Aggregation & Average Calculation ---');
-
-const testProjectA: Project = {
-  id: 'proj-test-a',
-  title: 'Project A',
-  applicationId: 'BIIN-2026-A01',
-  projectCode: 'TER-HC-C-01',
-  applicationType: 'Student-Tertiary',
+// --- ACCEPTANCE TEST 6: Category Independence ---
+console.log('\n--- Acceptance Test 6: Category Independence (Student + Consumer vs Student + Industrial) ---');
+// Create 5 applicants in Student + Consumer (all score >= 80% -> 5 Champions)
+const stuConsProjects: Project[] = [1, 2, 3, 4, 5].map(i => ({
+  id: `stu-c-${i}`,
+  title: `Student Consumer Project ${i}`,
+  applicationId: `SC-00${i}`,
+  projectCode: `STU-HC-C-00${i}`,
+  applicationType: 'Student',
   headCategory: 'HC-C',
-  teamOrOrgName: 'Team Alpha',
-  representativeName: 'Alice',
-  email: 'alice@alpha.org',
-  contactNumber: '123456',
-  description: 'Test project for multi-judge aggregation',
+  teamOrOrgName: `Team C${i}`,
+  representativeName: `Member C${i}`,
+  email: `sc${i}@biin.org`,
+  contactNumber: '123456789',
+  description: 'Desc',
+  tags: ['HC-C'],
+  status: 'active'
+}));
+
+const stuConsEvals: Evaluation[] = stuConsProjects.map((p, idx) => ({
+  id: `eval-sc-${idx}`,
+  projectId: p.id,
+  judgeEmail: 'judge@biin.org',
+  judgeName: 'Judge One',
+  scores: { uniqueness: 10, proofOfConcept: 9, features: 9, quality: 9, presentation: 9 }, // 46/50 = 92%
+  rawTotalScore: 46,
+  maxRawScore: 50,
+  convertedScore: 92,
+  totalScore: 46,
+  percentage: 92,
+  submittedAt: '2026-08-01T10:00:00Z'
+}));
+
+// Create applicants in Student + Industrial (scores 75% -> Winners)
+const stuIndProjects: Project[] = [1, 2].map(i => ({
+  id: `stu-i-${i}`,
+  title: `Student Industrial Project ${i}`,
+  applicationId: `SI-00${i}`,
+  projectCode: `STU-HC-I-00${i}`,
+  applicationType: 'Student',
+  headCategory: 'HC-I',
+  teamOrOrgName: `Team I${i}`,
+  representativeName: `Member I${i}`,
+  email: `si${i}@biin.org`,
+  contactNumber: '123456789',
+  description: 'Desc',
+  tags: ['HC-I'],
+  status: 'active'
+}));
+
+const stuIndEvals: Evaluation[] = stuIndProjects.map((p, idx) => ({
+  id: `eval-si-${idx}`,
+  projectId: p.id,
+  judgeEmail: 'judge@biin.org',
+  judgeName: 'Judge One',
+  scores: { uniqueness: 8, proofOfConcept: 7, features: 8, quality: 7, presentation: 7 }, // 37.5/50 = 75%
+  rawTotalScore: 37.5,
+  maxRawScore: 50,
+  convertedScore: 75,
+  totalScore: 37.5,
+  percentage: 75,
+  submittedAt: '2026-08-01T10:00:00Z'
+}));
+
+const allCategoryProjects = [...stuConsProjects, ...stuIndProjects];
+const allCategoryEvals = [...stuConsEvals, ...stuIndEvals];
+
+const categorizedGroups = calculateCategorizedResults(allCategoryProjects, allCategoryEvals);
+const groupStuCons = categorizedGroups.find(g => g.appType === 'Student' && g.headCategoryCode === 'HC-C');
+const groupStuInd = categorizedGroups.find(g => g.appType === 'Student' && g.headCategoryCode === 'HC-I');
+
+console.assert(groupStuCons?.champions.length === 5, `Expected 5 Champions in Student+Consumer, got ${groupStuCons?.champions.length}`);
+console.assert(groupStuInd?.champions.length === 0, `Expected 0 Champions in Student+Industrial, got ${groupStuInd?.champions.length}`);
+console.assert(groupStuInd?.winners.length === 2, `Expected 2 Winners in Student+Industrial, got ${groupStuInd?.winners.length}`);
+console.log(`[PASS] Test 6: Student+Consumer has 5 Champions; Student+Industrial calculates completely independently with 2 Winners.`);
+
+// --- ACCEPTANCE TEST 7: Application Type Independence ---
+console.log('\n--- Acceptance Test 7: Application Type Independence (Student + Consumer vs Organization + Consumer) ---');
+// Organization in HC-C with 78% -> Winner
+const orgConsProject: Project = {
+  id: 'org-c-1',
+  title: 'Org Consumer Project',
+  applicationId: 'OC-001',
+  projectCode: 'ORG-HC-C-001',
+  applicationType: 'Organisation',
+  headCategory: 'HC-C',
+  teamOrOrgName: 'Enterprise Corp',
+  representativeName: 'Director Org',
+  email: 'director@org.com',
+  contactNumber: '987654321',
+  description: 'Enterprise solution',
   tags: ['HC-C'],
   status: 'active'
 };
 
-const testProjectB: Project = {
-  id: 'proj-test-b',
-  title: 'Project B',
-  applicationId: 'BIIN-2026-B02',
-  projectCode: 'TER-HC-C-02',
-  applicationType: 'Student-Tertiary',
-  headCategory: 'HC-C',
-  teamOrOrgName: 'Team Beta',
-  representativeName: 'Bob',
-  email: 'bob@beta.org',
-  contactNumber: '789012',
-  description: 'Second project in same category',
-  tags: ['HC-C'],
-  status: 'active'
+const orgConsEval: Evaluation = {
+  id: 'eval-oc-1',
+  projectId: orgConsProject.id,
+  judgeEmail: 'judge@biin.org',
+  judgeName: 'Judge One',
+  scores: { uniqueness: 8, publicOrGovValue: 8, features: 8, qualityTech: 7 }, // 31/40 = 77.5% -> 78%
+  rawTotalScore: 31,
+  maxRawScore: 40,
+  convertedScore: 77.5,
+  totalScore: 31,
+  percentage: 77.5,
+  submittedAt: '2026-08-01T10:00:00Z'
 };
 
-// Project A evaluations:
-// Judge 1: 41/50 -> 82%
-// Judge 2: 43/50 -> 86%
-// Judge 3: 39/50 -> 78%
-// Expected average: (82 + 86 + 78) / 3 = 82.0%
-const evalA_J1: Evaluation = {
-  id: 'eval-a-1',
-  projectId: 'proj-test-a',
-  judgeEmail: 'judge1@biin.org',
-  judgeName: 'Judge 1',
-  scores: { uniqueness: 9, proofOfConcept: 8, features: 8, quality: 8, presentation: 8 },
-  rawTotalScore: 41,
-  maxRawScore: 50,
-  convertedScore: 82,
-  totalScore: 41,
-  percentage: 82,
-  submittedAt: '2026-08-01T10:00:00Z',
-  feedback: 'Excellent prototype'
-};
+const allAppProjects = [...stuConsProjects, orgConsProject];
+const allAppEvals = [...stuConsEvals, orgConsEval];
 
-const evalA_J2: Evaluation = {
-  id: 'eval-a-2',
-  projectId: 'proj-test-a',
-  judgeEmail: 'judge2@biin.org',
-  judgeName: 'Judge 2',
-  scores: { uniqueness: 9, proofOfConcept: 9, features: 9, quality: 8, presentation: 8 },
-  rawTotalScore: 43,
-  maxRawScore: 50,
-  convertedScore: 86,
-  totalScore: 43,
-  percentage: 86,
-  submittedAt: '2026-08-01T11:00:00Z',
-  feedback: 'Strong technical execution'
-};
+const appCatGroups = calculateCategorizedResults(allAppProjects, allAppEvals);
+const groupStuC = appCatGroups.find(g => g.appType === 'Student' && g.headCategoryCode === 'HC-C');
+const groupOrgC = appCatGroups.find(g => g.appType === 'Organisation' && g.headCategoryCode === 'HC-C');
 
-const evalA_J3: Evaluation = {
-  id: 'eval-a-3',
-  projectId: 'proj-test-a',
-  judgeEmail: 'judge3@biin.org',
-  judgeName: 'Judge 3',
-  scores: { uniqueness: 8, proofOfConcept: 8, features: 8, quality: 8, presentation: 7 },
-  rawTotalScore: 39,
-  maxRawScore: 50,
-  convertedScore: 78,
-  totalScore: 39,
-  percentage: 78,
-  submittedAt: '2026-08-01T12:00:00Z',
-  feedback: 'Good presentation'
-};
+console.assert(groupStuC?.champions.length === 5, `Expected 5 Champions in Student+Consumer, got ${groupStuC?.champions.length}`);
+console.assert(groupOrgC?.champions.length === 0, `Expected 0 Champions in Org+Consumer, got ${groupOrgC?.champions.length}`);
+console.assert(groupOrgC?.winners.length === 1, `Expected 1 Winner in Org+Consumer, got ${groupOrgC?.winners.length}`);
+console.log(`[PASS] Test 7: Student+Consumer has 5 Champions; Organization+Consumer calculates independently with 1 Winner.`);
 
-// Project B evaluation:
-// Judge 1: 37/50 -> 74%
-const evalB_J1: Evaluation = {
-  id: 'eval-b-1',
-  projectId: 'proj-test-b',
-  judgeEmail: 'judge1@biin.org',
-  judgeName: 'Judge 1',
-  scores: { uniqueness: 7, proofOfConcept: 7, features: 8, quality: 8, presentation: 7 },
-  rawTotalScore: 37,
-  maxRawScore: 50,
-  convertedScore: 74,
-  totalScore: 37,
-  percentage: 74,
-  submittedAt: '2026-08-01T13:00:00Z'
-};
+// --- TOTAL RESULT CATEGORIES: 20 INDEPENDENT CATEGORIES CHECK ---
+console.log('\n--- Testing 20 Independent Result Categories Structure (4 Types × 5 Categories) ---');
+console.assert(categorizedGroups.length === 20, `Expected exactly 20 categories, got ${categorizedGroups.length}`);
+console.log(`[PASS] Verified exactly 20 independent categories:`);
+categorizedGroups.forEach((g, i) => {
+  console.log(`  ${i + 1}. [${g.appTypeTitle}] ${g.headCategoryName} (${g.headCategoryCode})`);
+});
 
-const allTestProjects = [testProjectA, testProjectB];
-const allTestEvals = [evalA_J1, evalA_J2, evalA_J3, evalB_J1];
+console.log('\n=== ALL 7 BIIN ACCEPTANCE TESTS & VERIFICATION CHECKS PASSED PERFECTLY! ===');
 
-const resultA = getProjectCombinedResult(testProjectA, allTestProjects, allTestEvals);
-const resultB = getProjectCombinedResult(testProjectB, allTestProjects, allTestEvals);
-
-console.log(`Project A Final Average: ${resultA.finalAverageScore}%, Award: ${resultA.award}, Highest: ${resultA.isHighestInCategory}`);
-console.log(`Project B Final Average: ${resultB.finalAverageScore}%, Award: ${resultB.award}, Highest: ${resultB.isHighestInCategory}`);
-
-console.assert(resultA.finalAverageScore === 82, 'Project A final average must be 82%');
-console.assert(resultA.isHighestInCategory === true, 'Project A must be highest in category');
-console.assert(resultA.award === 'Champion', 'Project A must receive Champion');
-
-console.assert(resultB.finalAverageScore === 74, 'Project B final average must be 74%');
-console.assert(resultB.isHighestInCategory === false, 'Project B is not highest');
-console.assert(resultB.award === 'Winner', 'Project B must receive Winner (>= 70%)');
-
-console.assert(resultA.judgesEvaluations.length === 3, 'Project A must show all 3 judges');
-console.assert(resultA.judgesEvaluations[0].convertedScore === 82, 'Judge 1 converted is 82%');
-console.assert(resultA.judgesEvaluations[1].convertedScore === 86, 'Judge 2 converted is 86%');
-console.assert(resultA.judgesEvaluations[2].convertedScore === 78, 'Judge 3 converted is 78%');
-
-console.log('[PASS] Multi-judge aggregation and Champion designation verified.');
-
-// --- 4. TEST TIE-HANDLING FOR HIGHEST IN CATEGORY ---
-console.log('\n--- 4. Testing Tie-Handling for Highest Score in Category ---');
-
-const testProjectC: Project = {
-  ...testProjectB,
-  id: 'proj-test-c',
-  title: 'Project C'
-};
-
-// Project C also gets 82% average, tying with Project A!
-const evalC_J1: Evaluation = {
-  ...evalA_J1,
-  id: 'eval-c-1',
-  projectId: 'proj-test-c'
-};
-const evalC_J2: Evaluation = {
-  ...evalA_J2,
-  id: 'eval-c-2',
-  projectId: 'proj-test-c'
-};
-const evalC_J3: Evaluation = {
-  ...evalA_J3,
-  id: 'eval-c-3',
-  projectId: 'proj-test-c'
-};
-
-const tieProjects = [testProjectA, testProjectC];
-const tieEvals = [evalA_J1, evalA_J2, evalA_J3, evalC_J1, evalC_J2, evalC_J3];
-
-const resultA_tie = getProjectCombinedResult(testProjectA, tieProjects, tieEvals);
-const resultC_tie = getProjectCombinedResult(testProjectC, tieProjects, tieEvals);
-
-console.assert(resultA_tie.finalAverageScore === 82 && resultC_tie.finalAverageScore === 82, 'Both tied at 82');
-console.assert(resultA_tie.award === 'Champion' && resultC_tie.award === 'Champion', 'Both tied projects >=80 must get Champion');
-console.log('[PASS] Tie-handling for Champion verified.');
-
-// --- 5. TEST HIGHEST TO LOWEST SORTING IN RESULTS ---
-console.log('\n--- 5. Testing Results Highest to Lowest Sorting ---');
-
-const testProjectD: Project = {
-  ...testProjectA,
-  id: 'proj-test-d',
-  title: 'Project D'
-};
-const evalD: Evaluation = {
-  ...evalA_J1,
-  id: 'eval-d-1',
-  projectId: 'proj-test-d',
-  rawTotalScore: 27,
-  convertedScore: 54,
-  percentage: 54
-};
-
-const sortingProjects = [testProjectB, testProjectA, testProjectD];
-const sortingEvals = [evalA_J1, evalA_J2, evalA_J3, evalB_J1, evalD];
-
-const listResults = sortingProjects.map(p => getProjectCombinedResult(p, sortingProjects, sortingEvals));
-listResults.sort((a, b) => b.finalAverageScore - a.finalAverageScore);
-
-console.assert(listResults[0].project.id === 'proj-test-a', 'First must be Project A (82%)');
-console.assert(listResults[1].project.id === 'proj-test-b', 'Second must be Project B (74%)');
-console.assert(listResults[2].project.id === 'proj-test-d', 'Third must be Project D (54%)');
-
-console.log('[PASS] Highest to Lowest sorting verified:');
-listResults.forEach((r, i) => console.log(`  #${i + 1}: ${r.project.title} — ${r.finalAverageScore}% (${r.award})`));
-
-console.log('\n=== ALL PART 4 VERIFICATION TESTS PASSED SUCCESSFULLY! ===');

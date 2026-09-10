@@ -50,7 +50,7 @@ export const HEAD_CATEGORIES: HeadCategory[] = [
   },
   {
     code: 'HC-BS',
-    name: 'Business Service',
+    name: 'Business Services',
     shortCode: 'HC-BS',
     description: 'B2B SaaS, enterprise analytics, fintech payment systems & workflow automation tools.',
     iconName: 'Briefcase',
@@ -58,7 +58,7 @@ export const HEAD_CATEGORIES: HeadCategory[] = [
   },
   {
     code: 'HC-ICS',
-    name: 'Inclusion & Community Service',
+    name: 'Individual & Communication Services',
     shortCode: 'HC-ICS',
     description: 'Assistive tech, digital accessibility, social impact platforms & community welfare solutions.',
     iconName: 'HeartHandshake',

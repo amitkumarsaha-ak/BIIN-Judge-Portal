@@ -168,8 +168,52 @@ export const calculateConvertedScore = (rawTotal: number, maxRawScore: number): 
   return Number((Math.round(converted * 1000) / 1000).toFixed(3));
 };
 
-export const calculateAward = (finalScore: number, isHighestInCategory: boolean): AwardDesignation => {
-  if (finalScore >= 80 && isHighestInCategory) {
+import type { HeadCategoryCode } from '../types';
+
+export const RESULT_APPLICATION_TYPES: { id: ApplicationType; title: string; shortTitle: string }[] = [
+  { id: 'Student', title: 'Student', shortTitle: 'Student' },
+  { id: 'Student-Tertiary', title: 'Student Tertiary (University Level)', shortTitle: 'Student Tertiary' },
+  { id: 'Organisation', title: 'Organization', shortTitle: 'Organization' },
+  { id: 'Individual or Group', title: 'Individual/Group', shortTitle: 'Individual/Group' }
+];
+
+export const RESULT_HEAD_CATEGORIES: { code: HeadCategoryCode; name: string }[] = [
+  { code: 'HC-C', name: 'Consumer' },
+  { code: 'HC-BS', name: 'Business Services' },
+  { code: 'HC-I', name: 'Industrial' },
+  { code: 'HC-PSG', name: 'Public Sector and Government' },
+  { code: 'HC-ICS', name: 'Individual & Communication Services' }
+];
+
+export const canonicalAppType = (type?: string): ApplicationType => {
+  const t = (type || '').toLowerCase().trim();
+  if (t.includes('tertiary') || t === 'student-tertiary') {
+    return 'Student-Tertiary';
+  }
+  if (t === 'student') {
+    return 'Student';
+  }
+  if (t.includes('org')) {
+    return 'Organisation';
+  }
+  if (t.includes('individual') || t.includes('group')) {
+    return 'Individual or Group';
+  }
+  return 'Student';
+};
+
+export const canonicalHeadCategory = (cat?: string): HeadCategoryCode => {
+  const c = (cat || '').toLowerCase().trim();
+  if (c === 'hc-c' || c.includes('consumer')) return 'HC-C';
+  if (c === 'hc-bs' || c.includes('business')) return 'HC-BS';
+  if (c === 'hc-i' || c.includes('industrial')) return 'HC-I';
+  if (c === 'hc-psg' || c.includes('public') || c.includes('government')) return 'HC-PSG';
+  if (c === 'hc-ics' || c.includes('communication') || c.includes('inclusion') || c.includes('community')) return 'HC-ICS';
+  return 'HC-C';
+};
+
+export const calculateAward = (finalScore: number, _isHighestInCategory?: boolean): AwardDesignation => {
+  if (finalScore >= 80) {
     return 'Champion';
   }
   if (finalScore >= 70) {
@@ -178,7 +222,7 @@ export const calculateAward = (finalScore: number, isHighestInCategory: boolean)
   if (finalScore >= 60) {
     return 'Merit';
   }
-  return 'Participant';
+  return 'No Award';
 };
 
 export const getProjectCombinedResult = (
@@ -211,8 +255,11 @@ export const getProjectCombinedResult = (
   }
 
   // Determine highest score in category (combination of ApplicationType and HeadCategory)
+  const projectAppType = canonicalAppType(project.applicationType);
+  const projectHeadCat = canonicalHeadCategory(project.headCategory);
+
   const sameCategoryProjects = allProjects.filter(
-    (p) => p.applicationType === project.applicationType && p.headCategory === project.headCategory
+    (p) => canonicalAppType(p.applicationType) === projectAppType && canonicalHeadCategory(p.headCategory) === projectHeadCat
   );
 
   let categoryMaxScore = 0;
@@ -235,7 +282,7 @@ export const getProjectCombinedResult = (
   const isHighestInCategory =
     finalAverageScore > 0 && Math.abs(finalAverageScore - categoryMaxScore) < 0.001;
 
-  const award = calculateAward(finalAverageScore, isHighestInCategory);
+  const award = calculateAward(finalAverageScore);
 
   return {
     project,
@@ -245,4 +292,63 @@ export const getProjectCombinedResult = (
     award,
     isHighestInCategory
   };
+};
+
+export interface CategoryResultGroup {
+  appType: ApplicationType;
+  appTypeTitle: string;
+  headCategoryCode: HeadCategoryCode;
+  headCategoryName: string;
+  categoryKey: string;
+  totalApplicants: number;
+  champions: CombinedProjectResult[];
+  winners: CombinedProjectResult[];
+  merits: CombinedProjectResult[];
+  noAwards: CombinedProjectResult[];
+  allResults: CombinedProjectResult[];
+}
+
+export const calculateCategorizedResults = (
+  allProjects: Project[],
+  allEvaluations: Evaluation[]
+): CategoryResultGroup[] => {
+  const groups: CategoryResultGroup[] = [];
+
+  for (const app of RESULT_APPLICATION_TYPES) {
+    for (const hc of RESULT_HEAD_CATEGORIES) {
+      // Get all applications matching this applicationType and headCategory
+      const categoryProjects = allProjects.filter(
+        (p) => canonicalAppType(p.applicationType) === app.id && canonicalHeadCategory(p.headCategory) === hc.code
+      );
+
+      // Compute results for each project
+      const results: CombinedProjectResult[] = categoryProjects.map((p) =>
+        getProjectCombinedResult(p, allProjects, allEvaluations)
+      );
+
+      // Sort results highest to lowest for display
+      results.sort((a, b) => b.finalAverageScore - a.finalAverageScore);
+
+      const champions = results.filter((r) => r.award === 'Champion');
+      const winners = results.filter((r) => r.award === 'Winner');
+      const merits = results.filter((r) => r.award === 'Merit');
+      const noAwards = results.filter((r) => r.award === 'No Award' || r.award === 'Participant');
+
+      groups.push({
+        appType: app.id,
+        appTypeTitle: app.title,
+        headCategoryCode: hc.code,
+        headCategoryName: hc.name,
+        categoryKey: `${app.id}__${hc.code}`,
+        totalApplicants: results.length,
+        champions,
+        winners,
+        merits,
+        noAwards,
+        allResults: results
+      });
+    }
+  }
+
+  return groups;
 };
