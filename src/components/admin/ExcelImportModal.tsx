@@ -24,25 +24,28 @@ interface RowValidationError {
 }
 
 const VALID_APP_TYPES: { match: string[]; target: ApplicationType }[] = [
+  { match: ['all application types', 'all application type', 'all'], target: 'All Application Types' },
+  { match: ['student -tertiary (university level)', 'student tertiary', 'student-tertiary', 'university level', 'tertiary'], target: 'Student -Tertiary (University Level)' },
   { match: ['student'], target: 'Student' },
-  { match: ['student-tertiary', 'student tertiary', 'student-tertiary categories (university level)', 'university level', 'tertiary'], target: 'Student-Tertiary' },
-  { match: ['organisation', 'organization', 'org'], target: 'Organisation' },
-  { match: ['individual or group', 'individual/group', 'individual', 'group'], target: 'Individual or Group' }
+  { match: ['organization', 'organisation', 'org'], target: 'Organization' },
+  { match: ['individual/group', 'individual or group', 'individual', 'group'], target: 'Individual/Group' }
 ];
 
 const VALID_HEAD_CATEGORIES: { match: string[]; code: HeadCategoryCode }[] = [
-  { match: ['hc-c', 'consumer', 'consumer tech', 'consumer solutions'], code: 'HC-C' },
-  { match: ['hc-i', 'industrial', 'industrial tech', 'robotics'], code: 'HC-I' },
-  { match: ['hc-bs', 'business service', 'business services', 'business'], code: 'HC-BS' },
-  { match: ['hc-ics', 'inclusion & community service', 'community & social', 'inclusion', 'community', 'social'], code: 'HC-ICS' },
-  { match: ['hc-psg', 'public sector and government', 'public sector', 'government'], code: 'HC-PSG' }
+  { match: ['all head category', 'all head categories', 'all categories', 'all category', 'all'], code: 'All Head Category' },
+  { match: ['hc-c', 'consumer', 'consumer tech', 'consumer solutions'], code: 'Consumer' },
+  { match: ['hc-bs', 'business service', 'business services', 'business'], code: 'Business Services' },
+  { match: ['hc-i', 'industrial', 'industrial tech', 'robotics'], code: 'Industrial' },
+  { match: ['hc-psg', 'public sector and government', 'public sector', 'government'], code: 'Public Sector and Government' },
+  { match: ['hc-ics', 'individual & communication services', 'individual and communication services', 'inclusion & community service', 'community & social', 'inclusion', 'community', 'social', 'communication'], code: 'Individual & Communication Services' }
 ];
 
 const APPLICATION_TYPE_OPTIONS: { id: ApplicationType; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { id: 'Organisation', label: 'Organisation', icon: Building2 },
-  { id: 'Individual or Group', label: 'Individual or Group', icon: Users },
+  { id: 'All Application Types', label: 'All Application Types', icon: Layers },
   { id: 'Student', label: 'Student', icon: GraduationCap },
-  { id: 'Student-Tertiary', label: 'Student-Tertiary Categories (University Level)', icon: University },
+  { id: 'Student -Tertiary (University Level)', label: 'Student -Tertiary (University Level)', icon: University },
+  { id: 'Organization', label: 'Organization', icon: Building2 },
+  { id: 'Individual/Group', label: 'Individual/Group', icon: Users },
 ];
 
 const normalizeStr = (val: unknown): string => {
@@ -80,12 +83,12 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Category and Application Type Selection Mode
-  // Default to initial props if passed, else default to 'Organisation' and 'HC-C'
-  const [selectedAppType, setSelectedAppType] = useState<ApplicationType | 'auto'>(
-    initialAppType || 'Organisation'
+  // Default to "All Application Types" and "All Head Category"
+  const [selectedAppType, setSelectedAppType] = useState<ApplicationType>(
+    initialAppType || 'All Application Types'
   );
-  const [selectedHeadCategory, setSelectedHeadCategory] = useState<HeadCategoryCode | 'auto'>(
-    initialCategory || 'HC-C'
+  const [selectedHeadCategory, setSelectedHeadCategory] = useState<HeadCategoryCode>(
+    initialCategory || 'All Head Category'
   );
 
   const [fileName, setFileName] = useState<string | null>(null);
@@ -123,81 +126,42 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
   // 1. Download Sample Excel Template (Customized for selected Application Type & Head Category)
   const handleDownloadTemplate = () => {
-    const appTypeLabel = selectedAppType === 'auto'
-      ? 'Organisation'
-      : (selectedAppType === 'Student-Tertiary' ? 'Student-Tertiary Categories (University Level)' : selectedAppType);
-    
-    const headCatName = selectedHeadCategory === 'auto'
-      ? 'Consumer'
-      : (activeCategoryObj?.name || 'Consumer');
-
-    const headCatCode = selectedHeadCategory === 'auto' ? 'HC-C' : selectedHeadCategory;
+    const appTypeLabel = selectedAppType !== 'All Application Types' ? selectedAppType : 'Student';
+    const headCatLabel = selectedHeadCategory !== 'All Head Category' ? selectedHeadCategory : 'Consumer';
 
     const sampleData = [
       {
+        'Solution Name': 'Smart AgriSense - Portable Soil Scanner',
+        'Project Overview': 'An innovative IoT and AI-driven soil quality scanning device for real-time agricultural telemetry.',
+        'Problem Statement': 'Farmers lack accessible, instantaneous, low-cost soil nutrient analysis tools before planting crops.',
+        'Solution Summary': 'Portable handheld optical spectrometer paired with a cloud-assisted micro-ML diagnostic application.',
         'Application Type': appTypeLabel,
-        'Head Category': headCatName,
-        'Project Title': selectedHeadCategory === 'HC-BS'
-          ? 'OmniLedger Enterprise Audit Hub'
-          : selectedHeadCategory === 'HC-I'
-          ? 'VibraGuard Predictive Machinery Monitor'
-          : selectedHeadCategory === 'HC-ICS'
-          ? 'VoiceBridge Assistive Sign Communicator'
-          : selectedHeadCategory === 'HC-PSG'
-          ? 'SmartMunicipality Citizen Service Portal'
-          : 'Smart AgriSense - Portable Soil Scanner',
-        'Application ID': `BIIN-2026-${headCatCode.replace('HC-', '')}-101`,
-        'Project Code': `${appTypeLabel.slice(0, 3).toUpperCase()}-${headCatCode}-101`,
-        'Team/Organization': 'NextGen Innovators Ltd.',
-        'Representative': 'Aria Chen',
-        'Email': 'contact@innovators.org',
-        'Contact Number': '+1 555-0192',
-        'Description': `An innovative ${headCatName} solution engineered for high impact and scalable deployment.`
+        'Head Category': headCatLabel
       },
       {
-        'Application Type': appTypeLabel,
-        'Head Category': headCatName,
-        'Project Title': selectedHeadCategory === 'HC-BS'
-          ? 'SynapseHR Automated Payroll & Tax Engine'
-          : selectedHeadCategory === 'HC-I'
-          ? 'RoboWeld Autonomous Quality Inspection'
-          : selectedHeadCategory === 'HC-ICS'
-          ? 'BrailleFlow Digital Reader for Visually Impaired'
-          : selectedHeadCategory === 'HC-PSG'
-          ? 'GovVerify Secure Identity Verification Gateway'
-          : 'EcoTrack Smart Urban Waste Management',
-        'Application ID': `BIIN-2026-${headCatCode.replace('HC-', '')}-102`,
-        'Project Code': `${appTypeLabel.slice(0, 3).toUpperCase()}-${headCatCode}-102`,
-        'Team/Organization': 'Alpha Matrix Tech',
-        'Representative': 'Marcus Vance',
-        'Email': 'm.vance@alphamatrix.io',
-        'Contact Number': '+1 555-0144',
-        'Description': `Comprehensive AI-driven system operating in the ${headCatName} domain.`
+        'Solution Name': 'OmniLedger Enterprise Audit Hub',
+        'Project Overview': 'Next-generation compliance and internal audit automation platform for enterprise financial workflows.',
+        'Problem Statement': 'Manual audit reviews cause severe delays, data discrepancies, and regulatory vulnerability.',
+        'Solution Summary': 'Distributed ledger and smart validation pipeline providing continuous immutable audit trails.',
+        'Application Type': selectedAppType !== 'All Application Types' ? selectedAppType : 'Organization',
+        'Head Category': selectedHeadCategory !== 'All Head Category' ? selectedHeadCategory : 'Business Services'
       }
     ];
 
     const worksheet = XLSX.utils.json_to_sheet(sampleData);
     worksheet['!cols'] = [
-      { wch: 38 }, // Application Type
-      { wch: 26 }, // Head Category
-      { wch: 38 }, // Project Title
-      { wch: 18 }, // Application ID
-      { wch: 18 }, // Project Code
-      { wch: 28 }, // Team/Organization
-      { wch: 22 }, // Representative
-      { wch: 26 }, // Email
-      { wch: 18 }, // Contact Number
-      { wch: 55 }  // Description
+      { wch: 38 }, // Solution Name
+      { wch: 55 }, // Project Overview
+      { wch: 45 }, // Problem Statement
+      { wch: 45 }, // Solution Summary
+      { wch: 34 }, // Application Type
+      { wch: 34 }, // Head Category
     ];
 
     const workbook = XLSX.utils.book_new();
-    const sheetTitle = selectedHeadCategory !== 'auto' ? headCatCode : 'Projects_Template';
-    XLSX.utils.book_append_sheet(workbook, worksheet, sheetTitle);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Projects_Template');
 
-    const safeTypeName = selectedAppType === 'auto' ? 'General' : selectedAppType.replace(/[^a-zA-Z0-9]/g, '_');
-    const safeCatName = selectedHeadCategory === 'auto' ? 'All_Categories' : headCatName.replace(/[^a-zA-Z0-9]/g, '_');
-    const fileNameDownload = `BIIN_Template_${safeTypeName}_${safeCatName}.xlsx`;
-
+    const fileNameDownload = `BIIN_Project_Import_Template.xlsx`;
     XLSX.writeFile(workbook, fileNameDownload);
   };
 
@@ -246,39 +210,28 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         });
       };
 
+      const keySolutionName = findKey(['Solution Name', 'SolutionName', 'Project Title', 'Title', 'Project Name', 'Project', 'Application Name', 'Name']);
+      const keyOverview = findKey(['Project Overview', 'ProjectOverview', 'Description', 'Project Description', 'Overview', 'Summary', 'Details', 'About', 'Abstract']);
+      const keyProblem = findKey(['Problem Statement', 'ProblemStatement', 'Problem', 'Statement']);
+      const keySolutionSummary = findKey(['Solution Summary', 'SolutionSummary', 'Summary', 'Solution', 'Proposed Solution']);
       const keyAppType = findKey(['Application Type', 'ApplicationType', 'App Type', 'Type', 'AppType']);
       const keyHeadCat = findKey(['Head Category', 'HeadCategory', 'Category', 'Category Code', 'Category Name', 'HeadCat']);
-      const keyTitle = findKey(['Project Title', 'Title', 'Project Name', 'Project', 'Application Name', 'Name']);
+
+      // Legacy fallback keys (if present in file)
       const keyAppId = findKey(['Application ID', 'ApplicationId', 'App ID', 'AppId', 'Application No', 'App No', 'ID']);
       const keyProjCode = findKey(['Project Code', 'ProjectCode', 'Code', 'Serial', 'Serial No', 'SL']);
       const keyTeam = findKey(['Team/Organization', 'Team / Organization', 'Team', 'Organization', 'Company', 'Institution', 'TeamOrOrgName', 'Participant', 'Participant Name']);
       const keyRep = findKey(['Representative', 'Representative Name', 'Lead', 'Leader', 'Member Name', 'Student Name', 'Contact Person']);
       const keyEmail = findKey(['Email', 'Email Address', 'Contact Email', 'E-mail']);
       const keyContact = findKey(['Contact Number', 'Contact', 'Phone', 'Phone Number', 'Mobile', 'Mobile Number']);
-      const keyDesc = findKey(['Description', 'Project Description', 'Summary', 'Details', 'About', 'Abstract']);
 
       const missingColumns: string[] = [];
-
-      // If Application Type is not forced via dropdown, it must be present in the sheet
-      if (selectedAppType === 'auto' && !keyAppType) {
-        missingColumns.push('Application Type (or select one in the Target dropdown)');
-      }
-
-      // If Head Category is not forced via dropdown, it must be present in the sheet
-      if (selectedHeadCategory === 'auto' && !keyHeadCat) {
-        missingColumns.push('Head Category (or select one in the Target dropdown)');
-      }
-
-      if (!keyTitle) missingColumns.push('Project Title');
-      if (!keyAppId) missingColumns.push('Application ID');
-      if (!keyProjCode) missingColumns.push('Project Code');
-      if (!keyTeam) missingColumns.push('Team/Organization');
-      if (!keyRep) missingColumns.push('Representative');
-      if (!keyDesc) missingColumns.push('Description');
+      if (!keySolutionName) missingColumns.push('Solution Name');
+      if (!keyOverview) missingColumns.push('Project Overview');
 
       if (missingColumns.length > 0) {
         setColumnErrors([
-          `Missing required columns: ${missingColumns.join(', ')}. You can either pre-select the category above or ensure these column headers exist in your Excel file.`
+          `Missing required columns: ${missingColumns.join(', ')}. Please ensure your Excel file includes Solution Name and Project Overview headers.`
         ]);
         setIsProcessing(false);
         setProcessed(true);
@@ -301,75 +254,60 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         const rowNumber = index + 2; // +2 for 1-based index and header row
         const rowErrList: string[] = [];
 
-        const rawTitle = normalizeStr(row[keyTitle!]);
-        const rawAppId = normalizeStr(row[keyAppId!]);
-        const rawCode = normalizeStr(row[keyProjCode!]);
+        const rawSolutionName = normalizeStr(row[keySolutionName!]);
+        const rawOverview = normalizeStr(row[keyOverview!]);
+        const rawProblem = keyProblem ? normalizeStr(row[keyProblem]) : '';
+        const rawSolution = keySolutionSummary ? normalizeStr(row[keySolutionSummary]) : '';
         const rawAppType = keyAppType ? normalizeStr(row[keyAppType]) : '';
         const rawHeadCat = keyHeadCat ? normalizeStr(row[keyHeadCat]) : '';
-        const rawTeam = normalizeStr(row[keyTeam!]);
-        const rawRep = normalizeStr(row[keyRep!]);
+
+        // Legacy fields or auto-generated
+        let rawAppId = keyAppId ? normalizeStr(row[keyAppId]) : '';
+        let rawCode = keyProjCode ? normalizeStr(row[keyProjCode]) : '';
+        let rawTeam = keyTeam ? normalizeStr(row[keyTeam]) : '';
+        let rawRep = keyRep ? normalizeStr(row[keyRep]) : '';
         const rawEmail = keyEmail ? normalizeStr(row[keyEmail]) : '';
         const rawContact = keyContact ? normalizeStr(row[keyContact]) : '';
-        const rawDesc = normalizeStr(row[keyDesc!]);
 
-        // Required text checks
-        if (!rawTitle) {
-          rowErrList.push('Project Title is required.');
-          errors.push({ rowNumber, field: 'Project Title', message: 'Title is missing or empty' });
-        }
         if (!rawAppId) {
-          rowErrList.push('Application ID is required.');
-          errors.push({ rowNumber, field: 'Application ID', message: 'Application ID is missing or empty' });
+          rawAppId = `BIIN-2026-${String(sessionProjects.length + parsedValid.length + index + 1).padStart(3, '0')}`;
         }
         if (!rawCode) {
-          rowErrList.push('Project Code is required.');
-          errors.push({ rowNumber, field: 'Project Code', message: 'Project Code is missing or empty' });
+          rawCode = `PROJ-${String(sessionProjects.length + parsedValid.length + index + 1).padStart(3, '0')}`;
         }
         if (!rawTeam) {
-          rowErrList.push('Team/Organization is required.');
-          errors.push({ rowNumber, field: 'Team/Organization', message: 'Team or organization name is missing' });
+          rawTeam = rawSolutionName || 'Independent';
         }
         if (!rawRep) {
-          rowErrList.push('Representative is required.');
-          errors.push({ rowNumber, field: 'Representative', message: 'Representative name is missing' });
-        }
-        if (!rawDesc) {
-          rowErrList.push('Description is required.');
-          errors.push({ rowNumber, field: 'Description', message: 'Project description is missing' });
+          rawRep = 'Lead Contact';
         }
 
-        // Determine Application Type (Selected dropdown overrides or defaults, otherwise detect from row)
+        // Required text checks
+        if (!rawSolutionName) {
+          rowErrList.push('Solution Name is required.');
+          errors.push({ rowNumber, field: 'Solution Name', message: 'Solution Name is missing or empty' });
+        }
+        if (!rawOverview) {
+          rowErrList.push('Project Overview is required.');
+          errors.push({ rowNumber, field: 'Project Overview', message: 'Project Overview is missing or empty' });
+        }
+
+        // Determine Application Type
         let resolvedAppType: ApplicationType | null = null;
-        if (selectedAppType !== 'auto') {
-          resolvedAppType = selectedAppType;
-        } else if (rawAppType) {
+        if (rawAppType) {
           resolvedAppType = mapApplicationType(rawAppType);
         }
-
         if (!resolvedAppType) {
-          rowErrList.push(`Invalid or missing Application Type "${rawAppType}". Expected: Student, Student-Tertiary, Organisation, or Individual or Group.`);
-          errors.push({
-            rowNumber,
-            field: 'Application Type',
-            message: `Unrecognized or missing type "${rawAppType}"`
-          });
+          resolvedAppType = selectedAppType;
         }
 
-        // Determine Head Category (Selected dropdown overrides or defaults, otherwise detect from row)
+        // Determine Head Category
         let resolvedCategory: HeadCategoryCode | null = null;
-        if (selectedHeadCategory !== 'auto') {
-          resolvedCategory = selectedHeadCategory;
-        } else if (rawHeadCat) {
+        if (rawHeadCat) {
           resolvedCategory = mapHeadCategory(rawHeadCat);
         }
-
         if (!resolvedCategory) {
-          rowErrList.push(`Invalid or missing Head Category "${rawHeadCat}". Expected: Consumer, Industrial, Business Service, Inclusion & Community Service, or Public Sector.`);
-          errors.push({
-            rowNumber,
-            field: 'Head Category',
-            message: `Unrecognized or missing category "${rawHeadCat}"`
-          });
+          resolvedCategory = selectedHeadCategory;
         }
 
         // Duplicate Check against Database
@@ -421,7 +359,12 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         if (rowErrList.length === 0 && resolvedAppType && resolvedCategory) {
           const newProject: Project = {
             id: `proj-import-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            title: rawTitle,
+            title: rawSolutionName,
+            solutionName: rawSolutionName,
+            description: rawOverview,
+            projectOverview: rawOverview,
+            problemStatement: rawProblem,
+            solutionSummary: rawSolution,
             applicationId: rawAppId,
             projectCode: rawCode,
             applicationType: resolvedAppType,
@@ -430,8 +373,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             representativeName: rawRep,
             email: rawEmail || '',
             contactNumber: rawContact || '',
-            description: rawDesc,
-            tags: [resolvedCategory, resolvedAppType],
+            tags: [resolvedCategory, resolvedAppType].filter(Boolean),
             status: 'active'
           };
           parsedValid.push(newProject);
@@ -474,9 +416,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       setSessionProjects(prev => [...prev, ...validProjects]);
       setSessionImportedTotal(prev => prev + validProjects.length);
 
-      const targetLabel = `${selectedAppType === 'auto' ? 'Mixed' : selectedAppType} — ${
-        selectedHeadCategory === 'auto' ? 'Mixed' : (activeCategoryObj?.name || selectedHeadCategory)
-      }`;
+      const targetLabel = `${selectedAppType} — ${activeCategoryObj?.name || selectedHeadCategory}`;
 
       setLastImportedCount(validProjects.length);
       setLastImportedTarget(targetLabel);
@@ -608,14 +548,14 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 </label>
                 <select
                   value={selectedAppType}
-                  onChange={e => setSelectedAppType(e.target.value as ApplicationType | 'auto')}
+                  onChange={e => setSelectedAppType(e.target.value as ApplicationType)}
                   className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white shadow-sm focus:border-emerald-500 focus:outline-none"
                 >
-                  <option value="Organisation">Organisation (Corporate & Startups)</option>
-                  <option value="Individual or Group">Individual or Group (Independent)</option>
-                  <option value="Student">Student (Academic)</option>
-                  <option value="Student-Tertiary">Student-Tertiary Categories (University Level)</option>
-                  <option value="auto">Auto-detect from file column</option>
+                  <option value="All Application Types">All Application Types</option>
+                  <option value="Student">Student</option>
+                  <option value="Student -Tertiary (University Level)">Student -Tertiary (University Level)</option>
+                  <option value="Organization">Organization</option>
+                  <option value="Individual/Group">Individual/Group</option>
                 </select>
               </div>
 
@@ -626,15 +566,15 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 </label>
                 <select
                   value={selectedHeadCategory}
-                  onChange={e => setSelectedHeadCategory(e.target.value as HeadCategoryCode | 'auto')}
+                  onChange={e => setSelectedHeadCategory(e.target.value as HeadCategoryCode)}
                   className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white shadow-sm focus:border-emerald-500 focus:outline-none"
                 >
-                  {HEAD_CATEGORIES.map(cat => (
-                    <option key={cat.code} value={cat.code}>
-                      {cat.code} — {cat.name}
-                    </option>
-                  ))}
-                  <option value="auto">Auto-detect from file column</option>
+                  <option value="All Head Category">All Head Category</option>
+                  <option value="Consumer">Consumer</option>
+                  <option value="Business Services">Business Services</option>
+                  <option value="Industrial">Industrial</option>
+                  <option value="Public Sector and Government">Public Sector and Government</option>
+                  <option value="Individual & Communication Services">Individual & Communication Services</option>
                 </select>
               </div>
             </div>
@@ -645,12 +585,12 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <span className="font-semibold text-slate-700 dark:text-slate-300">Active Import Target:</span>
                 <span className="inline-flex items-center space-x-1 font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-800">
                   {activeTypeObj && React.createElement(activeTypeObj.icon, { className: 'h-3.5 w-3.5' })}
-                  <span>{selectedAppType === 'auto' ? 'Auto-Detect Type' : selectedAppType}</span>
+                  <span>{selectedAppType}</span>
                 </span>
                 <ArrowRight className="h-3 w-3 text-slate-400" />
                 <span className="inline-flex items-center space-x-1 font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/40 px-2.5 py-0.5 rounded-lg border border-cyan-200 dark:border-cyan-800">
                   <Layers className="h-3.5 w-3.5" />
-                  <span>{selectedHeadCategory === 'auto' ? 'Auto-Detect Category' : `${selectedHeadCategory} (${activeCategoryObj?.name})`}</span>
+                  <span>{selectedHeadCategory}</span>
                 </span>
               </div>
 
@@ -698,12 +638,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 {fileName ? fileName : 'Choose your category Excel spreadsheet or drag and drop here'}
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Required columns: <span className="font-medium text-slate-700 dark:text-slate-300">Project Title, Application ID, Project Code, Team/Organization, Representative, Description</span>
-              </p>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-                {selectedAppType !== 'auto' && selectedHeadCategory !== 'auto'
-                  ? `(Category columns are optional — all projects will be assigned to ${selectedAppType} / ${activeCategoryObj?.name})`
-                  : '(Spreadsheet must include columns for Application Type and Head Category)'}
+                Supported columns: <span className="font-medium text-slate-700 dark:text-slate-300">Solution Name, Project Overview, Problem Statement, Solution Summary, Application Type, Head Category</span>
               </p>
               <button
                 type="button"

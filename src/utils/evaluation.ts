@@ -120,7 +120,7 @@ export const getCriteriaForApplicationType = (type: ApplicationType): CriteriaIn
   if (type === 'Student') {
     return STUDENT_CRITERIA;
   }
-  if (type === 'Student-Tertiary') {
+  if (type === 'Student-Tertiary' || type === 'Student -Tertiary (University Level)') {
     return STUDENT_TERTIARY_CRITERIA;
   }
   return ORGANISATION_AND_INDIVIDUAL_CRITERIA;
@@ -317,9 +317,11 @@ export const calculateCategorizedResults = (
   for (const app of RESULT_APPLICATION_TYPES) {
     for (const hc of RESULT_HEAD_CATEGORIES) {
       // Get all applications matching this applicationType and headCategory
-      const categoryProjects = allProjects.filter(
-        (p) => canonicalAppType(p.applicationType) === app.id && canonicalHeadCategory(p.headCategory) === hc.code
-      );
+      const categoryProjects = allProjects.filter((p) => {
+        const appMatch = p.applicationType === 'All Application Types' || canonicalAppType(p.applicationType) === app.id;
+        const hcMatch = p.headCategory === 'All Head Category' || canonicalHeadCategory(p.headCategory) === hc.code;
+        return appMatch && hcMatch;
+      });
 
       // Compute results for each project
       const results: CombinedProjectResult[] = categoryProjects.map((p) =>

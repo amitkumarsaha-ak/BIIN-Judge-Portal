@@ -14,11 +14,11 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     if (status && status !== 'all') {
       projects = projects.filter(p => p.status === status);
     }
-    if (applicationType && applicationType !== 'All') {
-      projects = projects.filter(p => p.applicationType === applicationType);
+    if (applicationType && applicationType !== 'All' && applicationType !== 'All Application Types') {
+      projects = projects.filter(p => p.applicationType === applicationType || p.applicationType === 'All Application Types');
     }
-    if (headCategory && headCategory !== 'All') {
-      projects = projects.filter(p => p.headCategory === headCategory);
+    if (headCategory && headCategory !== 'All' && headCategory !== 'All Head Category') {
+      projects = projects.filter(p => p.headCategory === headCategory || p.headCategory === 'All Head Category');
     }
 
     res.json(projects);
@@ -51,25 +51,32 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     const p = req.body;
     const actor = req.body._actor;
 
-    if (!p.title || !p.applicationId || !p.applicationType || !p.headCategory) {
-      res.status(400).json({ error: 'Title, applicationId, applicationType, and headCategory are required.' });
+    const titleVal = (p.solutionName || p.title || '').trim();
+    const appTypeVal = p.applicationType || 'All Application Types';
+    const headCatVal = p.headCategory || 'All Head Category';
+    const appIdVal = (p.applicationId || `BIIN-2026-${Date.now().toString().slice(-4)}`).trim();
+
+    if (!titleVal) {
+      res.status(400).json({ error: 'Solution Name (title) is required.' });
       return;
     }
 
     const newProject = {
       id: p.id || `proj-${Date.now()}`,
-      title: p.title.trim(),
-      applicationId: p.applicationId.trim(),
-      projectCode: p.projectCode || p.applicationId,
-      applicationType: p.applicationType,
-      headCategory: p.headCategory,
-      teamOrOrgName: p.teamOrOrgName || 'Independent',
+      title: titleVal,
+      solutionName: titleVal,
+      applicationId: appIdVal,
+      projectCode: p.projectCode || appIdVal,
+      applicationType: appTypeVal,
+      headCategory: headCatVal,
+      teamOrOrgName: p.teamOrOrgName || titleVal || 'Independent',
       representativeName: p.representativeName || 'Lead Contact',
       members: Array.isArray(p.members) ? p.members : [],
       email: p.email || 'contact@biin.org',
       contactNumber: p.contactNumber || 'N/A',
       institutionOrOrg: p.institutionOrOrg || '',
-      description: p.description || '',
+      description: (p.projectOverview || p.description || '').trim(),
+      projectOverview: (p.projectOverview || p.description || '').trim(),
       problemStatement: p.problemStatement || '',
       solutionSummary: p.solutionSummary || '',
       tags: Array.isArray(p.tags) ? p.tags : [],
@@ -140,9 +147,16 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const titleVal = (req.body.solutionName || req.body.title || existing.title || '').trim();
+    const overviewVal = (req.body.projectOverview || req.body.description || existing.description || '').trim();
+
     const updated = {
       ...existing,
       ...req.body,
+      title: titleVal,
+      solutionName: titleVal,
+      description: overviewVal,
+      projectOverview: overviewVal,
       id: req.params.id
     };
 

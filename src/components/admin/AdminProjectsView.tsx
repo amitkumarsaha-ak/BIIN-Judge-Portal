@@ -40,10 +40,11 @@ const generateAppId = (projects: Project[]) => {
 
 const EMPTY_FORM: Omit<Project, 'id'> = {
   title: '',
+  solutionName: '',
   applicationId: '',
   projectCode: '',
-  applicationType: 'Student',
-  headCategory: 'HC-C',
+  applicationType: 'All Application Types',
+  headCategory: 'All Head Category',
   teamOrOrgName: '',
   representativeName: '',
   members: [],
@@ -51,6 +52,7 @@ const EMPTY_FORM: Omit<Project, 'id'> = {
   contactNumber: '',
   institutionOrOrg: '',
   description: '',
+  projectOverview: '',
   problemStatement: '',
   solutionSummary: '',
   tags: [],
@@ -271,10 +273,16 @@ interface ProjectFormModalProps {
 }
 
 const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, onClose, onSave }) => {
-  const [form, setForm] = useState({ ...initialData });
+  const [form, setForm] = useState({
+    ...initialData,
+    solutionName: initialData.solutionName || initialData.title || '',
+    projectOverview: initialData.projectOverview || initialData.description || '',
+    problemStatement: initialData.problemStatement || '',
+    solutionSummary: initialData.solutionSummary || '',
+    applicationType: initialData.applicationType || 'All Application Types',
+    headCategory: initialData.headCategory || 'All Head Category',
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [tagsInput, setTagsInput] = useState((initialData.tags || []).join(', '));
-  const [membersInput, setMembersInput] = useState((initialData.members || []).join(', '));
 
   const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm(prev => ({ ...prev, [field]: e.target.value }));
@@ -283,25 +291,36 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!form.title.trim()) errs.title = 'Project name is required.';
-    if (!form.applicationId.trim()) errs.applicationId = 'Application ID is required.';
-    if (!form.projectCode.trim()) errs.projectCode = 'Project code / serial is required.';
-    if (!form.teamOrOrgName.trim()) errs.teamOrOrgName = 'Participant/Organization name is required.';
-    if (!form.representativeName.trim()) errs.representativeName = 'Representative name is required.';
-    if (!form.description.trim()) errs.description = 'Project description is required.';
+    if (!form.solutionName.trim()) errs.solutionName = 'Solution Name is required.';
+    if (!form.projectOverview.trim()) errs.projectOverview = 'Project Overview is required.';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
   const handleSave = () => {
     if (!validate()) return;
-    const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
-    const members = membersInput.split(',').map(m => m.trim()).filter(Boolean);
+    const solName = form.solutionName.trim();
+    const overview = form.projectOverview.trim();
     const project: Project = {
       ...form,
       id: (form as Project).id || generateId(),
-      tags,
-      members: members.length > 0 ? members : undefined
+      title: solName,
+      solutionName: solName,
+      description: overview,
+      projectOverview: overview,
+      problemStatement: (form.problemStatement || '').trim(),
+      solutionSummary: (form.solutionSummary || '').trim(),
+      applicationType: form.applicationType || 'All Application Types',
+      headCategory: form.headCategory || 'All Head Category',
+      applicationId: form.applicationId || `BIIN-2026-${String(Date.now()).slice(-4)}`,
+      projectCode: form.projectCode || `PROJ-${String(Date.now()).slice(-4)}`,
+      teamOrOrgName: form.teamOrOrgName || solName || 'Independent',
+      representativeName: form.representativeName || 'Lead Contact',
+      email: form.email || '',
+      contactNumber: form.contactNumber || '',
+      members: form.members || [],
+      tags: form.tags || [],
+      status: form.status || 'active'
     };
     onSave(project);
   };
@@ -332,39 +351,16 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
         </div>
 
         <div className="overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 touch-scroll">
-          {/* Project Name */}
+          {/* Solution Name */}
           <div>
-            <label className={labelCls}>Project / Application Name *</label>
-            <input className={inputCls('title')} value={form.title} onChange={set('title')} placeholder="e.g. Smart AgriSense - Portable Soil Scanner" />
-            {errors.title && <p className="mt-1 text-xs text-red-500">{errors.title}</p>}
-          </div>
-
-          {/* Application ID & Code */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Application ID *</label>
-              <input className={inputCls('applicationId')} value={form.applicationId} onChange={set('applicationId')} placeholder="e.g. BIIN-2026-019" />
-              {errors.applicationId && <p className="mt-1 text-xs text-red-500">{errors.applicationId}</p>}
-            </div>
-            <div>
-              <label className={labelCls}>Project Code / Serial *</label>
-              <input className={inputCls('projectCode')} value={form.projectCode} onChange={set('projectCode')} placeholder="e.g. STU-HC-C-003" />
-              {errors.projectCode && <p className="mt-1 text-xs text-red-500">{errors.projectCode}</p>}
-            </div>
-          </div>
-
-          {/* Participant/Org & Representative */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Participant / Organization Name *</label>
-              <input className={inputCls('teamOrOrgName')} value={form.teamOrOrgName} onChange={set('teamOrOrgName')} placeholder="e.g. Team AgriPulse / Apex Innovations Ltd" />
-              {errors.teamOrOrgName && <p className="mt-1 text-xs text-red-500">{errors.teamOrOrgName}</p>}
-            </div>
-            <div>
-              <label className={labelCls}>Representative Name *</label>
-              <input className={inputCls('representativeName')} value={form.representativeName} onChange={set('representativeName')} placeholder="e.g. Aria Chen / Dr. Kazi Rahman" />
-              {errors.representativeName && <p className="mt-1 text-xs text-red-500">{errors.representativeName}</p>}
-            </div>
+            <label className={labelCls}>Solution Name *</label>
+            <input
+              className={inputCls('solutionName')}
+              value={form.solutionName}
+              onChange={set('solutionName')}
+              placeholder="e.g. Smart AgriSense - Portable Soil Scanner"
+            />
+            {errors.solutionName && <p className="mt-1 text-xs text-red-500">{errors.solutionName}</p>}
           </div>
 
           {/* Application Type & Head Category */}
@@ -372,86 +368,61 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
             <div>
               <label className={labelCls}>Application Type *</label>
               <select className={inputCls('applicationType')} value={form.applicationType} onChange={set('applicationType')}>
+                <option value="All Application Types">All Application Types</option>
                 <option value="Student">Student</option>
-                <option value="Student-Tertiary">Student-Tertiary Categories (University Level)</option>
-                <option value="Organisation">Organisation</option>
-                <option value="Individual or Group">Individual or Group</option>
+                <option value="Student -Tertiary (University Level)">Student -Tertiary (University Level)</option>
+                <option value="Organization">Organization</option>
+                <option value="Individual/Group">Individual/Group</option>
               </select>
             </div>
             <div>
               <label className={labelCls}>Head Category *</label>
               <select className={inputCls('headCategory')} value={form.headCategory} onChange={set('headCategory')}>
-                {HEAD_CATEGORIES.map(h => (
-                  <option key={h.code} value={h.code}>{h.name} ({h.code})</option>
-                ))}
+                <option value="All Head Category">All Head Category</option>
+                <option value="Consumer">Consumer</option>
+                <option value="Business Services">Business Services</option>
+                <option value="Industrial">Industrial</option>
+                <option value="Public Sector and Government">Public Sector and Government</option>
+                <option value="Individual & Communication Services">Individual & Communication Services</option>
               </select>
             </div>
           </div>
 
-          {/* Project Status */}
+          {/* Project Overview */}
           <div>
-            <label className={labelCls}>Project Status</label>
-            <div className="flex items-center space-x-3 mt-1.5">
-              <button
-                type="button"
-                onClick={() => setForm(prev => ({ ...prev, status: prev.status === 'active' ? 'inactive' : 'active' }))}
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 focus:outline-none ${form.status === 'active' ? 'bg-emerald-500 border-emerald-500' : 'bg-slate-300 dark:bg-slate-700 border-slate-300 dark:border-slate-700'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out mt-0.5 ${form.status === 'active' ? 'translate-x-5' : 'translate-x-0.5'}`} />
-              </button>
-              <span className={`text-xs font-semibold ${form.status === 'active' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                {form.status === 'active' ? 'Active (Eligible for Evaluation)' : 'Inactive (Deactivated)'}
-              </span>
-            </div>
-          </div>
-
-          {/* Contact Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Email</label>
-              <input className={inputCls('email')} type="email" value={form.email} onChange={set('email')} placeholder="contact@example.com" />
-            </div>
-            <div>
-              <label className={labelCls}>Contact Number</label>
-              <input className={inputCls('contactNumber')} value={form.contactNumber} onChange={set('contactNumber')} placeholder="+1 (555) 000-0000" />
-            </div>
-          </div>
-
-          {/* Institution / Org & Members */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Institution / Organization Name</label>
-              <input className={inputCls('institutionOrOrg')} value={form.institutionOrOrg || ''} onChange={set('institutionOrOrg')} placeholder="e.g. National University / Tech Corp" />
-            </div>
-            <div>
-              <label className={labelCls}>Team Members (comma-separated)</label>
-              <input className={inputCls('members')} value={membersInput} onChange={e => setMembersInput(e.target.value)} placeholder="e.g. Alice, Bob, Carol" />
-            </div>
-          </div>
-
-          {/* Project Description */}
-          <div>
-            <label className={labelCls}>Project Description *</label>
-            <textarea className={`${inputCls('description')} resize-none`} rows={3} value={form.description} onChange={set('description')} placeholder="Brief description of the nominated project..." />
-            {errors.description && <p className="mt-1 text-xs text-red-500">{errors.description}</p>}
+            <label className={labelCls}>Project Overview *</label>
+            <textarea
+              className={`${inputCls('projectOverview')} resize-none`}
+              rows={3}
+              value={form.projectOverview}
+              onChange={set('projectOverview')}
+              placeholder="Brief overview of the nominated solution..."
+            />
+            {errors.projectOverview && <p className="mt-1 text-xs text-red-500">{errors.projectOverview}</p>}
           </div>
 
           {/* Problem Statement & Solution Summary */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Problem Statement</label>
-              <textarea className={`${inputCls('problemStatement')} resize-none`} rows={3} value={form.problemStatement || ''} onChange={set('problemStatement')} placeholder="What problem does it solve?" />
+              <textarea
+                className={`${inputCls('problemStatement')} resize-none`}
+                rows={3}
+                value={form.problemStatement || ''}
+                onChange={set('problemStatement')}
+                placeholder="What problem does it solve?"
+              />
             </div>
             <div>
               <label className={labelCls}>Solution Summary</label>
-              <textarea className={`${inputCls('solutionSummary')} resize-none`} rows={3} value={form.solutionSummary || ''} onChange={set('solutionSummary')} placeholder="How does it solve the problem?" />
+              <textarea
+                className={`${inputCls('solutionSummary')} resize-none`}
+                rows={3}
+                value={form.solutionSummary || ''}
+                onChange={set('solutionSummary')}
+                placeholder="How does it solve the problem?"
+              />
             </div>
-          </div>
-
-          {/* Tags */}
-          <div>
-            <label className={labelCls}>Tags (comma-separated)</label>
-            <input className={inputCls('tags')} value={tagsInput} onChange={e => setTagsInput(e.target.value)} placeholder="e.g. IoT, Agriculture, AI, Robotics" />
           </div>
         </div>
 
@@ -488,10 +459,10 @@ export const AdminProjectsView: React.FC = () => {
     const q = searchQuery.toLowerCase().trim();
     return projects.filter(p => {
       // Filter by Application Type
-      if (filterType !== 'All' && p.applicationType !== filterType) return false;
+      if (filterType !== 'All' && p.applicationType !== 'All Application Types' && p.applicationType !== filterType) return false;
 
       // Filter by Head Category
-      if (filterCategory !== 'All' && p.headCategory !== filterCategory) return false;
+      if (filterCategory !== 'All' && p.headCategory !== 'All Head Category' && p.headCategory !== filterCategory) return false;
 
       // Filter by Status
       if (filterStatus !== 'All' && p.status !== filterStatus) return false;
@@ -500,12 +471,16 @@ export const AdminProjectsView: React.FC = () => {
       if (q) {
         const hay = [
           p.title,
+          p.solutionName || '',
           p.applicationId,
           p.projectCode,
           p.teamOrOrgName,
           p.representativeName,
           p.institutionOrOrg || '',
           p.description,
+          p.projectOverview || '',
+          p.problemStatement || '',
+          p.solutionSummary || '',
           (p.tags || []).join(' ')
         ].join(' ').toLowerCase();
 

@@ -1,6 +1,26 @@
-export type ApplicationType = 'Student' | 'Organisation' | 'Individual or Group' | 'Student-Tertiary';
+export type ApplicationType =
+  | 'All Application Types'
+  | 'Student'
+  | 'Student -Tertiary (University Level)'
+  | 'Student-Tertiary'
+  | 'Organization'
+  | 'Organisation'
+  | 'Individual/Group'
+  | 'Individual or Group';
 
-export type HeadCategoryCode = 'HC-C' | 'HC-I' | 'HC-BS' | 'HC-ICS' | 'HC-PSG';
+export type HeadCategoryCode =
+  | 'All Head Category'
+  | 'HC-C'
+  | 'HC-I'
+  | 'HC-BS'
+  | 'HC-ICS'
+  | 'HC-PSG'
+  | 'Consumer'
+  | 'Business Services'
+  | 'Industrial'
+  | 'Public Sector and Government'
+  | 'Individual & Communication Services'
+  | string;
 
 export type ProjectStatus = 'active' | 'inactive';
 
@@ -57,6 +77,7 @@ export interface AuditLog {
 export interface Project {
   id: string;
   title: string;
+  solutionName?: string;
   applicationId: string;        // e.g. BIIN-2026-001
   projectCode: string;          // Serial/project code
   applicationType: ApplicationType;
@@ -68,6 +89,7 @@ export interface Project {
   contactNumber: string;
   institutionOrOrg?: string;    // University Name or Company Name
   description: string;
+  projectOverview?: string;
   problemStatement?: string;
   solutionSummary?: string;
   tags: string[];
