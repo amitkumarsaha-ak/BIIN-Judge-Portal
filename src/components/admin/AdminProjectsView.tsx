@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import type { Project, ApplicationType, ProjectStatus, HeadCategoryCode } from '../../types';
 import {
-  getProjects, addProject, updateProject, deleteProject,
+  getProjects, addProject, addProjects, updateProject, deleteProject,
   toggleProjectStatus, getEvaluations
 } from '../../services/storage';
 import { HEAD_CATEGORIES } from '../../data/mockData';
@@ -506,7 +506,7 @@ export const AdminProjectsView: React.FC = () => {
   };
 
   const handleBulkImport = (newProjects: Project[]) => {
-    newProjects.forEach(p => addProject(p));
+    addProjects(newProjects);
     refresh();
   };
 

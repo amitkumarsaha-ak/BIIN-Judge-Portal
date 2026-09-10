@@ -24,20 +24,20 @@ interface RowValidationError {
 }
 
 const VALID_APP_TYPES: { match: string[]; target: ApplicationType }[] = [
-  { match: ['all application types', 'all application type', 'all'], target: 'All Application Types' },
-  { match: ['student -tertiary (university level)', 'student tertiary', 'student-tertiary', 'university level', 'tertiary'], target: 'Student -Tertiary (University Level)' },
-  { match: ['student'], target: 'Student' },
-  { match: ['organization', 'organisation', 'org'], target: 'Organization' },
-  { match: ['individual/group', 'individual or group', 'individual', 'group'], target: 'Individual/Group' }
+  { match: ['all application types', 'all application type', 'all types', 'all'], target: 'All Application Types' },
+  { match: ['student -tertiary (university level)', 'student tertiary', 'student-tertiary', 'university level', 'university', 'tertiary', 'undergraduate', 'postgraduate', 'higher education'], target: 'Student -Tertiary (University Level)' },
+  { match: ['student', 'school', 'college', 'secondary', 'k-12'], target: 'Student' },
+  { match: ['organization', 'organisation', 'org', 'company', 'startup', 'corporate', 'institution', 'ngo', 'firm'], target: 'Organization' },
+  { match: ['individual/group', 'individual or group', 'individual', 'group', 'team', 'solo', 'general'], target: 'Individual/Group' }
 ];
 
 const VALID_HEAD_CATEGORIES: { match: string[]; code: HeadCategoryCode }[] = [
   { match: ['all head category', 'all head categories', 'all categories', 'all category', 'all'], code: 'All Head Category' },
-  { match: ['hc-c', 'consumer', 'consumer tech', 'consumer solutions'], code: 'Consumer' },
-  { match: ['hc-bs', 'business service', 'business services', 'business'], code: 'Business Services' },
-  { match: ['hc-i', 'industrial', 'industrial tech', 'robotics'], code: 'Industrial' },
-  { match: ['hc-psg', 'public sector and government', 'public sector', 'government'], code: 'Public Sector and Government' },
-  { match: ['hc-ics', 'individual & communication services', 'individual and communication services', 'inclusion & community service', 'community & social', 'inclusion', 'community', 'social', 'communication'], code: 'Individual & Communication Services' }
+  { match: ['hc-c', 'hc-01', 'hc-1', 'consumer', 'consumer tech', 'consumer solutions', 'b2c', 'retail'], code: 'Consumer' },
+  { match: ['hc-bs', 'hc-02', 'hc-2', 'business service', 'business services', 'business', 'b2b', 'enterprise', 'fintech', 'saas'], code: 'Business Services' },
+  { match: ['hc-i', 'hc-03', 'hc-3', 'industrial', 'industrial tech', 'robotics', 'iot', 'hardware', 'agritech', 'manufacturing'], code: 'Industrial' },
+  { match: ['hc-psg', 'hc-04', 'hc-4', 'public sector and government', 'public sector & government', 'public sector', 'government', 'gov', 'smart city', 'civic', 'e-gov'], code: 'Public Sector and Government' },
+  { match: ['hc-ics', 'hc-05', 'hc-5', 'individual & communication services', 'individual and communication services', 'individual & communication', 'individual and communication', 'communication services', 'communication', 'inclusion & community service', 'inclusion & community', 'community & social', 'inclusion', 'community', 'social', 'media', 'telecom'], code: 'Individual & Communication Services' }
 ];
 
 const APPLICATION_TYPE_OPTIONS: { id: ApplicationType; label: string; icon: React.FC<{ className?: string }> }[] = [
@@ -188,50 +188,120 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       }
 
       const worksheet = workbook.Sheets[sheetName];
-      const rawRows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
-      if (rawRows.length === 0) {
+      // Extract raw 2D array to detect the true header row (in case row 1 is a title or blank)
+      const rawRows2D: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+      if (!rawRows2D || rawRows2D.length === 0) {
         setColumnErrors(['The uploaded sheet contains no data rows.']);
         setIsProcessing(false);
         setProcessed(true);
         return;
       }
 
-      setTotalRows(rawRows.length);
+      const KNOWN_HEADER_KEYWORDS = [
+        'solution', 'project', 'title', 'name', 'overview', 'problem', 'statement',
+        'summary', 'type', 'category', 'id', 'serial', 'sl', 'team', 'organization',
+        'representative', 'lead', 'email', 'contact', 'phone', 'app'
+      ];
+
+      // Scan the first 10 rows to find which row contains the actual headers
+      let headerRowIndex = 0;
+      let maxMatches = 0;
+      for (let r = 0; r < Math.min(10, rawRows2D.length); r++) {
+        const rowVals = rawRows2D[r];
+        if (!Array.isArray(rowVals)) continue;
+        const matches = rowVals.filter(cell => {
+          const s = String(cell || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          return KNOWN_HEADER_KEYWORDS.some(k => s.includes(k));
+        }).length;
+        if (matches > maxMatches) {
+          maxMatches = matches;
+          headerRowIndex = r;
+        }
+      }
+
+      // Read sheet starting from detected header row
+      const rawRows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(worksheet, {
+        range: headerRowIndex,
+        defval: ''
+      });
+
+      // Filter out completely blank rows
+      const dataRows = rawRows.filter(r => {
+        return Object.values(r).some(val => normalizeStr(val).length > 0);
+      });
+
+      if (dataRows.length === 0) {
+        setColumnErrors(['The uploaded sheet contains no valid data rows.']);
+        setIsProcessing(false);
+        setProcessed(true);
+        return;
+      }
+
+      setTotalRows(dataRows.length);
 
       // Verify and normalize headers
-      const sampleRow = rawRows[0];
+      const sampleRow = dataRows[0];
       const headerKeys = Object.keys(sampleRow);
 
       const findKey = (possibleNames: string[]) => {
-        return headerKeys.find(k => {
+        // 1. Exact normalized match
+        const exact = headerKeys.find(k => {
           const clean = k.toLowerCase().replace(/[^a-z0-9]/g, '');
           return possibleNames.some(p => clean === p.toLowerCase().replace(/[^a-z0-9]/g, ''));
         });
+        if (exact) return exact;
+
+        // 2. Substring match
+        return headerKeys.find(k => {
+          const clean = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (!clean) return false;
+          return possibleNames.some(p => {
+            const pClean = p.toLowerCase().replace(/[^a-z0-9]/g, '');
+            return pClean.length >= 3 && (clean.includes(pClean) || pClean.includes(clean));
+          });
+        });
       };
 
-      const keySolutionName = findKey(['Solution Name', 'SolutionName', 'Project Title', 'Title', 'Project Name', 'Project', 'Application Name', 'Name']);
-      const keyOverview = findKey(['Project Overview', 'ProjectOverview', 'Description', 'Project Description', 'Overview', 'Summary', 'Details', 'About', 'Abstract']);
-      const keyProblem = findKey(['Problem Statement', 'ProblemStatement', 'Problem', 'Statement']);
-      const keySolutionSummary = findKey(['Solution Summary', 'SolutionSummary', 'Summary', 'Solution', 'Proposed Solution']);
-      const keyAppType = findKey(['Application Type', 'ApplicationType', 'App Type', 'Type', 'AppType']);
-      const keyHeadCat = findKey(['Head Category', 'HeadCategory', 'Category', 'Category Code', 'Category Name', 'HeadCat']);
+      const keySolutionName = findKey([
+        'Solution Name', 'SolutionName', 'Solution', 'Project Title', 'ProjectTitle',
+        'Title', 'Project Name', 'ProjectName', 'Project', 'Application Name', 'ApplicationName',
+        'App Name', 'AppName', 'Name', 'Idea Name', 'Idea', 'Product Name', 'Submission Name',
+        'Proposal Name', 'Topic', 'প্রজেক্টের নাম', 'প্রজেক্ট নাম', 'প্রকল্পের নাম', 'নাম'
+      ]);
+      const keyOverview = findKey([
+        'Project Overview', 'ProjectOverview', 'Overview', 'Description', 'Project Description',
+        'ProjectDescription', 'Details', 'About', 'Abstract', 'Summary', 'বিবরণ', 'ওভারভিউ', 'সারসংক্ষেপ'
+      ]);
+      const keyProblem = findKey([
+        'Problem Statement', 'ProblemStatement', 'Problem', 'Statement', 'Issue', 'Challenge',
+        'সমস্যা', 'প্রবলেম'
+      ]);
+      const keySolutionSummary = findKey([
+        'Solution Summary', 'SolutionSummary', 'Summary', 'Solution', 'Proposed Solution',
+        'Innovation', 'সমাধান'
+      ]);
+      const keyAppType = findKey([
+        'Application Type', 'ApplicationType', 'App Type', 'Type', 'AppType', 'Category Type',
+        'ধরন', 'টাইপ'
+      ]);
+      const keyHeadCat = findKey([
+        'Head Category', 'HeadCategory', 'Category', 'Category Code', 'Category Name',
+        'HeadCat', 'Sector', 'ক্যাটাগরি'
+      ]);
 
       // Legacy fallback keys (if present in file)
       const keyAppId = findKey(['Application ID', 'ApplicationId', 'App ID', 'AppId', 'Application No', 'App No', 'ID']);
-      const keyProjCode = findKey(['Project Code', 'ProjectCode', 'Code', 'Serial', 'Serial No', 'SL']);
-      const keyTeam = findKey(['Team/Organization', 'Team / Organization', 'Team', 'Organization', 'Company', 'Institution', 'TeamOrOrgName', 'Participant', 'Participant Name']);
-      const keyRep = findKey(['Representative', 'Representative Name', 'Lead', 'Leader', 'Member Name', 'Student Name', 'Contact Person']);
+      const keyProjCode = findKey(['Project Code', 'ProjectCode', 'Code', 'Serial', 'Serial No', 'SL', 'Sl No']);
+      const keyTeam = findKey(['Team/Organization', 'Team / Organization', 'Team', 'Organization', 'Company', 'Institution', 'TeamOrOrgName', 'Participant', 'Participant Name', 'University', 'College']);
+      const keyRep = findKey(['Representative', 'Representative Name', 'Lead', 'Leader', 'Member Name', 'Student Name', 'Contact Person', 'Applicant']);
       const keyEmail = findKey(['Email', 'Email Address', 'Contact Email', 'E-mail']);
       const keyContact = findKey(['Contact Number', 'Contact', 'Phone', 'Phone Number', 'Mobile', 'Mobile Number']);
 
-      const missingColumns: string[] = [];
-      if (!keySolutionName) missingColumns.push('Solution Name');
-      if (!keyOverview) missingColumns.push('Project Overview');
-
-      if (missingColumns.length > 0) {
+      // Only Solution Name is strictly required
+      if (!keySolutionName) {
         setColumnErrors([
-          `Missing required columns: ${missingColumns.join(', ')}. Please ensure your Excel file includes Solution Name and Project Overview headers.`
+          'Could not find a Project or Solution Name column. Please ensure your Excel file includes a header like "Solution Name", "Project Name", or "Title".'
         ]);
         setIsProcessing(false);
         setProcessed(true);
@@ -250,16 +320,46 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       const fileAppIds = new Set<string>();
       const fileCodes = new Set<string>();
 
-      rawRows.forEach((row, index) => {
-        const rowNumber = index + 2; // +2 for 1-based index and header row
+      // Safe auto-generator counters that never collide with database or in-file IDs
+      let autoAppIdCounter = sessionProjects.length + 1;
+      const generateUniqueAppId = () => {
+        while (true) {
+          const candidate = `BIIN-2026-${String(autoAppIdCounter).padStart(3, '0')}`;
+          if (!existingAppIds.has(candidate.toLowerCase()) && !fileAppIds.has(candidate.toLowerCase())) {
+            fileAppIds.add(candidate.toLowerCase());
+            return candidate;
+          }
+          autoAppIdCounter++;
+        }
+      };
+
+      let autoCodeCounter = sessionProjects.length + 1;
+      const generateUniqueCode = () => {
+        while (true) {
+          const candidate = `PROJ-${String(autoCodeCounter).padStart(3, '0')}`;
+          if (!existingCodes.has(candidate.toLowerCase()) && !fileCodes.has(candidate.toLowerCase())) {
+            fileCodes.add(candidate.toLowerCase());
+            return candidate;
+          }
+          autoCodeCounter++;
+        }
+      };
+
+      dataRows.forEach((row, index) => {
+        const rowNumber = headerRowIndex + index + 2; // Exact 1-based row number in spreadsheet
         const rowErrList: string[] = [];
 
-        const rawSolutionName = normalizeStr(row[keySolutionName!]);
-        const rawOverview = normalizeStr(row[keyOverview!]);
+        const rawSolutionName = normalizeStr(row[keySolutionName]);
+        let rawOverview = keyOverview ? normalizeStr(row[keyOverview]) : '';
         const rawProblem = keyProblem ? normalizeStr(row[keyProblem]) : '';
         const rawSolution = keySolutionSummary ? normalizeStr(row[keySolutionSummary]) : '';
         const rawAppType = keyAppType ? normalizeStr(row[keyAppType]) : '';
         const rawHeadCat = keyHeadCat ? normalizeStr(row[keyHeadCat]) : '';
+
+        // If overview is empty, populate fallback so database NOT NULL is always satisfied
+        if (!rawOverview) {
+          rawOverview = rawSolution || rawProblem || (rawSolutionName ? `Project overview for ${rawSolutionName}.` : 'No overview provided.');
+        }
 
         // Legacy fields or auto-generated
         let rawAppId = keyAppId ? normalizeStr(row[keyAppId]) : '';
@@ -269,12 +369,16 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         const rawEmail = keyEmail ? normalizeStr(row[keyEmail]) : '';
         const rawContact = keyContact ? normalizeStr(row[keyContact]) : '';
 
-        if (!rawAppId) {
-          rawAppId = `BIIN-2026-${String(sessionProjects.length + parsedValid.length + index + 1).padStart(3, '0')}`;
+        const wasAppIdAuto = !rawAppId;
+        const wasCodeAuto = !rawCode;
+
+        if (wasAppIdAuto) {
+          rawAppId = generateUniqueAppId();
         }
-        if (!rawCode) {
-          rawCode = `PROJ-${String(sessionProjects.length + parsedValid.length + index + 1).padStart(3, '0')}`;
+        if (wasCodeAuto) {
+          rawCode = generateUniqueCode();
         }
+
         if (!rawTeam) {
           rawTeam = rawSolutionName || 'Independent';
         }
@@ -282,14 +386,10 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           rawRep = 'Lead Contact';
         }
 
-        // Required text checks
+        // Required text check: Solution Name
         if (!rawSolutionName) {
           rowErrList.push('Solution Name is required.');
           errors.push({ rowNumber, field: 'Solution Name', message: 'Solution Name is missing or empty' });
-        }
-        if (!rawOverview) {
-          rowErrList.push('Project Overview is required.');
-          errors.push({ rowNumber, field: 'Project Overview', message: 'Project Overview is missing or empty' });
         }
 
         // Determine Application Type
@@ -310,27 +410,16 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           resolvedCategory = selectedHeadCategory;
         }
 
-        // Duplicate Check against Database
-        if (rawAppId && existingAppIds.has(rawAppId.toLowerCase())) {
-          rowErrList.push(`Application ID "${rawAppId}" already exists in the system database.`);
-          errors.push({
-            rowNumber,
-            field: 'Application ID',
-            message: `Duplicate ID "${rawAppId}" already exists in system`
-          });
-        }
-        if (rawCode && existingCodes.has(rawCode.toLowerCase())) {
-          rowErrList.push(`Project Code "${rawCode}" already exists in the system database.`);
-          errors.push({
-            rowNumber,
-            field: 'Project Code',
-            message: `Duplicate Code "${rawCode}" already exists in system`
-          });
-        }
-
-        // Duplicate Check within the File
-        if (rawAppId) {
-          if (fileAppIds.has(rawAppId.toLowerCase())) {
+        // Duplicate Check against Database (only for user-specified IDs from file)
+        if (!wasAppIdAuto) {
+          if (existingAppIds.has(rawAppId.toLowerCase())) {
+            rowErrList.push(`Application ID "${rawAppId}" already exists in the system database.`);
+            errors.push({
+              rowNumber,
+              field: 'Application ID',
+              message: `Duplicate ID "${rawAppId}" already exists in system`
+            });
+          } else if (fileAppIds.has(rawAppId.toLowerCase())) {
             rowErrList.push(`Duplicate Application ID "${rawAppId}" found multiple times in this file.`);
             errors.push({
               rowNumber,
@@ -342,8 +431,15 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           }
         }
 
-        if (rawCode) {
-          if (fileCodes.has(rawCode.toLowerCase())) {
+        if (!wasCodeAuto) {
+          if (existingCodes.has(rawCode.toLowerCase())) {
+            rowErrList.push(`Project Code "${rawCode}" already exists in the system database.`);
+            errors.push({
+              rowNumber,
+              field: 'Project Code',
+              message: `Duplicate Code "${rawCode}" already exists in system`
+            });
+          } else if (fileCodes.has(rawCode.toLowerCase())) {
             rowErrList.push(`Duplicate Project Code "${rawCode}" found multiple times in this file.`);
             errors.push({
               rowNumber,
@@ -358,7 +454,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         // If no errors, create Project model
         if (rowErrList.length === 0 && resolvedAppType && resolvedCategory) {
           const newProject: Project = {
-            id: `proj-import-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            id: `proj-import-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${index}`,
             title: rawSolutionName,
             solutionName: rawSolutionName,
             description: rawOverview,
@@ -371,8 +467,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             headCategory: resolvedCategory,
             teamOrOrgName: rawTeam,
             representativeName: rawRep,
-            email: rawEmail || '',
-            contactNumber: rawContact || '',
+            email: rawEmail || 'contact@biin.org',
+            contactNumber: rawContact || 'N/A',
             tags: [resolvedCategory, resolvedAppType].filter(Boolean),
             status: 'active'
           };
@@ -629,6 +725,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 type="file"
                 accept=".xlsx, .xls, .csv"
                 onChange={handleFileChange}
+                onClick={e => { (e.currentTarget as HTMLInputElement).value = ''; }}
                 className="hidden"
               />
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 mb-2.5">
@@ -638,7 +735,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 {fileName ? fileName : 'Choose your category Excel spreadsheet or drag and drop here'}
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Supported columns: <span className="font-medium text-slate-700 dark:text-slate-300">Solution Name, Project Overview, Problem Statement, Solution Summary, Application Type, Head Category</span>
+                Required: <span className="font-semibold text-slate-800 dark:text-slate-200">Solution Name (or Project Name / Title)</span> · Optional: <span className="font-medium text-slate-600 dark:text-slate-300">Project Overview, Problem Statement, Solution Summary, Application Type, Head Category</span>
               </p>
               <button
                 type="button"

@@ -74,6 +74,13 @@ export const api = {
     });
   },
 
+  async bulkCreateProjects(projects: Partial<Project>[], actor?: { email: string; name: string }): Promise<{ success: boolean; count: number; message?: string }> {
+    return request('/projects/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ projects, actor })
+    });
+  },
+
   async updateProject(project: Project, actor?: { email: string; name: string }): Promise<Project> {
     return request(`/projects/${project.id}`, {
       method: 'PUT',

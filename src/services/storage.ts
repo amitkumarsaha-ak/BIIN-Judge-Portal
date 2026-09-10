@@ -683,6 +683,19 @@ export const addProject = (project: Project, actor?: { email: string; name: stri
   }
 };
 
+export const addProjects = (newProjects: Project[], actor?: { email: string; name: string }): void => {
+  if (newProjects.length === 0) return;
+  const projects = getProjects();
+  projects.push(...newProjects);
+  localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+  api.bulkCreateProjects(newProjects, actor).catch(() => {
+    newProjects.forEach(p => api.createProject(p, actor).catch(() => {}));
+  });
+  if (actor) {
+    logAuditAction(actor.email, actor.name, 'BULK_IMPORT_PROJECTS', 'project', `Imported ${newProjects.length} projects via Excel.`);
+  }
+};
+
 export const updateProject = (updated: Project, actor?: { email: string; name: string }): void => {
   const projects = getProjects();
   const idx = projects.findIndex((p) => p.id === updated.id);
