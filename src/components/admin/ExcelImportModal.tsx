@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 import type { Project, ApplicationType, HeadCategoryCode } from '../../types';
 import { HEAD_CATEGORIES } from '../../data/mockData';
 import { getProjects } from '../../services/storage';
+import { canonicalAppType, canonicalHeadCategory } from '../../utils/evaluation';
 
 interface ExcelImportModalProps {
   existingProjects: Project[];
@@ -33,11 +34,11 @@ const VALID_APP_TYPES: { match: string[]; target: ApplicationType }[] = [
 
 const VALID_HEAD_CATEGORIES: { match: string[]; code: HeadCategoryCode }[] = [
   { match: ['all head category', 'all head categories', 'all categories', 'all category', 'all'], code: 'All Head Category' },
-  { match: ['hc-c', 'hc-01', 'hc-1', 'consumer', 'consumer tech', 'consumer solutions', 'b2c', 'retail'], code: 'Consumer' },
-  { match: ['hc-bs', 'hc-02', 'hc-2', 'business service', 'business services', 'business', 'b2b', 'enterprise', 'fintech', 'saas'], code: 'Business Services' },
-  { match: ['hc-i', 'hc-03', 'hc-3', 'industrial', 'industrial tech', 'robotics', 'iot', 'hardware', 'agritech', 'manufacturing'], code: 'Industrial' },
-  { match: ['hc-psg', 'hc-04', 'hc-4', 'public sector and government', 'public sector & government', 'public sector', 'government', 'gov', 'smart city', 'civic', 'e-gov'], code: 'Public Sector and Government' },
-  { match: ['hc-ics', 'hc-05', 'hc-5', 'individual & communication services', 'individual and communication services', 'individual & communication', 'individual and communication', 'communication services', 'communication', 'inclusion & community service', 'inclusion & community', 'community & social', 'inclusion', 'community', 'social', 'media', 'telecom'], code: 'Individual & Communication Services' }
+  { match: ['hc-c', 'hc-01', 'hc-1', 'consumer', 'consumer tech', 'consumer solutions', 'b2c', 'retail'], code: 'HC-C' },
+  { match: ['hc-bs', 'hc-02', 'hc-2', 'business service', 'business services', 'business', 'b2b', 'enterprise', 'fintech', 'saas'], code: 'HC-BS' },
+  { match: ['hc-i', 'hc-03', 'hc-3', 'industrial', 'industrial tech', 'robotics', 'iot', 'hardware', 'agritech', 'manufacturing'], code: 'HC-I' },
+  { match: ['hc-psg', 'hc-04', 'hc-4', 'public sector and government', 'public sector & government', 'public sector', 'government', 'gov', 'smart city', 'civic', 'e-gov'], code: 'HC-PSG' },
+  { match: ['hc-ics', 'hc-05', 'hc-5', 'individual & communication services', 'individual and communication services', 'individual & communication', 'individual and communication', 'communication services', 'communication', 'inclusion & community service', 'inclusion & community', 'community & social', 'inclusion', 'community', 'social', 'media', 'telecom'], code: 'HC-ICS' }
 ];
 
 const APPLICATION_TYPE_OPTIONS: { id: ApplicationType; label: string; icon: React.FC<{ className?: string }> }[] = [
@@ -70,7 +71,7 @@ const mapHeadCategory = (val: string): HeadCategoryCode | null => {
       return item.code;
     }
   }
-  return null;
+  return canonicalHeadCategory(val);
 };
 
 export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
@@ -397,18 +398,20 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         if (rawAppType) {
           resolvedAppType = mapApplicationType(rawAppType);
         }
-        if (!resolvedAppType) {
-          resolvedAppType = selectedAppType;
+        if (!resolvedAppType || resolvedAppType === 'All Application Types') {
+          resolvedAppType = selectedAppType !== 'All Application Types' ? selectedAppType : 'Student';
         }
+        const finalAppType = canonicalAppType(resolvedAppType);
 
         // Determine Head Category
         let resolvedCategory: HeadCategoryCode | null = null;
         if (rawHeadCat) {
           resolvedCategory = mapHeadCategory(rawHeadCat);
         }
-        if (!resolvedCategory) {
-          resolvedCategory = selectedHeadCategory;
+        if (!resolvedCategory || resolvedCategory === 'All Head Category') {
+          resolvedCategory = selectedHeadCategory !== 'All Head Category' ? selectedHeadCategory : 'HC-C';
         }
+        const finalCategory = canonicalHeadCategory(resolvedCategory);
 
         // Duplicate Check against Database (only for user-specified IDs from file)
         if (!wasAppIdAuto) {
@@ -452,7 +455,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         }
 
         // If no errors, create Project model
-        if (rowErrList.length === 0 && resolvedAppType && resolvedCategory) {
+        if (rowErrList.length === 0) {
           const newProject: Project = {
             id: `proj-import-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${index}`,
             title: rawSolutionName,
@@ -463,13 +466,13 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             solutionSummary: rawSolution,
             applicationId: rawAppId,
             projectCode: rawCode,
-            applicationType: resolvedAppType,
-            headCategory: resolvedCategory,
+            applicationType: finalAppType,
+            headCategory: finalCategory,
             teamOrOrgName: rawTeam,
             representativeName: rawRep,
             email: rawEmail || 'contact@biin.org',
             contactNumber: rawContact || 'N/A',
-            tags: [resolvedCategory, resolvedAppType].filter(Boolean),
+            tags: [finalCategory, finalAppType].filter(Boolean),
             status: 'active'
           };
           parsedValid.push(newProject);
@@ -542,6 +545,13 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     }
   };
 
+  const handleSafeClose = () => {
+    if (validProjects.length > 0) {
+      handleConfirmImport();
+    }
+    onClose();
+  };
+
   const failedRowCount = new Set(rowErrors.map(e => e.rowNumber)).size;
 
   return (
@@ -578,7 +588,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <span>Download Template</span>
             </button>
             <button
-              onClick={onClose}
+              onClick={handleSafeClose}
               className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-white transition-colors"
             >
               <X className="h-5 w-5" />
@@ -665,12 +675,12 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   onChange={e => setSelectedHeadCategory(e.target.value as HeadCategoryCode)}
                   className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white shadow-sm focus:border-emerald-500 focus:outline-none"
                 >
-                  <option value="All Head Category">All Head Category</option>
-                  <option value="Consumer">Consumer</option>
-                  <option value="Business Services">Business Services</option>
-                  <option value="Industrial">Industrial</option>
-                  <option value="Public Sector and Government">Public Sector and Government</option>
-                  <option value="Individual & Communication Services">Individual & Communication Services</option>
+                  <option value="All Head Category">All Head Category (Auto-detect from file)</option>
+                  <option value="HC-C">Consumer</option>
+                  <option value="HC-BS">Business Services</option>
+                  <option value="HC-I">Industrial</option>
+                  <option value="HC-PSG">Public Sector and Government</option>
+                  <option value="HC-ICS">Individual & Communication Services</option>
                 </select>
               </div>
             </div>
@@ -686,7 +696,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <ArrowRight className="h-3 w-3 text-slate-400" />
                 <span className="inline-flex items-center space-x-1 font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/40 px-2.5 py-0.5 rounded-lg border border-cyan-200 dark:border-cyan-800">
                   <Layers className="h-3.5 w-3.5" />
-                  <span>{selectedHeadCategory}</span>
+                  <span>{activeCategoryObj?.name || selectedHeadCategory}</span>
                 </span>
               </div>
 
@@ -826,35 +836,49 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 </div>
               )}
 
-              {/* Ready Projects Preview */}
+              {/* Ready Projects Preview & Immediate Action */}
               {validProjects.length > 0 && (
-                <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-950/10 p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-2 text-emerald-700 dark:text-emerald-400 font-bold">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
-                      <span>Valid Projects Ready For Ingestion ({validProjects.length})</span>
-                    </div>
-                    <span className="text-[11px] font-semibold text-slate-500">
-                      Destination: {selectedAppType} · {selectedHeadCategory}
-                    </span>
-                  </div>
-                  <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
-                    {validProjects.slice(0, 5).map((p, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-xs rounded-xl bg-white dark:bg-slate-900 p-2.5 border border-emerald-100 dark:border-emerald-900/30">
-                        <div className="min-w-0 pr-2">
-                          <p className="font-bold text-slate-900 dark:text-white truncate">{p.title}</p>
-                          <p className="text-[11px] text-slate-500 font-mono">{p.applicationId} · {p.projectCode} · {p.teamOrOrgName}</p>
-                        </div>
-                        <div className="flex items-center space-x-1.5 shrink-0 text-[10px] font-bold">
-                          <span className="rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 border border-indigo-200 dark:border-indigo-800">
-                            {p.applicationType}
-                          </span>
-                          <span className="rounded-md bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 border border-cyan-200 dark:border-cyan-800">
-                            {p.headCategory}
-                          </span>
-                        </div>
+                <div className="rounded-2xl border-2 border-emerald-500/50 bg-emerald-50/40 dark:bg-emerald-950/20 p-4 space-y-3 shadow-md">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-emerald-600 dark:bg-emerald-700 p-3.5 rounded-xl text-white">
+                    <div>
+                      <div className="flex items-center space-x-2 font-bold text-sm">
+                        <CheckCircle2 className="h-5 w-5 shrink-0" />
+                        <span>{validProjects.length} Project{validProjects.length !== 1 ? 's' : ''} Ready to Import</span>
                       </div>
-                    ))}
+                      <p className="text-xs text-emerald-100 mt-0.5">
+                        Target: {selectedAppType} · {activeCategoryObj?.name || selectedHeadCategory}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleConfirmImport}
+                      className="inline-flex items-center justify-center space-x-2 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 px-5 py-2.5 font-extrabold text-xs shadow-lg transition-transform hover:scale-105 shrink-0"
+                    >
+                      <Check className="h-4 w-4" />
+                      <span>Import Now</span>
+                    </button>
+                  </div>
+
+                  <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                    {validProjects.slice(0, 5).map((p, idx) => {
+                      const hcName = HEAD_CATEGORIES.find(h => h.code === p.headCategory)?.name || p.headCategory;
+                      return (
+                        <div key={idx} className="flex items-center justify-between text-xs rounded-xl bg-white dark:bg-slate-900 p-2.5 border border-emerald-100 dark:border-emerald-900/30">
+                          <div className="min-w-0 pr-2">
+                            <p className="font-bold text-slate-900 dark:text-white truncate">{p.title}</p>
+                            <p className="text-[11px] text-slate-500 font-mono">{p.applicationId} · {p.projectCode} · {p.teamOrOrgName}</p>
+                          </div>
+                          <div className="flex items-center space-x-1.5 shrink-0 text-[10px] font-bold">
+                            <span className="rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 border border-indigo-200 dark:border-indigo-800">
+                              {p.applicationType}
+                            </span>
+                            <span className="rounded-md bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 border border-cyan-200 dark:border-cyan-800">
+                              {hcName}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                     {validProjects.length > 5 && (
                       <p className="text-center text-[11px] text-slate-500 pt-1 italic">
                         + {validProjects.length - 5} more valid projects
@@ -870,7 +894,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         {/* Footer Actions */}
         <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 sm:p-4 border-t border-slate-200 dark:border-slate-800">
           <button
-            onClick={onClose}
+            onClick={handleSafeClose}
             className="rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 min-h-[40px] text-center"
           >
             {sessionImportedTotal > 0 ? 'Close & View Projects' : 'Cancel'}

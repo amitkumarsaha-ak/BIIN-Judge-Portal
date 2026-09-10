@@ -1,14 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   FolderGit2, Search, CheckCircle2, Clock,
   Eye, Building2, GraduationCap, Users, University, Filter
 } from 'lucide-react';
-import type { Project, ApplicationType } from '../../types';
+import type { Project } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import {
   getProjectsForJudge, getEvaluationsByJudge, getSystemSettings
 } from '../../services/storage';
 import { HEAD_CATEGORIES } from '../../data/mockData';
+import {
+  matchesAppType,
+  matchesCategory,
+  canonicalAppType
+} from '../../utils/evaluation';
 
 interface JudgeProjectsViewProps {
   onSelectProjectForEvaluation: (project: Project) => void;
@@ -18,49 +23,72 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
   onSelectProjectForEvaluation
 }) => {
   const { currentUser } = useAuth();
-  const assignedProjects = getProjectsForJudge();
-  const myEvaluations = currentUser ? getEvaluationsByJudge(currentUser.email) : [];
+  const [assignedProjects, setAssignedProjects] = useState<Project[]>(() => getProjectsForJudge());
+  const [myEvaluations, setMyEvaluations] = useState(() =>
+    currentUser ? getEvaluationsByJudge(currentUser.email) : []
+  );
   const settings = getSystemSettings();
 
+  useEffect(() => {
+    const refresh = () => {
+      setAssignedProjects(getProjectsForJudge());
+      if (currentUser) {
+        setMyEvaluations(getEvaluationsByJudge(currentUser.email));
+      }
+    };
+    window.addEventListener('biin_projects_updated', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('biin_projects_updated', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, [currentUser]);
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<ApplicationType | 'All'>('All');
+  const [filterType, setFilterType] = useState<string>('All');
   const [filterCategory, setFilterCategory] = useState<string>('All');
 
   const filteredProjects = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return assignedProjects.filter(p => {
       if (p.status && p.status !== 'active') return false;
-      if (filterType !== 'All' && p.applicationType !== filterType) return false;
-      if (filterCategory !== 'All' && p.headCategory !== filterCategory) return false;
+      if (!matchesAppType(p.applicationType, filterType)) return false;
+      if (!matchesCategory(p.headCategory, filterCategory)) return false;
       if (q) {
         const hay = [
           p.title,
+          p.solutionName,
           p.applicationId,
           p.projectCode,
           p.teamOrOrgName,
           p.representativeName,
-          p.description
-        ].join(' ').toLowerCase();
+          p.description,
+          p.projectOverview,
+          p.problemStatement,
+          p.solutionSummary
+        ].filter(Boolean).join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
   }, [assignedProjects, searchQuery, filterType, filterCategory]);
 
-  const getAppTypeIcon = (type: ApplicationType) => {
-    switch (type) {
+  const getAppTypeIcon = (type: string) => {
+    const canonical = canonicalAppType(type);
+    switch (canonical) {
       case 'Student': return GraduationCap;
-      case 'Organisation': return Building2;
-      case 'Student-Tertiary': return University;
+      case 'Organization': return Building2;
+      case 'Student -Tertiary (University Level)': return University;
       default: return Users;
     }
   };
 
-  const getAppTypeColor = (type: ApplicationType) => {
-    switch (type) {
+  const getAppTypeColor = (type: string) => {
+    const canonical = canonicalAppType(type);
+    switch (canonical) {
       case 'Student': return 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20';
-      case 'Organisation': return 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
-      case 'Student-Tertiary': return 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20';
+      case 'Organization': return 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
+      case 'Student -Tertiary (University Level)': return 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20';
       default: return 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20';
     }
   };
@@ -103,14 +131,14 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
 
         <select
           value={filterType}
-          onChange={e => setFilterType(e.target.value as ApplicationType | 'All')}
+          onChange={e => setFilterType(e.target.value)}
           className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
         >
           <option value="All">All Application Types</option>
           <option value="Student">Student</option>
-          <option value="Student-Tertiary">Student-Tertiary Categories (University Level)</option>
-          <option value="Organisation">Organisation</option>
-          <option value="Individual or Group">Individual or Group</option>
+          <option value="Student -Tertiary (University Level)">Student -Tertiary (University Level)</option>
+          <option value="Organization">Organization</option>
+          <option value="Individual/Group">Individual/Group</option>
         </select>
 
         <select
@@ -138,7 +166,9 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredProjects.map(project => {
             const AppTypeIcon = getAppTypeIcon(project.applicationType);
-            const category = HEAD_CATEGORIES.find(h => h.code === project.headCategory);
+            const category = HEAD_CATEGORIES.find(
+              h => h.code === project.headCategory || h.name.toLowerCase() === (project.headCategory || '').toLowerCase()
+            );
             const evalItem = myEvaluations.find(e => e.projectId === project.id);
             const isEvaluated = Boolean(evalItem);
 

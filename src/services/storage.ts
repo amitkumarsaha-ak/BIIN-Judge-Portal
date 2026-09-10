@@ -1,6 +1,7 @@
 import type { User, Project, Evaluation, DashboardStats, Room, SystemSettings, AuditLog } from '../types';
 import { PRESEEDED_JUDGES, SAMPLE_PROJECTS } from '../data/mockData';
 import { ADMIN_CONFIG } from '../config/authConfig';
+import { matchesAppType, matchesCategory } from '../utils/evaluation';
 import { api } from './api';
 
 const USERS_KEY = 'biin_portal_users';
@@ -677,6 +678,9 @@ export const addProject = (project: Project, actor?: { email: string; name: stri
   const projects = getProjects();
   projects.push(project);
   localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('biin_projects_updated'));
+  }
   api.createProject(project, actor).catch(() => {});
   if (actor) {
     logAuditAction(actor.email, actor.name, 'CREATE_PROJECT', 'project', `Created project "${project.title}" (${project.applicationId}).`);
@@ -688,6 +692,9 @@ export const addProjects = (newProjects: Project[], actor?: { email: string; nam
   const projects = getProjects();
   projects.push(...newProjects);
   localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('biin_projects_updated'));
+  }
   api.bulkCreateProjects(newProjects, actor).catch(() => {
     newProjects.forEach(p => api.createProject(p, actor).catch(() => {}));
   });
@@ -702,6 +709,9 @@ export const updateProject = (updated: Project, actor?: { email: string; name: s
   if (idx >= 0) {
     projects[idx] = updated;
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('biin_projects_updated'));
+    }
     api.updateProject(updated, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'UPDATE_PROJECT', 'project', `Updated project "${updated.title}" (${updated.applicationId}).`);
@@ -718,6 +728,10 @@ export const deleteProject = (id: string, actor?: { email: string; name: string 
   // Also remove all evaluations linked to this project
   const evaluations = getEvaluations().filter((e) => e.projectId !== id);
   localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evaluations));
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('biin_projects_updated'));
+  }
 
   api.deleteProject(id, actor).catch(() => {});
 
@@ -736,6 +750,9 @@ export const toggleProjectStatus = (id: string, actor?: { email: string; name: s
       status: nextStatus
     };
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('biin_projects_updated'));
+    }
     api.toggleProjectStatus(id, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'TOGGLE_PROJECT_STATUS', 'project', `Changed status of "${projects[idx].title}" to ${nextStatus}.`);
@@ -749,6 +766,9 @@ export const assignProjectToRoom = (id: string, roomNumber: string, actor?: { em
   if (idx >= 0) {
     projects[idx] = { ...projects[idx], roomNumber: roomNumber.trim() };
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('biin_projects_updated'));
+    }
     api.assignProjectRoom(id, roomNumber, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'ASSIGN_PROJECT_ROOM', 'project', `Assigned project "${projects[idx].title}" to ${roomNumber}.`);
@@ -763,6 +783,9 @@ export const removeProjectFromRoom = (id: string, actor?: { email: string; name:
     const oldRoom = projects[idx].roomNumber;
     projects[idx] = { ...projects[idx], roomNumber: '' };
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('biin_projects_updated'));
+    }
     api.assignProjectRoom(id, '', actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'REMOVE_PROJECT_ROOM', 'project', `Removed project "${projects[idx].title}" from ${oldRoom}.`);
@@ -860,9 +883,10 @@ export const deleteEvaluation = (id: string, actor?: { email: string; name: stri
 export const getProjectsForJudge = (applicationType?: string, headCategory?: string): Project[] => {
   const allProjects = getProjects();
   return allProjects.filter(p => {
-    if (p.status !== 'active') return false;
-    if (applicationType && applicationType !== 'All' && p.applicationType !== applicationType) return false;
-    if (headCategory && headCategory !== 'All' && p.headCategory !== headCategory) return false;
+    const isActive = !p.status || p.status === 'active';
+    if (!isActive) return false;
+    if (applicationType && !matchesAppType(p.applicationType, applicationType)) return false;
+    if (headCategory && !matchesCategory(p.headCategory, headCategory)) return false;
     return true;
   });
 };
@@ -871,7 +895,7 @@ export const getProjectsForJudge = (applicationType?: string, headCategory?: str
  * Returns stats for the Judge across all active projects and their own submissions.
  */
 export const getDashboardStatsForJudge = (judgeEmail: string): DashboardStats => {
-  const allActiveProjects = getProjects().filter(p => p.status === 'active');
+  const allActiveProjects = getProjects().filter(p => !p.status || p.status === 'active');
   const judgeEvaluations = getEvaluationsByJudge(judgeEmail);
 
   const totalProjects = allActiveProjects.length;

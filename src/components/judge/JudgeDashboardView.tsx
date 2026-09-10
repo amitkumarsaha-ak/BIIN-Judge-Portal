@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sparkles, CheckCircle2, Clock, Award,
   ArrowRight, Eye, Lock, Layers
@@ -22,12 +22,39 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
   onSelectProjectForEvaluation
 }) => {
   const { currentUser } = useAuth();
-  if (!currentUser) return null;
+  const [assignedProjects, setAssignedProjects] = useState<Project[]>(() => getProjectsForJudge());
+  const [myEvaluations, setMyEvaluations] = useState(() =>
+    currentUser ? getEvaluationsByJudge(currentUser.email) : []
+  );
+  const [settings, setSettings] = useState(() => getSystemSettings());
+  const [stats, setStats] = useState(() =>
+    currentUser ? getDashboardStatsForJudge(currentUser.email) : {
+      totalProjects: 0,
+      evaluatedProjectsCount: 0,
+      remainingProjectsCount: 0,
+      averageScore: 0
+    }
+  );
 
-  const assignedProjects = getProjectsForJudge();
-  const myEvaluations = getEvaluationsByJudge(currentUser.email);
-  const settings = getSystemSettings();
-  const stats = getDashboardStatsForJudge(currentUser.email);
+  useEffect(() => {
+    const refresh = () => {
+      setAssignedProjects(getProjectsForJudge());
+      setSettings(getSystemSettings());
+      if (currentUser) {
+        setMyEvaluations(getEvaluationsByJudge(currentUser.email));
+        setStats(getDashboardStatsForJudge(currentUser.email));
+      }
+    };
+
+    window.addEventListener('biin_projects_updated', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('biin_projects_updated', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, [currentUser]);
+
+  if (!currentUser) return null;
 
   return (
     <div className="space-y-8 pb-12">

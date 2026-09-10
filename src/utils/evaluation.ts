@@ -212,6 +212,20 @@ export const canonicalHeadCategory = (cat?: string): HeadCategoryCode => {
   return 'HC-C';
 };
 
+export const matchesAppType = (projectType?: string, filterType?: string): boolean => {
+  if (!filterType || filterType === 'All' || filterType === 'All Application Types') return true;
+  if (!projectType || projectType === 'All' || projectType === 'All Application Types') return true;
+  if (projectType === filterType) return true;
+  return canonicalAppType(projectType) === canonicalAppType(filterType);
+};
+
+export const matchesCategory = (projectCategory?: string, filterCategory?: string): boolean => {
+  if (!filterCategory || filterCategory === 'All' || filterCategory === 'All Head Category') return true;
+  if (!projectCategory || projectCategory === 'All' || projectCategory === 'All Head Category') return true;
+  if (projectCategory === filterCategory) return true;
+  return canonicalHeadCategory(projectCategory) === canonicalHeadCategory(filterCategory);
+};
+
 export const calculateAward = (finalScore: number, _isHighestInCategory?: boolean): AwardDesignation => {
   if (finalScore >= 80) {
     return 'Champion';

@@ -12,10 +12,12 @@ import {
   toggleProjectStatus, getEvaluations
 } from '../../services/storage';
 import { HEAD_CATEGORIES } from '../../data/mockData';
+import { matchesAppType, matchesCategory, canonicalAppType } from '../../utils/evaluation';
 import { ExcelImportModal } from './ExcelImportModal';
 
 const getAppTypeIcon = (type: ApplicationType) => {
-  switch (type) {
+  const canon = canonicalAppType(type);
+  switch (canon) {
     case 'Student': return GraduationCap;
     case 'Organisation': return Building2;
     case 'Student-Tertiary': return University;
@@ -24,7 +26,8 @@ const getAppTypeIcon = (type: ApplicationType) => {
 };
 
 const getAppTypeColor = (type: ApplicationType) => {
-  switch (type) {
+  const canon = canonicalAppType(type);
+  switch (canon) {
     case 'Student': return 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20';
     case 'Organisation': return 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
     case 'Student-Tertiary': return 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20';
@@ -454,15 +457,28 @@ export const AdminProjectsView: React.FC = () => {
   const refresh = useCallback(() => setProjects(getProjects()), []);
   const allEvaluations = getEvaluations();
 
+  // Reactive listener for storage updates (Excel imports, additions, deletions)
+  React.useEffect(() => {
+    const handleStorageUpdate = () => {
+      refresh();
+    };
+    window.addEventListener('biin_projects_updated', handleStorageUpdate);
+    window.addEventListener('storage', handleStorageUpdate);
+    return () => {
+      window.removeEventListener('biin_projects_updated', handleStorageUpdate);
+      window.removeEventListener('storage', handleStorageUpdate);
+    };
+  }, [refresh]);
+
   // Filtered projects
   const filtered = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return projects.filter(p => {
       // Filter by Application Type
-      if (filterType !== 'All' && p.applicationType !== 'All Application Types' && p.applicationType !== filterType) return false;
+      if (!matchesAppType(p.applicationType, filterType)) return false;
 
       // Filter by Head Category
-      if (filterCategory !== 'All' && p.headCategory !== 'All Head Category' && p.headCategory !== filterCategory) return false;
+      if (!matchesCategory(p.headCategory, filterCategory)) return false;
 
       // Filter by Status
       if (filterStatus !== 'All' && p.status !== filterStatus) return false;
@@ -677,9 +693,9 @@ export const AdminProjectsView: React.FC = () => {
             >
               <option value="All">All Application Types</option>
               <option value="Student">Student</option>
-              <option value="Student-Tertiary">Student-Tertiary (University Level)</option>
-              <option value="Organisation">Organisation</option>
-              <option value="Individual or Group">Individual or Group</option>
+              <option value="Student -Tertiary (University Level)">Student -Tertiary (University Level)</option>
+              <option value="Organization">Organization</option>
+              <option value="Individual/Group">Individual/Group</option>
             </select>
 
             <select
@@ -688,9 +704,11 @@ export const AdminProjectsView: React.FC = () => {
               className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500"
             >
               <option value="All">All Head Categories</option>
-              {HEAD_CATEGORIES.map(h => (
-                <option key={h.code} value={h.code}>{h.name} ({h.code})</option>
-              ))}
+              <option value="HC-C">Consumer</option>
+              <option value="HC-BS">Business Services</option>
+              <option value="HC-I">Industrial</option>
+              <option value="HC-PSG">Public Sector and Government</option>
+              <option value="HC-ICS">Individual & Communication Services</option>
             </select>
 
             <select
@@ -772,7 +790,7 @@ export const AdminProjectsView: React.FC = () => {
           {filtered.map(project => {
             const AppTypeIcon = getAppTypeIcon(project.applicationType);
             const isActive = project.status === 'active';
-            const category = HEAD_CATEGORIES.find(h => h.code === project.headCategory);
+            const category = HEAD_CATEGORIES.find(h => h.code === project.headCategory || h.name.toLowerCase() === (project.headCategory || '').toLowerCase());
             const evalCount = evalCountFor(project.id);
 
             return (
