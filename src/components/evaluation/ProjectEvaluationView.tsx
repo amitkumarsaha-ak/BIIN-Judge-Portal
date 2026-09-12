@@ -110,7 +110,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
       submittedAt: new Date().toISOString()
     };
 
-    saveEvaluation(evaluationRecord);
+    saveEvaluation(evaluationRecord, { email: currentUser.email, name: currentUser.fullName });
     setIsModalOpen(false);
     setSubmittedEvaluation(evaluationRecord);
   };

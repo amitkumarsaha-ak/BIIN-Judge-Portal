@@ -14,6 +14,7 @@ import {
 import { HEAD_CATEGORIES } from '../../data/mockData';
 import { matchesAppType, matchesCategory, canonicalAppType } from '../../utils/evaluation';
 import { ExcelImportModal } from './ExcelImportModal';
+import { useAuth } from '../../context/AuthContext';
 
 const getAppTypeIcon = (type: ApplicationType) => {
   const canon = canonicalAppType(type);
@@ -511,31 +512,34 @@ export const AdminProjectsView: React.FC = () => {
   const totalInactive = projects.filter(p => p.status === 'inactive').length;
   const evalCountFor = (id: string) => allEvaluations.filter(e => e.projectId === id).length;
 
+  const { currentUser } = useAuth();
+  const actor = useMemo(() => currentUser ? { email: currentUser.email, name: currentUser.fullName } : undefined, [currentUser]);
+
   const handleSave = (project: Project) => {
     if (formModal?.mode === 'add') {
-      addProject(project);
+      addProject(project, actor);
     } else {
-      updateProject(project);
+      updateProject(project, actor);
     }
     refresh();
     setFormModal(null);
   };
 
   const handleBulkImport = (newProjects: Project[]) => {
-    addProjects(newProjects);
+    addProjects(newProjects, actor);
     refresh();
   };
 
   const handleDelete = () => {
     if (!deleteTarget) return;
-    deleteProject(deleteTarget.id);
+    deleteProject(deleteTarget.id, actor);
     refresh();
     setDeleteTarget(null);
     if (detailTarget?.id === deleteTarget.id) setDetailTarget(null);
   };
 
   const handleToggleStatus = (id: string) => {
-    toggleProjectStatus(id);
+    toggleProjectStatus(id, actor);
     refresh();
     if (detailTarget && detailTarget.id === id) {
       setDetailTarget(prev => prev ? { ...prev, status: prev.status === 'active' ? 'inactive' : 'active' } : null);

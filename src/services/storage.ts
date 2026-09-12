@@ -291,11 +291,85 @@ export const syncWithBackend = async (): Promise<boolean> => {
       api.getAuditLogs()
     ]);
 
-    if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value) && projectsRes.value.length > 0) {
-      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projectsRes.value));
+    if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value)) {
+      const remoteProjects = projectsRes.value;
+      const localProjects = getProjects();
+
+      // Index remote projects by id and normalized applicationId
+      const remoteMap = new Map<string, Project>();
+      for (const rp of remoteProjects) {
+        remoteMap.set(rp.id, rp);
+        if (rp.applicationId) {
+          remoteMap.set(`app_${rp.applicationId.trim().toLowerCase()}`, rp);
+        }
+      }
+
+      // Track local-only projects that need to be pushed to remote backend
+      const localOnlyProjects: Project[] = [];
+      const mergedProjects: Project[] = [...remoteProjects];
+
+      for (const lp of localProjects) {
+        const foundInRemote = remoteMap.has(lp.id) || (lp.applicationId && remoteMap.has(`app_${lp.applicationId.trim().toLowerCase()}`));
+        if (!foundInRemote) {
+          // CRITICAL: Keep locally added project so it is never lost!
+          mergedProjects.push(lp);
+          localOnlyProjects.push(lp);
+        }
+      }
+
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(mergedProjects));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('biin_projects_updated'));
+      }
+
+      // Asynchronously sync local-only projects to the backend
+      if (localOnlyProjects.length > 0) {
+        Promise.allSettled(localOnlyProjects.map(p => api.createProject(p))).catch(() => {});
+      }
     }
-    if (evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value) && evalsRes.value.length > 0) {
-      localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evalsRes.value));
+
+    if (evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value)) {
+      const remoteEvals = evalsRes.value;
+      const localEvals = getEvaluations();
+
+      const evalKey = (e: Evaluation) => `${e.projectId}___${(e.judgeEmail || '').toLowerCase().trim()}`;
+      const mergedMap = new Map<string, Evaluation>();
+
+      // 1. Add remote evaluations
+      for (const re of remoteEvals) {
+        mergedMap.set(evalKey(re), re);
+      }
+
+      // 2. Merge local evaluations: preserve local submissions not yet on server
+      const localOnlyEvals: Evaluation[] = [];
+      for (const le of localEvals) {
+        const key = evalKey(le);
+        if (!mergedMap.has(key)) {
+          // CRITICAL: Keep local evaluation submission so it is never lost!
+          mergedMap.set(key, le);
+          localOnlyEvals.push(le);
+        } else {
+          // If present on both, keep the newer submission
+          const remoteEval = mergedMap.get(key)!;
+          const localTime = new Date(le.updatedAt || le.submittedAt || 0).getTime();
+          const remoteTime = new Date(remoteEval.updatedAt || remoteEval.submittedAt || 0).getTime();
+          if (localTime > remoteTime) {
+            mergedMap.set(key, le);
+            localOnlyEvals.push(le);
+          }
+        }
+      }
+
+      const mergedEvaluations = Array.from(mergedMap.values());
+      localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(mergedEvaluations));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('biin_projects_updated'));
+      }
+
+      // Asynchronously sync local-only evaluations to the backend
+      if (localOnlyEvals.length > 0) {
+        Promise.allSettled(localOnlyEvals.map(e => api.saveEvaluation(e))).catch(() => {});
+      }
     }
     if (judgesRes.status === 'fulfilled' && Array.isArray(judgesRes.value)) {
       const existingUsers = getUsers();
@@ -676,12 +750,31 @@ export const getProjectById = (id: string): Project | undefined => {
 
 export const addProject = (project: Project, actor?: { email: string; name: string }): void => {
   const projects = getProjects();
-  projects.push(project);
+  const existingIdx = projects.findIndex(p => p.id === project.id || (project.applicationId && p.applicationId === project.applicationId));
+  if (existingIdx >= 0) {
+    projects[existingIdx] = { ...projects[existingIdx], ...project };
+  } else {
+    projects.push(project);
+  }
   localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('biin_projects_updated'));
   }
-  api.createProject(project, actor).catch(() => {});
+  api.createProject(project, actor)
+    .then(saved => {
+      if (saved && saved.id && saved.id !== project.id) {
+        const cur = getProjects();
+        const updated = cur.map(p => p.id === project.id ? { ...p, id: saved.id } : p);
+        localStorage.setItem(PROJECTS_KEY, JSON.stringify(updated));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('biin_projects_updated'));
+        }
+      }
+    })
+    .catch(err => {
+      console.warn('[Storage] Remote project creation deferred, saved locally:', err);
+    });
+
   if (actor) {
     logAuditAction(actor.email, actor.name, 'CREATE_PROJECT', 'project', `Created project "${project.title}" (${project.applicationId}).`);
   }
@@ -690,7 +783,14 @@ export const addProject = (project: Project, actor?: { email: string; name: stri
 export const addProjects = (newProjects: Project[], actor?: { email: string; name: string }): void => {
   if (newProjects.length === 0) return;
   const projects = getProjects();
-  projects.push(...newProjects);
+  for (const np of newProjects) {
+    const existingIdx = projects.findIndex(p => p.id === np.id || (np.applicationId && p.applicationId === np.applicationId));
+    if (existingIdx >= 0) {
+      projects[existingIdx] = { ...projects[existingIdx], ...np };
+    } else {
+      projects.push(np);
+    }
+  }
   localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('biin_projects_updated'));
@@ -847,9 +947,14 @@ export const saveEvaluation = (evaluation: Evaluation, actor?: { email: string; 
   }
 
   localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evaluations));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('biin_projects_updated'));
+  }
   
   // Forward to backend REST API
-  api.saveEvaluation(evaluation, actor).catch(() => {});
+  api.saveEvaluation(evaluation, actor).catch((err) => {
+    console.warn('[Storage] Remote evaluation save deferred, saved locally:', err);
+  });
 
   if (actor) {
     logAuditAction(

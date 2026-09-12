@@ -53,15 +53,49 @@ const pool = new Pool(
       }
 );
 
-// In-memory store fallback
-const memoryStore = {
-  users: [...SEED_USERS],
-  rooms: [...SEED_ROOMS],
-  projects: [...SEED_PROJECTS],
-  evaluations: [...SEED_EVALUATIONS],
-  settings: { ...SEED_SETTINGS },
-  auditLogs: [...SEED_AUDIT_LOGS]
-};
+// In-memory store fallback with local file persistence for development resilience
+const FALLBACK_STORE_FILE = path.join(__dirname, '../../.memory_store.json');
+
+interface MemoryStoreState {
+  users: SeedUser[];
+  rooms: SeedRoom[];
+  projects: SeedProject[];
+  evaluations: SeedEvaluation[];
+  settings: typeof SEED_SETTINGS;
+  auditLogs: typeof SEED_AUDIT_LOGS;
+}
+
+function loadMemoryFallback(): MemoryStoreState {
+  try {
+    if (fs.existsSync(FALLBACK_STORE_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(FALLBACK_STORE_FILE, 'utf8'));
+      return {
+        users: (Array.isArray(parsed.users) ? parsed.users : [...SEED_USERS]) as SeedUser[],
+        rooms: (Array.isArray(parsed.rooms) ? parsed.rooms : [...SEED_ROOMS]) as SeedRoom[],
+        projects: (Array.isArray(parsed.projects) ? parsed.projects : [...SEED_PROJECTS]) as SeedProject[],
+        evaluations: (Array.isArray(parsed.evaluations) ? parsed.evaluations : [...SEED_EVALUATIONS]) as SeedEvaluation[],
+        settings: parsed.settings || { ...SEED_SETTINGS },
+        auditLogs: (Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [...SEED_AUDIT_LOGS]) as typeof SEED_AUDIT_LOGS
+      };
+    }
+  } catch {}
+  return {
+    users: [...SEED_USERS],
+    rooms: [...SEED_ROOMS],
+    projects: [...SEED_PROJECTS],
+    evaluations: [...SEED_EVALUATIONS],
+    settings: { ...SEED_SETTINGS },
+    auditLogs: [...SEED_AUDIT_LOGS]
+  };
+}
+
+const memoryStore: MemoryStoreState = loadMemoryFallback();
+
+export function saveMemoryFallback(): void {
+  try {
+    fs.writeFileSync(FALLBACK_STORE_FILE, JSON.stringify(memoryStore, null, 2), 'utf8');
+  } catch {}
+}
 
 async function ensureDatabaseExists() {
   if (isCloudDb) {
@@ -421,6 +455,23 @@ export const projectDb = {
           institution_or_org, description, problem_statement, solution_summary,
           tags, room_number, status
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        ON CONFLICT (application_id) DO UPDATE SET
+          title = EXCLUDED.title,
+          project_code = EXCLUDED.project_code,
+          application_type = EXCLUDED.application_type,
+          head_category = EXCLUDED.head_category,
+          team_or_org_name = EXCLUDED.team_or_org_name,
+          representative_name = EXCLUDED.representative_name,
+          members = EXCLUDED.members,
+          email = EXCLUDED.email,
+          contact_number = EXCLUDED.contact_number,
+          institution_or_org = EXCLUDED.institution_or_org,
+          description = EXCLUDED.description,
+          problem_statement = EXCLUDED.problem_statement,
+          solution_summary = EXCLUDED.solution_summary,
+          tags = EXCLUDED.tags,
+          room_number = EXCLUDED.room_number,
+          status = EXCLUDED.status
       `, [
         project.id, project.title, project.applicationId, project.projectCode, project.applicationType, project.headCategory,
         project.teamOrOrgName, project.representativeName, JSON.stringify(project.members || []),
@@ -430,7 +481,13 @@ export const projectDb = {
       ]);
       return project;
     }
-    memoryStore.projects.push(project);
+    const idx = memoryStore.projects.findIndex(p => p.id === project.id || p.applicationId === project.applicationId);
+    if (idx >= 0) {
+      memoryStore.projects[idx] = project;
+    } else {
+      memoryStore.projects.push(project);
+    }
+    saveMemoryFallback();
     return project;
   },
 
@@ -552,6 +609,7 @@ export const evaluationDb = {
     } else {
       memoryStore.evaluations.push(evaluation);
     }
+    saveMemoryFallback();
     return evaluation;
   },
 
@@ -562,6 +620,7 @@ export const evaluationDb = {
     }
     const initial = memoryStore.evaluations.length;
     memoryStore.evaluations = memoryStore.evaluations.filter(e => e.id !== id);
+    saveMemoryFallback();
     return memoryStore.evaluations.length < initial;
   }
 };
