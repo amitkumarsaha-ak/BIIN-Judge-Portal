@@ -167,7 +167,7 @@ export const initializeStorage = () => {
                     users[existingIdx] = {
                       ...lu,
                       ...users[existingIdx],
-                      password: lu.password || users[existingIdx].password,
+                      password: users[existingIdx].password || lu.password,
                       status: (lu.status === 'approved' || users[existingIdx].status === 'approved') ? 'approved' : (users[existingIdx].status || lu.status || 'pending')
                     };
                   } else {
@@ -735,19 +735,52 @@ export const resetJudgePassword = (email: string, newPassword: string): boolean 
   const idx = users.findIndex(u => u.email?.toLowerCase() === cleanEmail);
   if (idx >= 0) {
     users[idx] = { ...users[idx], password: newPassword };
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('biin_users_updated'));
+  } else {
+    const preseeded = PRESEEDED_JUDGES.find(u => u.email?.toLowerCase() === cleanEmail);
+    if (preseeded) {
+      users.push({ ...preseeded, password: newPassword, status: 'approved' });
+    } else {
+      users.push({
+        id: `judge-${Date.now()}`,
+        fullName: cleanEmail.split('@')[0],
+        email: cleanEmail,
+        password: newPassword,
+        role: 'judge',
+        status: 'approved',
+        createdAt: new Date().toISOString()
+      });
     }
-    const current = getCurrentUser();
-    if (current && current.email?.toLowerCase() === cleanEmail) {
-      setCurrentUserSession({ ...current, password: newPassword });
-    }
-    api.resetPassword(cleanEmail, newPassword).catch(() => {});
-    return true;
+  }
+
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+
+  // Also clean up any legacy user keys so they never resurrect old passwords
+  const legacyKeys = ['biin_judge_portal_users', 'biin_users'];
+  for (const lk of legacyKeys) {
+    try {
+      const raw = localStorage.getItem(lk);
+      if (raw) {
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          const lIdx = list.findIndex((u: any) => u.email?.toLowerCase() === cleanEmail);
+          if (lIdx >= 0) {
+            list[lIdx].password = newPassword;
+            localStorage.setItem(lk, JSON.stringify(list));
+          }
+        }
+      }
+    } catch {}
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('biin_users_updated'));
+  }
+  const current = getCurrentUser();
+  if (current && current.email?.toLowerCase() === cleanEmail) {
+    setCurrentUserSession({ ...current, password: newPassword });
   }
   api.resetPassword(cleanEmail, newPassword).catch(() => {});
-  return false;
+  return true;
 };
 
 export const updateUser = (updated: User, actor?: { email: string; name: string }): void => {
