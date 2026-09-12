@@ -729,6 +729,27 @@ export const rejectJudge = (judgeId: string, actor?: { email: string; name: stri
   }
 };
 
+export const resetJudgePassword = (email: string, newPassword: string): boolean => {
+  const users = getUsers();
+  const cleanEmail = email.trim().toLowerCase();
+  const idx = users.findIndex(u => u.email?.toLowerCase() === cleanEmail);
+  if (idx >= 0) {
+    users[idx] = { ...users[idx], password: newPassword };
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('biin_users_updated'));
+    }
+    const current = getCurrentUser();
+    if (current && current.email?.toLowerCase() === cleanEmail) {
+      setCurrentUserSession({ ...current, password: newPassword });
+    }
+    api.resetPassword(cleanEmail, newPassword).catch(() => {});
+    return true;
+  }
+  api.resetPassword(cleanEmail, newPassword).catch(() => {});
+  return false;
+};
+
 export const updateUser = (updated: User, actor?: { email: string; name: string }): void => {
   const users = getUsers();
   const idx = users.findIndex(u => u.id === updated.id);

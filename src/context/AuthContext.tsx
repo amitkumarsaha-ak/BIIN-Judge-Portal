@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from '../types';
-import { getCurrentUser, setCurrentUserSession, findUserByEmail, saveUser, getUsers, USERS_KEY, approveJudge } from '../services/storage';
+import { getCurrentUser, setCurrentUserSession, findUserByEmail, saveUser, getUsers, USERS_KEY, approveJudge, resetJudgePassword } from '../services/storage';
 import { ADMIN_CONFIG } from '../config/authConfig';
 import { api } from '../services/api';
 
@@ -9,6 +9,7 @@ interface AuthContextType {
   isAdmin: boolean;
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
   register: (fullName: string, email: string, pass: string, confirmPass: string) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (email: string, newPass: string, confirmPass: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   switchUser: (user: User) => void;
 }
@@ -234,6 +235,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
+  const resetPassword = async (email: string, newPass: string, confirmPass: string): Promise<{ success: boolean; error?: string }> => {
+    const emailTrimmed = email.trim().toLowerCase();
+    const passTrimmed = newPass.trim();
+    const confirmTrimmed = confirmPass.trim();
+
+    if (!emailTrimmed) {
+      return { success: false, error: 'Email address is required.' };
+    }
+
+    if (emailTrimmed === ADMIN_CONFIG.EMAIL.trim().toLowerCase()) {
+      return {
+        success: false,
+        error: 'Administrator credentials are configured via system environment settings and cannot be reset through this form.'
+      };
+    }
+
+    if (!passTrimmed || passTrimmed.length < 4) {
+      return { success: false, error: 'New password must be at least 4 characters long.' };
+    }
+
+    if (passTrimmed !== confirmTrimmed) {
+      return { success: false, error: 'Passwords do not match. Please verify and try again.' };
+    }
+
+    // Check backend API first
+    let remoteUpdated = false;
+    try {
+      const res = await api.resetPassword(emailTrimmed, passTrimmed);
+      if (res && res.success) {
+        remoteUpdated = true;
+      }
+    } catch (apiErr: any) {
+      const errMsg = apiErr?.message || '';
+      if (errMsg.includes('No judge account found') || errMsg.includes('No user account found')) {
+        const local = findUserByEmail(emailTrimmed);
+        if (!local) {
+          return { success: false, error: 'No judge account found with this email address.' };
+        }
+      }
+    }
+
+    // Update local storage
+    const localUpdated = resetJudgePassword(emailTrimmed, passTrimmed);
+    if (!remoteUpdated && !localUpdated) {
+      const local = findUserByEmail(emailTrimmed);
+      if (!local) {
+        return { success: false, error: 'No judge account found with this email address.' };
+      }
+    }
+
+    return { success: true };
+  };
+
   const logout = () => {
     setCurrentUser(null);
     setCurrentUserSession(null);
@@ -254,7 +308,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isAdmin = currentUser?.role === 'admin' && currentUser?.email?.trim().toLowerCase() === ADMIN_CONFIG.EMAIL.trim().toLowerCase();
 
   return (
-    <AuthContext.Provider value={{ currentUser, isAdmin, login, register, logout, switchUser }}>
+    <AuthContext.Provider value={{ currentUser, isAdmin, login, register, resetPassword, logout, switchUser }}>
       {children}
     </AuthContext.Provider>
   );

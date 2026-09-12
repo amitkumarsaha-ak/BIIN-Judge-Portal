@@ -53,6 +53,13 @@ export const api = {
     return request(`/auth/me?email=${encodeURIComponent(email)}`);
   },
 
+  async resetPassword(email: string, newPassword: string): Promise<{ success: boolean; message?: string }> {
+    return request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ email, newPassword })
+    });
+  },
+
   // Projects
   async getProjects(params?: { applicationType?: string; headCategory?: string; status?: string }): Promise<Project[]> {
     const query = new URLSearchParams();

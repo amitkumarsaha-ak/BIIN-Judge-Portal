@@ -4,18 +4,22 @@ import { useAuth } from '../../context/AuthContext';
 
 interface LoginFormProps {
   onSwitchToRegister: () => void;
+  onSwitchToForgot?: (email?: string) => void;
   onSuccess: () => void;
   initialRole?: 'judge' | 'admin';
+  initialEmail?: string;
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({
   onSwitchToRegister,
+  onSwitchToForgot,
   onSuccess,
-  initialRole = 'judge'
+  initialRole = 'judge',
+  initialEmail = ''
 }) => {
   const { login } = useAuth();
   const [selectedRole, setSelectedRole] = useState<'judge' | 'admin'>(initialRole);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -131,9 +135,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                Password
+              </label>
+              {selectedRole === 'judge' && onSwitchToForgot && (
+                <button
+                  type="button"
+                  onClick={() => onSwitchToForgot(email)}
+                  className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline transition-colors"
+                >
+                  Forgot Password?
+                </button>
+              )}
+            </div>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                 <Lock className="h-4 w-4" />

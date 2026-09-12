@@ -198,4 +198,53 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+/**
+ * POST /api/auth/reset-password
+ */
+router.post('/reset-password', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, newPassword } = req.body;
+
+    if (!email || !newPassword) {
+      res.status(400).json({ error: 'Email and new password are required.' });
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Protect fixed Admin account
+    if (cleanEmail === ADMIN_EMAIL) {
+      res.status(403).json({ error: 'Administrator credentials are configured via system environment settings and cannot be reset through this form.' });
+      return;
+    }
+
+    if (newPassword.length < 4) {
+      res.status(400).json({ error: 'Password must be at least 4 characters long.' });
+      return;
+    }
+
+    const user = await userDb.findByEmail(cleanEmail);
+    if (!user) {
+      res.status(404).json({ error: 'No judge account found with this email address.' });
+      return;
+    }
+
+    await userDb.update({ id: user.id, email: user.email, password: newPassword });
+
+    await auditDb.create({
+      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      actorEmail: cleanEmail,
+      actorName: user.fullName,
+      action: 'RESET_PASSWORD',
+      targetType: 'auth',
+      details: `Password was reset for judge ${user.fullName} (${cleanEmail}).`,
+      timestamp: new Date().toISOString()
+    });
+
+    res.json({ success: true, message: 'Password has been successfully updated.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Internal server error while resetting password.' });
+  }
+});
+
 export default router;

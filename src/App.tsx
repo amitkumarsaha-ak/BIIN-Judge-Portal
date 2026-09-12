@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
+import { ForgotPasswordForm } from './components/auth/ForgotPasswordForm';
 import { AccessDenied } from './components/auth/AccessDenied';
 
 // Admin Suite Components
@@ -36,8 +37,9 @@ const MainAppContent: React.FC = () => {
 
   // Auth Modal State
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [loginRole, setLoginRole] = useState<'judge' | 'admin'>('judge');
+  const [forgotEmail, setForgotEmail] = useState('');
 
   // URL Hash Synchronizer & Role Protection
   useEffect(() => {
@@ -288,16 +290,30 @@ const MainAppContent: React.FC = () => {
                 {authMode === 'login' ? (
                   <LoginForm
                     initialRole={loginRole}
+                    initialEmail={forgotEmail}
                     onSwitchToRegister={() => setAuthMode('register')}
+                    onSwitchToForgot={(em) => {
+                      if (em) setForgotEmail(em);
+                      setAuthMode('forgot');
+                    }}
                     onSuccess={() => setIsLoginModalOpen(false)}
                   />
-                ) : (
+                ) : authMode === 'register' ? (
                   <RegisterForm
                     onSwitchToLogin={() => {
                       setLoginRole('judge');
                       setAuthMode('login');
                     }}
                     onSuccess={() => setIsLoginModalOpen(false)}
+                  />
+                ) : (
+                  <ForgotPasswordForm
+                    initialEmail={forgotEmail}
+                    onSwitchToLogin={(em) => {
+                      if (em) setForgotEmail(em);
+                      setLoginRole('judge');
+                      setAuthMode('login');
+                    }}
                   />
                 )}
               </div>

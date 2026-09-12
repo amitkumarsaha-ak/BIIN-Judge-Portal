@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Mail, Lock, UserPlus, AlertCircle, CheckCircle, Clock, LogIn } from 'lucide-react';
+import { User, Mail, Lock, UserPlus, AlertCircle, CheckCircle, Clock, LogIn, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface RegisterFormProps {
@@ -13,6 +13,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -148,13 +150,21 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
                     <Lock className="h-4 w-4" />
                   </div>
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/90 pl-10 pr-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 border border-slate-300 dark:border-slate-700 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/90 pl-10 pr-10 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 border border-slate-300 dark:border-slate-700 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -167,13 +177,21 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
                     <CheckCircle className="h-4 w-4" />
                   </div>
                   <input
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/90 pl-10 pr-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 border border-slate-300 dark:border-slate-700 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/90 pl-10 pr-10 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 border border-slate-300 dark:border-slate-700 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
               </div>
 
