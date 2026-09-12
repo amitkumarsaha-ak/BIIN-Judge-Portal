@@ -23,11 +23,11 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
   const { currentUser, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
-  const navItems: { id: JudgeTab; label: string; icon: React.FC<{ className?: string }> }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'projects', label: 'Projects', icon: FolderGit2 },
-    { id: 'submissions', label: 'My Submissions', icon: CheckCircle2 },
-    { id: 'report', label: 'My Score Summary', icon: FileText }
+  const navItems: { id: JudgeTab; label: string; shortLabel: string; icon: React.FC<{ className?: string }> }[] = [
+    { id: 'dashboard', label: 'Dashboard', shortLabel: 'Dashboard', icon: LayoutDashboard },
+    { id: 'projects', label: 'Projects', shortLabel: 'Projects', icon: FolderGit2 },
+    { id: 'submissions', label: 'My Submissions', shortLabel: 'Submissions', icon: CheckCircle2 },
+    { id: 'report', label: 'My Score Summary', shortLabel: 'Score Summary', icon: FileText }
   ];
 
   return (
@@ -114,21 +114,21 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
         </div>
 
         {/* Mobile Nav Row (< md) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 px-2.5 py-2 md:hidden no-scrollbar text-xs backdrop-blur-sm touch-scroll">
-          {navItems.map(({ id, label, icon: Icon }) => {
+        <div className="flex items-center gap-1.5 overflow-x-auto border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 px-3 py-2 md:hidden no-scrollbar text-xs backdrop-blur-sm touch-scroll">
+          {navItems.map(({ id, shortLabel, icon: Icon }) => {
             const isActive = currentTab === id;
             return (
               <button
                 key={id}
                 onClick={() => onSelectTab(id)}
-                className={`flex items-center gap-1.5 rounded-xl px-3 py-2 font-semibold whitespace-nowrap transition-all shrink-0 min-h-[38px] ${
+                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 font-semibold whitespace-nowrap transition-all shrink-0 min-h-[38px] ${
                   isActive
                     ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30 font-bold'
                     : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" />
-                <span>{label}</span>
+                <span>{shortLabel}</span>
               </button>
             );
           })}

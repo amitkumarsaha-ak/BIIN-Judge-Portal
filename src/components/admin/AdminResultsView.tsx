@@ -480,14 +480,14 @@ export const AdminResultsView: React.FC = () => {
                     {/* Application Type Master Section Header */}
                     <div
                       onClick={() => toggleTypeCollapse(typeGroup.appType.id)}
-                      className="cursor-pointer flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 select-none group"
+                      className="cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 select-none group gap-2"
                     >
-                      <div className="flex items-center space-x-3">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
+                      <div className="flex items-center space-x-3 min-w-0">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors shrink-0">
                           {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </div>
-                        <div>
-                          <h2 className="font-heading text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-wide">
+                        <div className="min-w-0">
+                          <h2 className="font-heading text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-wide truncate">
                             {typeGroup.appType.title}
                           </h2>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -496,7 +496,7 @@ export const AdminResultsView: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-2 text-[11px] font-semibold">
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold pl-10 sm:pl-0">
                         <span className="rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-2.5 py-0.5 border border-amber-200/60 dark:border-amber-800/60">
                           🏆 {typeGroup.totalChampions} Champ
                         </span>

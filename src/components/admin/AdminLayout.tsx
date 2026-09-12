@@ -105,8 +105,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             </div>
           </div>
 
-          {/* Center Navigation Tabs (Desktop, Laptop, Tablet: md:flex single bar) */}
-          <nav className="hidden md:flex items-center gap-1 rounded-2xl bg-slate-100 dark:bg-slate-800/90 p-1 border border-slate-200/80 dark:border-slate-700/70 shadow-inner shrink-0">
+          {/* Center Navigation Tabs (Desktop & Laptops: lg:flex single bar) */}
+          <nav className="hidden lg:flex items-center gap-1 rounded-2xl bg-slate-100 dark:bg-slate-800/90 p-1 border border-slate-200/80 dark:border-slate-700/70 shadow-inner shrink-0">
             {navItems.map(({ id, shortLabel, icon: Icon }) => {
               const isActive = currentTab === id;
               const hasPending = id === 'judges' && pendingJudgesCount > 0;
@@ -115,7 +115,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   key={id}
                   id={`admin-nav-${id}`}
                   onClick={() => onSelectTab(id)}
-                  className={`relative flex items-center gap-1.5 rounded-xl px-2.5 lg:px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
+                  className={`relative flex items-center gap-1.5 rounded-xl px-2.5 xl:px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
                     isActive
                       ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30 font-bold'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700/70 hover:text-slate-900 dark:hover:text-white'
@@ -187,8 +187,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               )}
             </button>
 
-            {/* Admin Badge (only on very large 2xl screens) */}
-            <div className="hidden 2xl:flex items-center gap-2 rounded-xl bg-violet-50 dark:bg-violet-500/10 px-2.5 py-1.5 border border-violet-200 dark:border-violet-500/30 shrink-0">
+            {/* Admin Badge (only on large xl+ screens) */}
+            <div className="hidden xl:flex items-center gap-2 rounded-xl bg-violet-50 dark:bg-violet-500/10 px-2.5 py-1.5 border border-violet-200 dark:border-violet-500/30 shrink-0">
               <ShieldCheck className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0" />
               <div className="text-left">
                 <p className="text-xs font-bold text-violet-900 dark:text-violet-200 leading-tight truncate max-w-[100px]">
@@ -212,8 +212,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
         </div>
 
-        {/* Mobile Navigation Scrollbar (Only on small screens < 768px) */}
-        <div className="flex md:hidden items-center gap-1.5 overflow-x-auto border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 px-2.5 py-2 no-scrollbar text-xs backdrop-blur-sm touch-scroll">
+        {/* Mobile & Tablet Navigation Row (< 1024px) */}
+        <div className="flex lg:hidden items-center gap-1.5 overflow-x-auto border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 px-3 py-2 no-scrollbar text-xs backdrop-blur-sm touch-scroll">
           {navItems.map(({ id, shortLabel, icon: Icon }) => {
             const isActive = currentTab === id;
             const hasPending = id === 'judges' && pendingJudgesCount > 0;
@@ -221,7 +221,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               <button
                 key={id}
                 onClick={() => onSelectTab(id)}
-                className={`flex items-center gap-1.5 rounded-xl px-3 py-2 font-semibold whitespace-nowrap transition-all shrink-0 min-h-[38px] ${
+                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 font-semibold whitespace-nowrap transition-all shrink-0 min-h-[38px] ${
                   isActive
                     ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30 font-bold'
                     : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'

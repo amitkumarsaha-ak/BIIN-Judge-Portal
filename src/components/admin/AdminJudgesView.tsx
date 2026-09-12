@@ -357,7 +357,7 @@ export const AdminJudgesView: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredJudges.map(judge => {
             const status: JudgeStatus = judge.status || 'approved';
 
@@ -442,19 +442,19 @@ export const AdminJudgesView: React.FC = () => {
                 </div>
 
                 {/* Actions Bar */}
-                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2">
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col min-[360px]:flex-row items-center gap-2">
                   {status === 'pending' && (
                     <>
                       <button
                         onClick={() => handleApprove(judge)}
-                        className="flex-1 flex items-center justify-center space-x-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-2.5 px-3 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition-colors min-h-[40px]"
+                        className="w-full min-[360px]:flex-1 flex items-center justify-center space-x-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-2.5 px-3 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition-colors min-h-[40px]"
                       >
                         <Check className="h-3.5 w-3.5" />
                         <span>Approve</span>
                       </button>
                       <button
                         onClick={() => handleReject(judge)}
-                        className="flex-1 flex items-center justify-center space-x-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 py-2.5 px-3 text-xs font-bold text-white shadow-md shadow-rose-600/20 transition-colors min-h-[40px]"
+                        className="w-full min-[360px]:flex-1 flex items-center justify-center space-x-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 py-2.5 px-3 text-xs font-bold text-white shadow-md shadow-rose-600/20 transition-colors min-h-[40px]"
                       >
                         <X className="h-3.5 w-3.5" />
                         <span>Reject</span>

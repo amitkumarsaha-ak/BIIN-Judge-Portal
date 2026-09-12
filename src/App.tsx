@@ -274,7 +274,7 @@ const MainAppContent: React.FC = () => {
               {/* Modal Top Bar with Clean Close Button */}
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {authMode === 'login' ? 'Authentication Required' : 'Create Judge Account'}
+                  {authMode === 'login' ? 'Authentication Required' : authMode === 'register' ? 'Create Judge Account' : 'Reset Account Password'}
                 </span>
                 <button
                   onClick={() => setIsLoginModalOpen(false)}

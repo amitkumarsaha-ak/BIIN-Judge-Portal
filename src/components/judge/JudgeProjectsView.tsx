@@ -116,23 +116,23 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
         </div>
       </div>
 
-      {/* Search & Filter Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="relative flex-1">
+      {/* Search & Category Filter Bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="relative flex-1 sm:col-span-2 lg:col-span-1">
           <Search className="pointer-events-none absolute inset-y-0 left-0 pl-3.5 h-full w-4 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search projects by title, code, participant, representative..."
-            className="w-full rounded-xl bg-slate-50 dark:bg-slate-950/60 pl-10 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-indigo-500"
+            className="w-full rounded-xl bg-slate-50 dark:bg-slate-950/60 pl-10 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-indigo-500 min-h-[38px]"
           />
         </div>
 
         <select
           value={filterType}
           onChange={e => setFilterType(e.target.value)}
-          className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+          className="w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 min-h-[38px]"
         >
           <option value="All">All Application Types</option>
           <option value="Student">Student</option>
@@ -144,7 +144,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
         <select
           value={filterCategory}
           onChange={e => setFilterCategory(e.target.value)}
-          className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+          className="w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 min-h-[38px]"
         >
           <option value="All">All Head Categories</option>
           {HEAD_CATEGORIES.map(hc => (
@@ -163,7 +163,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
           <p className="text-xs text-slate-500 mt-1">Try adjusting your search query, application type, or head category filter.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
           {filteredProjects.map(project => {
             const AppTypeIcon = getAppTypeIcon(project.applicationType);
             const category = HEAD_CATEGORIES.find(

@@ -337,15 +337,15 @@ export const AdminEvaluationsView: React.FC = () => {
       </div>
 
       {/* Search & Category Filter Bar */}
-      <div className="no-print flex flex-col sm:flex-row gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="relative flex-1">
+      <div className="no-print grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="relative flex-1 sm:col-span-2 lg:col-span-1">
           <Search className="pointer-events-none absolute inset-y-0 left-0 pl-3.5 h-full w-4 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search by project, participant, or code..."
-            className="w-full rounded-xl bg-slate-50 dark:bg-slate-950/60 pl-10 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-emerald-500"
+            className="w-full rounded-xl bg-slate-50 dark:bg-slate-950/60 pl-10 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-emerald-500 min-h-[38px]"
           />
         </div>
 
@@ -353,7 +353,7 @@ export const AdminEvaluationsView: React.FC = () => {
         <select
           value={filterType}
           onChange={e => setFilterType(e.target.value as ApplicationType | 'All')}
-          className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold"
+          className="w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold min-h-[38px]"
         >
           <option value="All">All Application Types</option>
           <option value="Student">Student</option>
@@ -366,7 +366,7 @@ export const AdminEvaluationsView: React.FC = () => {
         <select
           value={filterCategory}
           onChange={e => setFilterCategory(e.target.value as HeadCategoryCode | 'All')}
-          className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold"
+          className="w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold min-h-[38px]"
         >
           <option value="All">All Head Categories</option>
           {HEAD_CATEGORIES.map(hc => (
@@ -380,7 +380,7 @@ export const AdminEvaluationsView: React.FC = () => {
         <select
           value={filterJudge}
           onChange={e => setFilterJudge(e.target.value)}
-          className="w-full sm:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold"
+          className="w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold min-h-[38px]"
         >
           <option value="All">All Judges</option>
           {judges.map(j => (

@@ -97,7 +97,7 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
         </div>
 
         {/* Printable Report Sheet Layout */}
-        <div className="print-wrapper print-card rounded-3xl bg-white p-8 sm:p-12 text-slate-900 shadow-2xl border border-slate-200 space-y-6">
+        <div className="print-wrapper print-card rounded-3xl bg-white p-4 sm:p-8 md:p-12 text-slate-900 shadow-2xl border border-slate-200 space-y-6">
           
           {/* Organization / Header Section */}
           <div className="print-header flex flex-col sm:flex-row sm:items-center justify-between border-b-2 border-slate-900 pb-6 gap-4">
@@ -156,7 +156,8 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
               Judges Criteria Breakdown & Marks Matrix:
             </h3>
 
-            <table className="print-table w-full text-left text-xs border border-slate-300">
+            <div className="overflow-x-auto">
+              <table className="print-table w-full text-left text-xs border border-slate-300">
               <thead className="bg-slate-100 font-bold uppercase text-slate-800 text-[11px]">
                 <tr>
                   <th className="p-2 border border-slate-300">Criteria</th>
@@ -218,6 +219,7 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
                 </tr>
               </tfoot>
             </table>
+            </div>
           </div>
 
           {/* Prominent Final Score & Award Summary */}

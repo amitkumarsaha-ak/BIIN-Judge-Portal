@@ -521,7 +521,7 @@ export const AdminRoomsView: React.FC = () => {
       </div>
 
       {/* Room Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
         {filteredRooms.map(room => {
           const assignedProj = projects.filter(p => (p.roomNumber || '').toLowerCase().trim() === room.roomNumber.toLowerCase().trim());
           const assignedJdg = judges.filter(j => j.roomNumber?.toLowerCase().trim() === room.roomNumber.toLowerCase().trim());

@@ -28,6 +28,14 @@
     background-color: #f1f5f9;
     color: #0f172a;
   }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  img, svg, video, canvas, audio, iframe, embed, object {
+    max-width: 100%;
+  }
 }
 
 /* Glassmorphism & Card Utilities for Dark Mode */

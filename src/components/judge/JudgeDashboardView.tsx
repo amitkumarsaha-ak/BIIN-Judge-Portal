@@ -173,68 +173,125 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
             <p className="text-xs">No nominated projects found.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto table-responsive-container touch-scroll">
-            <table className="w-full min-w-[580px] text-left text-xs text-slate-700 dark:text-slate-300">
-              <thead className="bg-slate-100 dark:bg-slate-950/80 uppercase font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
-                <tr>
-                  <th className="px-4 py-3">Project & Participant</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3 text-center">My Status</th>
-                  <th className="px-4 py-3 text-center">Score</th>
-                  <th className="px-4 py-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
-                {assignedProjects.map(proj => {
-                  const evalItem = myEvaluations.find(e => e.projectId === proj.id);
-                  const isEvaluated = Boolean(evalItem);
+          <>
+            {/* Mobile Card List (< sm screens) */}
+            <div className="block sm:hidden space-y-3">
+              {assignedProjects.map(proj => {
+                const evalItem = myEvaluations.find(e => e.projectId === proj.id);
+                const isEvaluated = Boolean(evalItem);
 
-                  return (
-                    <tr key={proj.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="px-4 py-3.5">
-                        <p className="font-bold text-slate-900 dark:text-white leading-tight">{proj.title}</p>
-                        <p className="text-[11px] text-slate-500 font-mono mt-0.5">{proj.applicationId} · {proj.teamOrOrgName}</p>
-                      </td>
+                return (
+                  <div
+                    key={proj.id}
+                    className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 p-3.5 space-y-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-heading font-bold text-sm text-slate-900 dark:text-white leading-snug">
+                          {proj.title}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                          {proj.applicationId} · {proj.teamOrOrgName}
+                        </p>
+                      </div>
 
-                      <td className="px-4 py-3.5">
-                        <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                          {proj.applicationType}
+                      <span className={`inline-flex items-center space-x-1 rounded-full px-2 py-0.5 text-[10px] font-bold border shrink-0 ${isEvaluated ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/20'}`}>
+                        {isEvaluated ? <CheckCircle2 className="h-2.5 w-2.5" /> : <Clock className="h-2.5 w-2.5" />}
+                        <span>{isEvaluated ? 'Evaluated' : 'Pending'}</span>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200/80 dark:border-slate-800/80">
+                      <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-400">
+                        {proj.applicationType}
+                      </span>
+
+                      {isEvaluated && evalItem ? (
+                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs">
+                          {(evalItem.convertedScore ?? evalItem.percentage ?? 0).toFixed(1)} / 100
                         </span>
-                      </td>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">Not scored</span>
+                      )}
+                    </div>
 
-                      <td className="px-4 py-3.5 text-center">
-                        <span className={`inline-flex items-center space-x-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${isEvaluated ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/20'}`}>
-                          {isEvaluated ? <CheckCircle2 className="h-2.5 w-2.5" /> : <Clock className="h-2.5 w-2.5" />}
-                          <span>{isEvaluated ? 'Evaluated' : 'Pending'}</span>
-                        </span>
-                      </td>
+                    <button
+                      onClick={() => onSelectProjectForEvaluation(proj)}
+                      disabled={settings.evaluationsLocked}
+                      className={`w-full flex items-center justify-center space-x-1.5 rounded-xl py-2.5 px-3 text-xs font-bold transition-all min-h-[40px] ${isEvaluated ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-600 hover:text-white' : 'btn-primary text-white shadow-md'} disabled:opacity-50`}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>{isEvaluated ? 'Review / Edit Score' : 'Evaluate Project'}</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
 
-                      <td className="px-4 py-3.5 text-center font-mono font-bold">
-                        {isEvaluated && evalItem ? (
-                          <span className="text-emerald-600 dark:text-emerald-400">
-                            {(evalItem.convertedScore ?? evalItem.percentage ?? 0).toFixed(1)} / 100
+            {/* Tablet & Desktop Table (>= sm screens) */}
+            <div className="hidden sm:block overflow-x-auto table-responsive-container touch-scroll">
+              <table className="w-full min-w-[580px] text-left text-xs text-slate-700 dark:text-slate-300">
+                <thead className="bg-slate-100 dark:bg-slate-950/80 uppercase font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                  <tr>
+                    <th className="px-4 py-3">Project & Participant</th>
+                    <th className="px-4 py-3">Category</th>
+                    <th className="px-4 py-3 text-center">My Status</th>
+                    <th className="px-4 py-3 text-center">Score</th>
+                    <th className="px-4 py-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
+                  {assignedProjects.map(proj => {
+                    const evalItem = myEvaluations.find(e => e.projectId === proj.id);
+                    const isEvaluated = Boolean(evalItem);
+
+                    return (
+                      <tr key={proj.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="px-4 py-3.5">
+                          <p className="font-bold text-slate-900 dark:text-white leading-tight">{proj.title}</p>
+                          <p className="text-[11px] text-slate-500 font-mono mt-0.5">{proj.applicationId} · {proj.teamOrOrgName}</p>
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                            {proj.applicationType}
                           </span>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
+                        </td>
 
-                      <td className="px-4 py-3.5 text-center">
-                        <button
-                          onClick={() => onSelectProjectForEvaluation(proj)}
-                          disabled={settings.evaluationsLocked}
-                          className={`inline-flex items-center space-x-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${isEvaluated ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-600 hover:text-white' : 'btn-primary text-white shadow-md'} disabled:opacity-50`}
-                        >
-                          <Eye className="h-3 w-3" />
-                          <span>{isEvaluated ? 'Edit Score' : 'Evaluate'}</span>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        <td className="px-4 py-3.5 text-center">
+                          <span className={`inline-flex items-center space-x-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${isEvaluated ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/20'}`}>
+                            {isEvaluated ? <CheckCircle2 className="h-2.5 w-2.5" /> : <Clock className="h-2.5 w-2.5" />}
+                            <span>{isEvaluated ? 'Evaluated' : 'Pending'}</span>
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-3.5 text-center font-mono font-bold">
+                          {isEvaluated && evalItem ? (
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              {(evalItem.convertedScore ?? evalItem.percentage ?? 0).toFixed(1)} / 100
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3.5 text-center">
+                          <button
+                            onClick={() => onSelectProjectForEvaluation(proj)}
+                            disabled={settings.evaluationsLocked}
+                            className={`inline-flex items-center space-x-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${isEvaluated ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-600 hover:text-white' : 'btn-primary text-white shadow-md'} disabled:opacity-50`}
+                          >
+                            <Eye className="h-3 w-3" />
+                            <span>{isEvaluated ? 'Edit Score' : 'Evaluate'}</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>
