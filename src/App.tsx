@@ -110,25 +110,26 @@ const MainAppContent: React.FC = () => {
         
         {/* Landing Topbar */}
         <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5">
-            <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
-              <BiinLogo size="md" />
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-2.5 sm:px-6 lg:px-8 py-2 sm:py-3.5">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+              <BiinLogo />
               <div>
-                <div className="flex items-center space-x-1.5 sm:space-x-2">
-                  <span className="font-heading text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">BIIN</span>
-                  <span className="rounded bg-indigo-50 dark:bg-indigo-500/20 px-2 py-0.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
-                    Evaluation System
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <span className="font-heading text-base sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">BIIN</span>
+                  <span className="rounded-md bg-indigo-50 dark:bg-indigo-500/20 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
+                    <span className="sm:hidden">Portal</span>
+                    <span className="hidden sm:inline">Evaluation System</span>
                   </span>
                 </div>
                 <p className="hidden text-xs text-slate-500 dark:text-slate-400 sm:block">Role-Based Judging & Administration</p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               <button
                 onClick={toggleTheme}
                 title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                className="flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-2 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm min-h-[38px] min-w-[38px]"
+                className="flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-1.5 sm:p-2 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm min-h-[36px] min-w-[36px] sm:min-h-[38px] sm:min-w-[38px]"
               >
                 {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-indigo-600" />}
               </button>
@@ -145,10 +146,10 @@ const MainAppContent: React.FC = () => {
               <button
                 id="judge-login-nav-btn"
                 onClick={() => handleOpenLogin('judge')}
-                className="btn-primary flex items-center space-x-1.5 sm:space-x-2 rounded-xl px-3 sm:px-5 py-2 text-xs font-bold text-white shadow-lg min-h-[38px]"
+                className="btn-primary flex items-center justify-center gap-1.5 rounded-xl px-3 sm:px-5 py-1.5 sm:py-2 text-xs font-bold text-white shadow-lg min-h-[36px] sm:min-h-[38px] shrink-0 whitespace-nowrap"
               >
-                <LogIn className="h-4 w-4" />
-                <span><span className="hidden min-[380px]:inline">Judge </span>Login</span>
+                <LogIn className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <span className="font-bold">Login</span>
               </button>
             </div>
           </div>
