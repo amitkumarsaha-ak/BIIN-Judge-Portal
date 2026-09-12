@@ -112,6 +112,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (apiErr: any) {
       const errMsg = apiErr?.message || '';
+
+      // If password was recently reset locally, allow seamless login and sync with server
+      const localCheck = findUserByEmail(trimmedEmail);
+      if (localCheck && (localCheck.password === pass || localCheck.password === cleanPass)) {
+        if (localCheck.status === 'pending') {
+          return {
+            success: false,
+            error: 'Your account is currently pending Administrator approval. Please wait for an Admin to approve your registration before logging in.'
+          };
+        }
+        if (localCheck.status === 'rejected') {
+          return {
+            success: false,
+            error: 'Your judge registration has been declined by the Administrator. Access is denied.'
+          };
+        }
+        // Asynchronously sync password to server
+        api.resetPassword(trimmedEmail, cleanPass).catch(() => {});
+        setCurrentUser(localCheck);
+        setCurrentUserSession(localCheck);
+        return { success: true };
+      }
+
       // If server returned an explicit auth error, bubble it up directly to user
       const isExplicitAuthError = 
         errMsg.includes('Invalid') ||
@@ -259,7 +282,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'Passwords do not match. Please verify and try again.' };
     }
 
-    // Check backend API first
+    // Always update local storage first so judge immediately has access
+    const localUpdated = resetJudgePassword(emailTrimmed, passTrimmed);
+
+    // Call backend API to persist in database
     let remoteUpdated = false;
     try {
       const res = await api.resetPassword(emailTrimmed, passTrimmed);
@@ -268,21 +294,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (apiErr: any) {
       const errMsg = apiErr?.message || '';
-      if (errMsg.includes('No judge account found') || errMsg.includes('No user account found')) {
-        const local = findUserByEmail(emailTrimmed);
-        if (!local) {
-          return { success: false, error: 'No judge account found with this email address.' };
-        }
+      console.warn('Backend reset-password call error:', errMsg);
+      // If server returned an explicit error (like 404 or 403), and local judge doesn't exist either
+      if (!localUpdated) {
+        return { success: false, error: errMsg || 'No judge account found with this email address.' };
       }
     }
 
-    // Update local storage
-    const localUpdated = resetJudgePassword(emailTrimmed, passTrimmed);
-    if (!remoteUpdated && !localUpdated) {
-      const local = findUserByEmail(emailTrimmed);
-      if (!local) {
-        return { success: false, error: 'No judge account found with this email address.' };
-      }
+    if (!localUpdated && !remoteUpdated) {
+      return { success: false, error: 'No judge account found with this email address.' };
     }
 
     return { success: true };

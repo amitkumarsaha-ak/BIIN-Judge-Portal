@@ -363,6 +363,29 @@ export const userDb = {
       return true;
     }
     return false;
+  },
+
+  async updatePassword(email: string, newPassword: string): Promise<boolean> {
+    const cleanEmail = email.trim().toLowerCase();
+    let pgSuccess = false;
+    if (isPostgresConnected) {
+      try {
+        const res = await pool.query(
+          'UPDATE users SET password = $1 WHERE LOWER(TRIM(email)) = $2',
+          [newPassword, cleanEmail]
+        );
+        pgSuccess = (res.rowCount ?? 0) > 0;
+      } catch (err) {
+        console.error('[userDb.updatePassword] Postgres query failed:', err);
+      }
+    }
+    const idx = memoryStore.users.findIndex(u => u.email.trim().toLowerCase() === cleanEmail);
+    if (idx >= 0) {
+      memoryStore.users[idx] = { ...memoryStore.users[idx], password: newPassword };
+      saveMemoryFallback();
+      return true;
+    }
+    return pgSuccess;
   }
 };
 

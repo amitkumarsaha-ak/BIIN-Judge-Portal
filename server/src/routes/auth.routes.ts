@@ -229,7 +229,11 @@ router.post('/reset-password', async (req: Request, res: Response): Promise<void
       return;
     }
 
-    await userDb.update({ id: user.id, email: user.email, password: newPassword });
+    const updated = await userDb.updatePassword(cleanEmail, newPassword);
+    if (!updated) {
+      res.status(500).json({ error: 'Failed to update password in database.' });
+      return;
+    }
 
     await auditDb.create({
       id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
