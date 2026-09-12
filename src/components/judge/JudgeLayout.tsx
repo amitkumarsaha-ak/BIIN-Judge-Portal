@@ -41,8 +41,7 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
             onClick={() => onSelectTab('dashboard')}
             className="flex cursor-pointer items-center gap-1.5 sm:gap-3 transition-opacity hover:opacity-90 shrink-0"
           >
-            <BiinLogo size="sm" className="sm:hidden" />
-            <BiinLogo size="md" className="hidden sm:inline-flex" />
+            <BiinLogo />
             <div>
               <div className="flex items-center gap-1 sm:gap-2">
                 <span className="font-heading text-base sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">BIIN</span>
@@ -98,15 +97,15 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
               <span className="truncate max-w-[140px]">{currentUser?.fullName || 'Judge'}</span>
             </div>
 
-            {/* Logout Button - Always visible, never cut off */}
+            {/* Logout Button - Fully visible, never clipped */}
             <button
               id="judge-logout-btn"
               onClick={logout}
               title="Logout Session"
-              className="flex items-center gap-1 sm:gap-1.5 rounded-xl border border-red-500/30 bg-red-50 dark:bg-red-500/10 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors min-h-[36px] sm:min-h-[38px] shrink-0"
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors shrink-0 whitespace-nowrap shadow-xs min-h-[36px] sm:min-h-[38px]"
             >
               <LogOut className="h-3.5 w-3.5 shrink-0" />
-              <span>Logout</span>
+              <span className="font-bold">Logout</span>
             </button>
           </div>
 

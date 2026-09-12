@@ -96,8 +96,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             onClick={() => onSelectTab('dashboard')}
             className="flex cursor-pointer items-center gap-1.5 sm:gap-2.5 transition-opacity hover:opacity-90 shrink-0"
           >
-            <BiinLogo size="sm" className="sm:hidden" />
-            <BiinLogo size="md" className="hidden sm:inline-flex" />
+            <BiinLogo />
             <div className="flex items-center gap-1 sm:gap-2">
               <span className="font-heading text-base sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">BIIN</span>
               <span className="rounded-md bg-violet-100 dark:bg-violet-500/20 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">
@@ -200,15 +199,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               </div>
             </div>
 
-            {/* Logout Button - Always visible, never clipped or pushed out */}
+            {/* Logout Button - Fully visible, never clipped */}
             <button
               id="admin-logout-btn"
               onClick={logout}
               title="Logout from Admin Panel"
-              className="flex items-center justify-center gap-1 sm:gap-1.5 rounded-xl border border-red-500/30 bg-red-50 dark:bg-red-500/10 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors shrink-0 shadow-xs min-h-[36px] sm:min-h-[38px]"
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors shrink-0 whitespace-nowrap shadow-xs min-h-[36px] sm:min-h-[38px]"
             >
               <LogOut className="h-3.5 w-3.5 shrink-0" />
-              <span>Logout</span>
+              <span className="font-bold">Logout</span>
             </button>
           </div>
 

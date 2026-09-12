@@ -13,14 +13,14 @@ export const BiinLogo: React.FC<BiinLogoProps> = ({
   showContainer = true,
 }) => {
   const containerClasses = {
-    sm: 'h-9 px-1.5 py-1',
-    md: 'h-11 px-2 py-1',
+    sm: 'h-8 sm:h-9 px-1.5 py-1',
+    md: 'h-9 sm:h-11 px-2 py-1',
     lg: 'h-14 px-3 py-1.5',
   }[size];
 
   const imgClasses = {
-    sm: 'h-7 max-h-7',
-    md: 'h-8 max-h-8',
+    sm: 'h-6 max-h-6',
+    md: 'h-6 sm:h-8 max-h-8',
     lg: 'h-11 max-h-11',
   }[size];
 
