@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from '../types';
-import { getCurrentUser, setCurrentUserSession, findUserByEmail, saveUser, getUsers } from '../services/storage';
+import { getCurrentUser, setCurrentUserSession, findUserByEmail, saveUser, getUsers, USERS_KEY, approveJudge } from '../services/storage';
 import { ADMIN_CONFIG } from '../config/authConfig';
 import { api } from '../services/api';
 
@@ -29,19 +29,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUserSession(null);
         return;
       }
-      // If judge session is pending or rejected, invalidate session
+      // If judge session is pending or rejected, handle appropriately
       if (user.role === 'judge') {
         const freshUser = findUserByEmail(user.email);
-        if (freshUser && freshUser.status !== 'approved') {
+        if (freshUser && freshUser.status === 'rejected') {
           setCurrentUser(null);
           setCurrentUserSession(null);
           return;
         }
+        // If session was already approved, ensure local storage stays approved
+        if (user.status === 'approved' && freshUser && freshUser.status !== 'approved') {
+          approveJudge(freshUser.id);
+        }
         // Async verify status with backend
         api.getMe(user.email).then(remoteUser => {
-          if (remoteUser && remoteUser.status !== 'approved') {
-            setCurrentUser(null);
-            setCurrentUserSession(null);
+          if (remoteUser) {
+            if (remoteUser.status === 'rejected') {
+              setCurrentUser(null);
+              setCurrentUserSession(null);
+            } else if (remoteUser.status === 'approved') {
+              approveJudge(user.id);
+            }
           }
         }).catch(() => {});
       }
@@ -88,11 +96,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const users = getUsers();
         const idx = users.findIndex(u => u.email?.toLowerCase() === trimmedEmail || u.id === loggedJudge.id);
         if (idx >= 0) {
-          users[idx] = { ...users[idx], ...loggedJudge };
+          users[idx] = { ...users[idx], ...loggedJudge, status: 'approved' };
         } else {
-          users.push(loggedJudge);
+          users.push({ ...loggedJudge, status: 'approved' });
         }
-        localStorage.setItem('biin_judge_portal_users', JSON.stringify(users));
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('biin_users_updated'));
+        }
 
         setCurrentUser(loggedJudge);
         setCurrentUserSession(loggedJudge);

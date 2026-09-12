@@ -4,13 +4,13 @@ import { ADMIN_CONFIG } from '../config/authConfig';
 import { matchesAppType, matchesCategory } from '../utils/evaluation';
 import { api } from './api';
 
-const USERS_KEY = 'biin_portal_users';
-const CURRENT_USER_KEY = 'biin_portal_current_user';
-const PROJECTS_KEY = 'biin_portal_projects';
-const EVALUATIONS_KEY = 'biin_portal_evaluations';
-const ROOMS_KEY = 'biin_portal_rooms';
-const SETTINGS_KEY = 'biin_portal_settings';
-const AUDIT_LOGS_KEY = 'biin_portal_audit_logs';
+export const USERS_KEY = 'biin_portal_users';
+export const CURRENT_USER_KEY = 'biin_portal_current_user';
+export const PROJECTS_KEY = 'biin_portal_projects';
+export const EVALUATIONS_KEY = 'biin_portal_evaluations';
+export const ROOMS_KEY = 'biin_portal_rooms';
+export const SETTINGS_KEY = 'biin_portal_settings';
+export const AUDIT_LOGS_KEY = 'biin_portal_audit_logs';
 
 export const DEFAULT_ROOMS: Room[] = [
   {
@@ -150,6 +150,36 @@ export const initializeStorage = () => {
 
       if (modified) {
         localStorage.setItem(USERS_KEY, JSON.stringify(users));
+      }
+
+      // Migrate from any legacy user keys seamlessly
+      const legacyKeys = ['biin_judge_portal_users', 'biin_users'];
+      for (const lk of legacyKeys) {
+        const raw = localStorage.getItem(lk);
+        if (raw) {
+          try {
+            const legacyList = JSON.parse(raw);
+            if (Array.isArray(legacyList) && legacyList.length > 0) {
+              for (const lu of legacyList) {
+                if (lu.email) {
+                  const existingIdx = users.findIndex(u => u.email?.toLowerCase() === lu.email.toLowerCase());
+                  if (existingIdx >= 0) {
+                    users[existingIdx] = {
+                      ...lu,
+                      ...users[existingIdx],
+                      password: lu.password || users[existingIdx].password,
+                      status: (lu.status === 'approved' || users[existingIdx].status === 'approved') ? 'approved' : (users[existingIdx].status || lu.status || 'pending')
+                    };
+                  } else {
+                    users.push(lu);
+                  }
+                }
+              }
+              localStorage.setItem(USERS_KEY, JSON.stringify(users));
+            }
+          } catch {}
+          localStorage.removeItem(lk);
+        }
       }
     } catch {
       localStorage.setItem(USERS_KEY, JSON.stringify(normalizedPreseeded));
@@ -380,8 +410,10 @@ export const syncWithBackend = async (): Promise<boolean> => {
         const localJudge = existingUsers.find(
           u => u.id === remoteJudge.id || u.email?.toLowerCase() === remoteJudge.email?.toLowerCase()
         );
+        const isApproved = localJudge?.status === 'approved' || remoteJudge.status === 'approved';
         return {
           ...remoteJudge,
+          status: isApproved ? 'approved' : (remoteJudge.status || localJudge?.status || 'pending'),
           password: localJudge?.password || remoteJudge.password
         };
       });
@@ -395,6 +427,23 @@ export const syncWithBackend = async (): Promise<boolean> => {
       localStorage.setItem(USERS_KEY, JSON.stringify(combined));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_users_updated'));
+      }
+
+      // Sync local-only judges to backend asynchronously
+      if (localOnlyJudges.length > 0) {
+        Promise.allSettled(
+          localOnlyJudges.map(j => api.register(j.fullName, j.email, j.password || 'password123'))
+        ).catch(() => {});
+      }
+
+      // For any judges that are approved locally, ensure backend knows they are approved
+      for (const j of combined) {
+        if (j.role === 'judge' && j.status === 'approved') {
+          const remoteJ = judgesRes.value.find(r => r.id === j.id || r.email?.toLowerCase() === j.email?.toLowerCase());
+          if (remoteJ && remoteJ.status !== 'approved') {
+            api.approveJudge(remoteJ.id || j.id).catch(() => {});
+          }
+        }
       }
     }
     if (roomsRes.status === 'fulfilled' && Array.isArray(roomsRes.value) && roomsRes.value.length > 0) {
@@ -624,7 +673,17 @@ export const saveUser = (user: User, actor?: { email: string; name: string }): v
     status: user.status || 'pending'
   };
 
-  users.push(safeUser);
+  const existingIdx = users.findIndex(u => u.email?.toLowerCase() === safeUser.email?.toLowerCase() || u.id === safeUser.id);
+  if (existingIdx >= 0) {
+    users[existingIdx] = {
+      ...users[existingIdx],
+      ...safeUser,
+      password: safeUser.password || users[existingIdx].password
+    };
+  } else {
+    users.push(safeUser);
+  }
+
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('biin_users_updated'));
@@ -640,14 +699,14 @@ export const saveUser = (user: User, actor?: { email: string; name: string }): v
 
 export const approveJudge = (judgeId: string, actor?: { email: string; name: string }): void => {
   const users = getUsers();
-  const idx = users.findIndex(u => u.id === judgeId);
+  const idx = users.findIndex(u => u.id === judgeId || u.email?.toLowerCase() === judgeId.toLowerCase());
   if (idx >= 0) {
     users[idx] = { ...users[idx], status: 'approved' };
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('biin_users_updated'));
     }
-    api.approveJudge(judgeId, actor).catch(() => {});
+    api.approveJudge(users[idx].id, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'APPROVE_JUDGE', 'judge', `Approved judge registration for ${users[idx].fullName} (${users[idx].email}).`);
     }
@@ -656,14 +715,14 @@ export const approveJudge = (judgeId: string, actor?: { email: string; name: str
 
 export const rejectJudge = (judgeId: string, actor?: { email: string; name: string }): void => {
   const users = getUsers();
-  const idx = users.findIndex(u => u.id === judgeId);
+  const idx = users.findIndex(u => u.id === judgeId || u.email?.toLowerCase() === judgeId.toLowerCase());
   if (idx >= 0) {
     users[idx] = { ...users[idx], status: 'rejected' };
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('biin_users_updated'));
     }
-    api.rejectJudge(judgeId, actor).catch(() => {});
+    api.rejectJudge(users[idx].id, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'REJECT_JUDGE', 'judge', `Rejected judge registration for ${users[idx].fullName} (${users[idx].email}).`);
     }

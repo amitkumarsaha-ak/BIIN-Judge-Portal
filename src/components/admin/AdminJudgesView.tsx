@@ -4,7 +4,7 @@ import {
   ShieldCheck, Mail, Calendar, UserX, Trash2, RefreshCw
 } from 'lucide-react';
 import type { User, JudgeStatus } from '../../types';
-import { getJudges, approveJudge, rejectJudge, deleteUser, getUsers } from '../../services/storage';
+import { getJudges, approveJudge, rejectJudge, deleteUser, getUsers, USERS_KEY } from '../../services/storage';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -27,9 +27,19 @@ export const AdminJudgesView: React.FC = () => {
       const backendJudges = await api.getJudges();
       if (Array.isArray(backendJudges) && backendJudges.length > 0) {
         setJudges(backendJudges);
-        // Also keep localStorage in sync
-        const currentUsers = getUsers().filter(u => u.role === 'admin');
-        localStorage.setItem('biin_users', JSON.stringify([...currentUsers, ...backendJudges]));
+        // Also keep USERS_KEY in sync safely preserving passwords
+        const existingUsers = getUsers();
+        const currentAdmins = existingUsers.filter(u => u.role === 'admin');
+        const mergedJudges = backendJudges.map(bj => {
+          const localMatch = existingUsers.find(u => u.id === bj.id || u.email?.toLowerCase() === bj.email?.toLowerCase());
+          return {
+            ...bj,
+            status: (localMatch?.status === 'approved' || bj.status === 'approved') ? 'approved' : (bj.status || localMatch?.status || 'pending'),
+            password: localMatch?.password || bj.password
+          };
+        });
+        const localOnly = existingUsers.filter(u => u.role === 'judge' && !backendJudges.some(bj => bj.id === u.id || bj.email?.toLowerCase() === u.email?.toLowerCase()));
+        localStorage.setItem(USERS_KEY, JSON.stringify([...currentAdmins, ...mergedJudges, ...localOnly]));
         setIsRefreshing(false);
         return;
       }

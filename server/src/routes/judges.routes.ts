@@ -24,13 +24,13 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
  */
 router.patch('/:id/approve', async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = await userDb.findById(req.params.id);
+    const user = (await userDb.findById(req.params.id)) || (await userDb.findByEmail(req.params.id));
     if (!user) {
       res.status(404).json({ error: 'Judge not found.' });
       return;
     }
 
-    const updated = await userDb.update({ id: req.params.id, status: 'approved' });
+    const updated = await userDb.update({ id: user.id, status: 'approved' });
     const actor = req.body.actor;
 
     if (actor && updated) {
@@ -57,13 +57,13 @@ router.patch('/:id/approve', async (req: Request, res: Response): Promise<void> 
  */
 router.patch('/:id/reject', async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = await userDb.findById(req.params.id);
+    const user = (await userDb.findById(req.params.id)) || (await userDb.findByEmail(req.params.id));
     if (!user) {
       res.status(404).json({ error: 'Judge not found.' });
       return;
     }
 
-    const updated = await userDb.update({ id: req.params.id, status: 'rejected' });
+    const updated = await userDb.update({ id: user.id, status: 'rejected' });
     const actor = req.body.actor;
 
     if (actor && updated) {
@@ -91,13 +91,13 @@ router.patch('/:id/reject', async (req: Request, res: Response): Promise<void> =
 router.patch('/:id/room', async (req: Request, res: Response): Promise<void> => {
   try {
     const { roomNumber, actor } = req.body;
-    const user = await userDb.findById(req.params.id);
+    const user = (await userDb.findById(req.params.id)) || (await userDb.findByEmail(req.params.id));
     if (!user) {
       res.status(404).json({ error: 'Judge not found.' });
       return;
     }
 
-    const updated = await userDb.update({ id: req.params.id, roomNumber: (roomNumber || '').trim() });
+    const updated = await userDb.update({ id: user.id, roomNumber: (roomNumber || '').trim() });
 
     if (actor && updated) {
       await auditDb.create({
@@ -123,7 +123,7 @@ router.patch('/:id/room', async (req: Request, res: Response): Promise<void> => 
  */
 router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = await userDb.findById(req.params.id);
+    const user = (await userDb.findById(req.params.id)) || (await userDb.findByEmail(req.params.id));
     if (!user) {
       res.status(404).json({ error: 'Judge not found.' });
       return;
@@ -135,7 +135,7 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const success = await userDb.delete(req.params.id);
+    const success = await userDb.delete(user.id);
     const actor = req.body.actor;
 
     if (actor && success) {

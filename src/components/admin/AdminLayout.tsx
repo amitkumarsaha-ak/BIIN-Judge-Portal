@@ -7,6 +7,7 @@ import { BiinLogo } from '../common/BiinLogo';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { api } from '../../services/api';
+import { getUsers } from '../../services/storage';
 
 export type AdminTab =
   | 'dashboard'
@@ -48,11 +49,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         }
       } catch {}
       try {
-        const raw = localStorage.getItem('biin_users');
-        if (raw) {
-          const list = JSON.parse(raw);
-          setPendingJudgesCount(list.filter((j: any) => j.role === 'judge' && (j.status || 'approved') === 'pending').length);
-        }
+        const list = getUsers();
+        setPendingJudgesCount(list.filter((j: any) => j.role === 'judge' && (j.status || 'approved') === 'pending').length);
       } catch {}
     };
 

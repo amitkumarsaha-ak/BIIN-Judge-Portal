@@ -309,31 +309,43 @@ export const userDb = {
       await pool.query(`
         INSERT INTO users (id, full_name, email, password, role, status, room_number, created_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (email) DO UPDATE SET
+          full_name = EXCLUDED.full_name,
+          password = COALESCE(EXCLUDED.password, users.password),
+          status = EXCLUDED.status,
+          room_number = COALESCE(EXCLUDED.room_number, users.room_number)
       `, [
         user.id, user.fullName, user.email.toLowerCase().trim(), user.password,
         user.role, user.status, user.roomNumber || null, user.createdAt
       ]);
       return user;
     }
-    memoryStore.users.push(user);
+    const idx = memoryStore.users.findIndex(u => u.email.trim().toLowerCase() === user.email.trim().toLowerCase() || u.id === user.id);
+    if (idx >= 0) {
+      memoryStore.users[idx] = { ...memoryStore.users[idx], ...user };
+    } else {
+      memoryStore.users.push(user);
+    }
+    saveMemoryFallback();
     return user;
   },
 
   async update(user: Partial<SeedUser> & { id: string }): Promise<SeedUser | undefined> {
     if (isPostgresConnected) {
-      const existing = await userDb.findById(user.id);
+      const existing = (await userDb.findById(user.id)) || (user.email ? await userDb.findByEmail(user.email) : undefined);
       if (!existing) return undefined;
       const updated = { ...existing, ...user };
       await pool.query(`
         UPDATE users
-        SET full_name = $2, role = $3, status = $4, room_number = $5
-        WHERE id = $1
-      `, [user.id, updated.fullName, updated.role, updated.status, updated.roomNumber || null]);
+        SET full_name = $2, role = $3, status = $4, room_number = $5, password = COALESCE($6, password)
+        WHERE id = $1 OR LOWER(TRIM(email)) = LOWER(TRIM($7))
+      `, [existing.id, updated.fullName, updated.role, updated.status, updated.roomNumber || null, user.password || null, existing.email]);
       return updated;
     }
-    const idx = memoryStore.users.findIndex(u => u.id === user.id);
+    const idx = memoryStore.users.findIndex(u => u.id === user.id || (user.email && u.email.trim().toLowerCase() === user.email.trim().toLowerCase()));
     if (idx >= 0) {
       memoryStore.users[idx] = { ...memoryStore.users[idx], ...user };
+      saveMemoryFallback();
       return memoryStore.users[idx];
     }
     return undefined;
@@ -341,12 +353,16 @@ export const userDb = {
 
   async delete(id: string): Promise<boolean> {
     if (isPostgresConnected) {
-      const res = await pool.query('DELETE FROM users WHERE id = $1', [id]);
+      const res = await pool.query('DELETE FROM users WHERE id = $1 OR LOWER(TRIM(email)) = LOWER(TRIM($1))', [id]);
       return (res.rowCount ?? 0) > 0;
     }
     const initial = memoryStore.users.length;
-    memoryStore.users = memoryStore.users.filter(u => u.id !== id);
-    return memoryStore.users.length < initial;
+    memoryStore.users = memoryStore.users.filter(u => u.id !== id && u.email.trim().toLowerCase() !== id.trim().toLowerCase());
+    if (memoryStore.users.length < initial) {
+      saveMemoryFallback();
+      return true;
+    }
+    return false;
   }
 };
 
@@ -372,6 +388,7 @@ export const roomDb = {
       return room;
     }
     memoryStore.rooms.push(room);
+    saveMemoryFallback();
     return room;
   },
 
@@ -387,6 +404,7 @@ export const roomDb = {
     const idx = memoryStore.rooms.findIndex(r => r.id === room.id);
     if (idx >= 0) {
       memoryStore.rooms[idx] = room;
+      saveMemoryFallback();
     }
     return room;
   },
@@ -398,7 +416,11 @@ export const roomDb = {
     }
     const initial = memoryStore.rooms.length;
     memoryStore.rooms = memoryStore.rooms.filter(r => r.id !== id);
-    return memoryStore.rooms.length < initial;
+    if (memoryStore.rooms.length < initial) {
+      saveMemoryFallback();
+      return true;
+    }
+    return false;
   }
 };
 
@@ -512,6 +534,7 @@ export const projectDb = {
     const idx = memoryStore.projects.findIndex(p => p.id === project.id);
     if (idx >= 0) {
       memoryStore.projects[idx] = project;
+      saveMemoryFallback();
     }
     return project;
   },
@@ -524,7 +547,11 @@ export const projectDb = {
     const initial = memoryStore.projects.length;
     memoryStore.projects = memoryStore.projects.filter(p => p.id !== id);
     memoryStore.evaluations = memoryStore.evaluations.filter(e => e.projectId !== id);
-    return memoryStore.projects.length < initial;
+    if (memoryStore.projects.length < initial) {
+      saveMemoryFallback();
+      return true;
+    }
+    return false;
   },
 
   async bulkCreate(projects: SeedProject[]): Promise<number> {
@@ -667,6 +694,7 @@ export const settingsDb = {
       return updated;
     }
     memoryStore.settings = { ...memoryStore.settings, ...settings };
+    saveMemoryFallback();
     return { ...memoryStore.settings };
   }
 };
@@ -705,5 +733,6 @@ export const auditDb = {
     if (memoryStore.auditLogs.length > 200) {
       memoryStore.auditLogs.pop();
     }
+    saveMemoryFallback();
   }
 };
