@@ -59,31 +59,31 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
   return (
     <div className="space-y-8 pb-12">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 p-6 sm:p-8 border border-indigo-500/30 shadow-2xl text-white">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 p-4 sm:p-8 border border-indigo-500/30 shadow-2xl text-white">
         <div className="absolute -right-10 -top-10 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
         <div className="absolute right-20 -bottom-10 h-48 w-48 rounded-full bg-cyan-500/20 blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6">
           <div>
-            <div className="flex items-center space-x-2 mb-3">
-              <span className="inline-flex items-center space-x-1.5 rounded-full bg-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-300 border border-indigo-400/30">
-                <Sparkles className="h-3.5 w-3.5" />
+            <div className="flex items-center space-x-2 mb-2 sm:mb-3">
+              <span className="inline-flex items-center space-x-1.5 rounded-full bg-indigo-500/20 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold text-indigo-300 border border-indigo-400/30">
+                <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 <span>Official BIIN Judge Workspace</span>
               </span>
             </div>
 
-            <h1 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
+            <h1 className="font-heading text-xl min-[380px]:text-2xl sm:text-4xl font-extrabold text-white">
               Welcome, {currentUser.fullName}!
             </h1>
-            <p className="mt-2 max-w-2xl text-xs sm:text-sm text-indigo-100/90 leading-relaxed">
+            <p className="mt-1.5 max-w-2xl text-xs sm:text-sm text-indigo-100/90 leading-relaxed">
               Evaluate nominated projects across Student, Student-Tertiary, Organisation, and Individual/Group categories.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 shrink-0">
             <button
               onClick={() => onNavigate('projects')}
-              className="btn-primary w-full sm:w-auto inline-flex items-center justify-center space-x-2 rounded-2xl px-6 py-3.5 font-bold text-white shadow-xl transition-all hover:scale-105 text-xs"
+              className="btn-primary w-full sm:w-auto inline-flex items-center justify-center space-x-2 rounded-2xl px-5 sm:px-6 py-3 sm:py-3.5 font-bold text-white shadow-xl transition-all hover:scale-105 text-xs"
             >
               <span>View Projects</span>
               <ArrowRight className="h-4 w-4" />
@@ -91,7 +91,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
 
             <button
               onClick={() => onNavigate('submissions')}
-              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 rounded-2xl bg-white/10 hover:bg-white/20 dark:bg-slate-800 dark:hover:bg-slate-700 px-5 py-3.5 font-semibold text-white transition-colors border border-white/20 dark:border-slate-700 text-xs"
+              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 rounded-2xl bg-white/10 hover:bg-white/20 dark:bg-slate-800 dark:hover:bg-slate-700 px-4 sm:px-5 py-3 sm:py-3.5 font-semibold text-white transition-colors border border-white/20 dark:border-slate-700 text-xs"
             >
               <CheckCircle2 className="h-4 w-4" />
               <span>My Submissions</span>
@@ -111,8 +111,8 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
         </div>
       )}
 
-      {/* Stats Cards Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Stats Cards Grid - 2 columns on mobile, 4 columns on desktop */}
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
         <StatsCard
           title="Total Projects"
           value={stats.totalProjects}

@@ -40,15 +40,15 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   }[colorScheme];
 
   return (
-    <div className={`rounded-2xl p-5 border ${colorClasses.bg} ${colorClasses.border} backdrop-blur-md transition-all hover:scale-[1.02] shadow-sm`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{title}</p>
-          <h3 className="font-heading text-3xl font-bold text-slate-900 dark:text-white mt-1">{value}</h3>
-          {subtitle && <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{subtitle}</p>}
+    <div className={`rounded-2xl p-3.5 sm:p-5 border ${colorClasses.bg} ${colorClasses.border} backdrop-blur-md transition-all hover:scale-[1.02] shadow-sm`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">{title}</p>
+          <h3 className="font-heading text-xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-0.5 sm:mt-1 truncate">{value}</h3>
+          {subtitle && <p className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400 mt-0.5 sm:mt-1 truncate">{subtitle}</p>}
         </div>
-        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${colorClasses.iconBg}`}>
-          <Icon className="h-6 w-6" />
+        <div className={`flex h-8 w-8 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl shrink-0 ${colorClasses.iconBg}`}>
+          <Icon className="h-4 w-4 sm:h-6 sm:w-6" />
         </div>
       </div>
     </div>

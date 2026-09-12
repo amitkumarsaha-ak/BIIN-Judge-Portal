@@ -89,18 +89,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-violet-500 selection:text-white transition-colors duration-200">
       {/* Top Admin Navigation Header - Original Height, Single Bar on Desktop & Laptops */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md transition-colors shadow-sm">
-        <div className="w-full max-w-[1700px] mx-auto flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 lg:px-8 py-3.5">
+        <div className="w-full max-w-[1700px] mx-auto flex items-center justify-between gap-2 sm:gap-4 px-2.5 sm:px-6 lg:px-8 py-2.5 sm:py-3.5">
           
           {/* Left Brand */}
           <div
             onClick={() => onSelectTab('dashboard')}
-            className="flex cursor-pointer items-center gap-2 sm:gap-2.5 transition-opacity hover:opacity-90 shrink-0"
+            className="flex cursor-pointer items-center gap-1.5 sm:gap-2.5 transition-opacity hover:opacity-90 shrink-0"
           >
-            <BiinLogo size="md" />
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="font-heading text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">BIIN</span>
-              <span className="rounded-md bg-violet-100 dark:bg-violet-500/20 px-2 py-0.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">
-                Admin Panel
+            <BiinLogo size="sm" className="sm:hidden" />
+            <BiinLogo size="md" className="hidden sm:inline-flex" />
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="font-heading text-base sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">BIIN</span>
+              <span className="rounded-md bg-violet-100 dark:bg-violet-500/20 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">
+                <span className="sm:hidden">Admin</span>
+                <span className="hidden sm:inline">Admin Panel</span>
               </span>
             </div>
           </div>
@@ -135,7 +137,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
           {/* Right Controls - Guaranteed 100% inside viewport on all screen resolutions */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            {/* Live Database / Backend Status */}
+            {/* Live Database / Backend Status (Hidden on very small mobile to prevent pushing logout out) */}
             {backendStatus && (
               <div
                 title={`Backend REST API: ${
@@ -145,7 +147,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     ? 'Backend Offline (Using Local Cache)'
                     : 'Memory Fallback Active'
                 }`}
-                className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-[11px] font-bold tracking-tight border shadow-xs transition-colors shrink-0 ${
+                className={`hidden min-[480px]:flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-[11px] font-bold tracking-tight border shadow-xs transition-colors shrink-0 ${
                   backendStatus.connected && backendStatus.type === 'postgres'
                     ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
                     : backendStatus.type === 'offline'
@@ -162,8 +164,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                       : 'bg-emerald-500'
                   }`}
                 />
-                <Database className="h-3 w-3 shrink-0 opacity-70 hidden min-[420px]:inline" />
-                <span className="hidden min-[420px]:inline">
+                <Database className="h-3 w-3 shrink-0 opacity-70 hidden sm:inline" />
+                <span className="hidden sm:inline">
                   {backendStatus.connected && backendStatus.type === 'postgres'
                     ? 'PostgreSQL'
                     : backendStatus.type === 'offline'
@@ -178,7 +180,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               aria-label="Toggle Dark and Light Mode"
-              className="flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-2 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm shrink-0 min-h-[38px] min-w-[38px]"
+              className="flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-1.5 sm:p-2 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm shrink-0 min-h-[36px] min-w-[36px] sm:min-h-[38px] sm:min-w-[38px]"
             >
               {theme === 'dark' ? (
                 <Sun className="h-4 w-4 text-amber-400" />
@@ -203,10 +205,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               id="admin-logout-btn"
               onClick={logout}
               title="Logout from Admin Panel"
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 sm:px-3.5 py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors shrink-0 shadow-xs min-h-[38px]"
+              className="flex items-center justify-center gap-1 sm:gap-1.5 rounded-xl border border-red-500/30 bg-red-50 dark:bg-red-500/10 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors shrink-0 shadow-xs min-h-[36px] sm:min-h-[38px]"
             >
               <LogOut className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden min-[360px]:inline">Logout</span>
+              <span>Logout</span>
             </button>
           </div>
 
