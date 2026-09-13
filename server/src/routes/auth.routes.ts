@@ -232,22 +232,25 @@ router.post('/reset-password', async (req: Request, res: Response): Promise<void
       return;
     }
 
-    if (user.role !== 'judge') {
+    const userRole = (user.role || 'judge').toLowerCase();
+    const userStatus = (user.status || 'approved').toLowerCase();
+
+    if (userRole !== 'judge') {
       res.status(403).json({ error: 'Only judge accounts may reset passwords through this form.' });
       return;
     }
 
-    if (user.status === 'pending') {
+    if (userStatus === 'pending') {
       res.status(403).json({ error: 'Your account is currently pending Administrator approval. Password cannot be reset until approved.' });
       return;
     }
 
-    if (user.status === 'rejected') {
+    if (userStatus === 'rejected') {
       res.status(403).json({ error: 'Your judge registration has been declined by the Administrator. Access is denied.' });
       return;
     }
 
-    if (user.status !== 'approved') {
+    if (userStatus !== 'approved') {
       res.status(403).json({ error: 'Password reset is only allowed for approved judge accounts.' });
       return;
     }

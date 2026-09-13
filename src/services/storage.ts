@@ -777,7 +777,7 @@ export const resetJudgePassword = (email: string, newPassword: string): boolean 
     // If not in users array, check preseeded judges ONLY if not removed
     if (!isJudgeEmailRemoved(cleanEmail)) {
       const preseeded = PRESEEDED_JUDGES.find(u => u.email?.trim().toLowerCase() === cleanEmail);
-      if (preseeded && preseeded.role !== 'admin' && (preseeded.status || 'approved') === 'approved') {
+      if (preseeded && preseeded.role !== 'admin' && (preseeded.status || 'approved').toLowerCase() === 'approved') {
         const judgeUser: User = {
           ...preseeded,
           password: newPassword,
@@ -794,11 +794,12 @@ export const resetJudgePassword = (email: string, newPassword: string): boolean 
   }
 
   // Strictly only approved judges can reset password! Pending or rejected cannot reset!
-  if (users[idx].role !== 'judge' || users[idx].status !== 'approved') {
+  const judgeStatus = (users[idx].status || 'approved').toLowerCase();
+  if (users[idx].role !== 'judge' || judgeStatus !== 'approved') {
     return false;
   }
 
-  users[idx] = { ...users[idx], password: newPassword };
+  users[idx] = { ...users[idx], password: newPassword, status: 'approved' };
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 
   // Also clean up any legacy user keys so they never resurrect old passwords

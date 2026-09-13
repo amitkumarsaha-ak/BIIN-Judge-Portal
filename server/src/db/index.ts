@@ -282,12 +282,16 @@ export const userDb = {
   async findByEmail(email: string): Promise<SeedUser | undefined> {
     const cleanEmail = email.trim().toLowerCase();
     if (isPostgresConnected) {
-      const res = await pool.query(`
-        SELECT id, full_name as "fullName", email, password, role, status,
-               room_number as "roomNumber", created_at as "createdAt"
-        FROM users WHERE LOWER(TRIM(email)) = $1 LIMIT 1
-      `, [cleanEmail]);
-      return res.rows[0];
+      try {
+        const res = await pool.query(`
+          SELECT id, full_name as "fullName", email, password, role, status,
+                 room_number as "roomNumber", created_at as "createdAt"
+          FROM users WHERE LOWER(TRIM(email)) = $1 LIMIT 1
+        `, [cleanEmail]);
+        if (res.rows[0]) return res.rows[0];
+      } catch (err) {
+        console.error('[userDb.findByEmail] Postgres query failed:', err);
+      }
     }
     return memoryStore.users.find(u => u.email.trim().toLowerCase() === cleanEmail);
   },
@@ -379,13 +383,14 @@ export const userDb = {
         console.error('[userDb.updatePassword] Postgres query failed:', err);
       }
     }
+    let memSuccess = false;
     const idx = memoryStore.users.findIndex(u => u.email.trim().toLowerCase() === cleanEmail);
     if (idx >= 0) {
       memoryStore.users[idx] = { ...memoryStore.users[idx], password: newPassword };
       saveMemoryFallback();
-      return true;
+      memSuccess = true;
     }
-    return pgSuccess;
+    return pgSuccess || memSuccess;
   }
 };
 

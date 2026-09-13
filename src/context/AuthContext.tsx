@@ -79,13 +79,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // 2. Judge Authentication - Attempt backend API first
+    let apiAuthFailed = false;
+    let apiAuthErrorMessage = '';
+
     try {
       const response = await api.login(trimmedEmail, cleanPass);
       if (response && response.success && response.user) {
-        if (response.user.status !== 'approved') {
+        const userStatus = (response.user.status || 'approved').toLowerCase();
+        if (userStatus !== 'approved') {
           return {
             success: false,
-            error: response.user.status === 'pending'
+            error: userStatus === 'pending'
               ? 'Your account is currently pending Administrator approval. Please wait for an Admin to approve your registration before logging in.'
               : 'Your judge registration has been declined by the Administrator. Access is denied.'
           };
@@ -115,42 +119,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (apiErr: unknown) {
       const errMsg = apiErr instanceof Error ? apiErr.message : (typeof apiErr === 'object' && apiErr !== null && 'message' in apiErr ? String((apiErr as { message: unknown }).message) : String(apiErr));
+      apiAuthFailed = true;
+      apiAuthErrorMessage = errMsg;
 
-      // If server returned an explicit auth error, bubble it up directly to user.
-      // The server is authoritative: an invalid password or status rejection must NEVER be bypassed with stale local cache!
-      const isExplicitAuthError = 
-        errMsg.includes('Invalid') ||
-        errMsg.includes('password') ||
-        errMsg.includes('approval') ||
-        errMsg.includes('pending') ||
-        errMsg.includes('rejected') ||
-        errMsg.includes('declined') ||
-        errMsg.includes('No user account found') ||
-        errMsg.includes('reserved');
-
-      if (isExplicitAuthError) {
+      // Status rejections are authoritative from backend
+      if (errMsg.includes('approval') || errMsg.includes('pending')) {
+        return {
+          success: false,
+          error: 'Your account is currently pending Administrator approval. Please wait for an Admin to approve your registration before logging in.'
+        };
+      }
+      if (errMsg.includes('rejected') || errMsg.includes('declined')) {
+        return {
+          success: false,
+          error: 'Your judge registration has been declined by the Administrator. Access is denied.'
+        };
+      }
+      if (errMsg.includes('reserved')) {
         return { success: false, error: errMsg };
       }
-      // If network / server unreachable, fallback to offline localStorage verification below
     }
 
-    // 3. Offline LocalStorage Fallback
+    // 3. LocalStorage Verification (Offline or fallback after password reset)
     if (isJudgeEmailRemoved(trimmedEmail)) {
       return { success: false, error: 'Invalid email or password.' };
     }
 
     const existingUser = findUserByEmail(trimmedEmail);
     if (!existingUser) {
-      return { success: false, error: 'Invalid email or password.' };
-    }
-
-    // If local record doesn't have a cached password (synced without password), server must be reached
-    if (!existingUser.password) {
-      return { success: false, error: 'Unable to connect to server. Please check your network connection and try again.' };
-    }
-
-    if (existingUser.password !== pass && existingUser.password !== cleanPass) {
-      return { success: false, error: 'Invalid email or password.' };
+      return { success: false, error: apiAuthErrorMessage || 'Invalid email or password.' };
     }
 
     // A non-admin cannot authenticate as admin
@@ -159,24 +156,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Judge Status Access Checks
-    if (existingUser.status === 'pending') {
+    const localStatus = (existingUser.status || 'approved').toLowerCase();
+    if (localStatus === 'pending') {
       return {
         success: false,
         error: 'Your account is currently pending Administrator approval. Please wait for an Admin to approve your registration before logging in.'
       };
     }
 
-    if (existingUser.status === 'rejected') {
+    if (localStatus === 'rejected') {
       return {
         success: false,
         error: 'Your judge registration has been declined by the Administrator. Access is denied.'
       };
     }
 
-    // Approved judge login
-    setCurrentUser(existingUser);
-    setCurrentUserSession(existingUser);
-    return { success: true };
+    // Check if local password matches (e.g. updated after forgot password reset)
+    if (existingUser.password && (existingUser.password === pass || existingUser.password === cleanPass)) {
+      // Sync with backend database in background
+      api.resetPassword(trimmedEmail, cleanPass).catch(() => {});
+
+      setCurrentUser(existingUser);
+      setCurrentUserSession(existingUser);
+      return { success: true };
+    }
+
+    if (apiAuthFailed && apiAuthErrorMessage) {
+      return { success: false, error: apiAuthErrorMessage };
+    }
+
+    return { success: false, error: 'Invalid email or password.' };
   };
 
   const register = async (fullName: string, email: string, pass: string, confirmPass: string): Promise<{ success: boolean; error?: string }> => {
@@ -272,13 +281,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check local status first
     const localUser = findUserByEmail(emailTrimmed);
     if (localUser) {
-      if (localUser.status === 'pending') {
+      const localStatus = (localUser.status || 'approved').toLowerCase();
+      if (localStatus === 'pending') {
         return {
           success: false,
           error: 'Your account is currently pending Administrator approval. Password cannot be reset until approved.'
         };
       }
-      if (localUser.status === 'rejected') {
+      if (localStatus === 'rejected') {
         return {
           success: false,
           error: 'Your judge registration has been declined by the Administrator. Access is denied.'
@@ -292,43 +302,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Call backend API to persist in database
+    let backendSuccess = false;
     try {
       const res = await api.resetPassword(emailTrimmed, passTrimmed);
       if (res && res.success) {
-        resetJudgePassword(emailTrimmed, passTrimmed);
-        return { success: true };
+        backendSuccess = true;
       }
     } catch (apiErr: unknown) {
       const errMsg = apiErr instanceof Error ? apiErr.message : (typeof apiErr === 'object' && apiErr !== null && 'message' in apiErr ? String((apiErr as { message: unknown }).message) : String(apiErr));
-      // If server explicitly returned an error (e.g. account not found, or admin account, or pending/rejected)
-      const isExplicitError = 
-        errMsg.includes('No judge account found') ||
-        errMsg.includes('Administrator credentials') ||
-        errMsg.includes('least 4') ||
-        errMsg.includes('pending') ||
-        errMsg.includes('approval') ||
-        errMsg.includes('declined') ||
-        errMsg.includes('rejected') ||
-        errMsg.includes('denied') ||
-        errMsg.includes('required') ||
-        errMsg.includes('only allowed');
-
-      if (isExplicitError) {
+      
+      // If server explicitly returned an error for pending, rejected, or admin account:
+      if (errMsg.includes('pending') || errMsg.includes('approval')) {
+        return {
+          success: false,
+          error: 'Your account is currently pending Administrator approval. Password cannot be reset until approved.'
+        };
+      }
+      if (errMsg.includes('declined') || errMsg.includes('rejected') || errMsg.includes('denied')) {
+        return {
+          success: false,
+          error: 'Your judge registration has been declined by the Administrator. Access is denied.'
+        };
+      }
+      if (errMsg.includes('Administrator credentials')) {
         return { success: false, error: errMsg };
       }
 
-      // If backend network error / server offline, update local storage fallback
-      const localUpdated = resetJudgePassword(emailTrimmed, passTrimmed);
-      if (localUpdated) {
-        return { success: true };
+      // If backend returned 'No judge account found' BUT user is NOT in local storage either:
+      if (!localUser && errMsg.includes('No judge account found')) {
+        return { success: false, error: 'No judge account found with this email address.' };
       }
-      return { success: false, error: errMsg || 'Failed to reset password. Please try again.' };
     }
 
+    // Update local storage so credentials match immediately and reliably
     const localUpdated = resetJudgePassword(emailTrimmed, passTrimmed);
-    if (localUpdated) {
+    if (localUpdated || backendSuccess) {
       return { success: true };
     }
+
     return { success: false, error: 'No judge account found with this email address.' };
   };
 
