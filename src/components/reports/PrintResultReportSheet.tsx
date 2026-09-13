@@ -247,24 +247,25 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
           </div>
 
           {/* Signature Lines for Official Records */}
-          <div className="pt-8 border-t border-slate-300 grid grid-cols-3 gap-6 text-center text-xs text-slate-600">
-            <div>
-              <div className="h-10 border-b border-slate-400 mb-1" />
-              <span className="block text-slate-600">Judge 1</span>
-              <span className="block font-bold text-slate-900">{judgesEvaluations[0]?.judgeName || 'Judge 1'}</span>
-            </div>
-
-            <div>
-              <div className="h-10 border-b border-slate-400 mb-1" />
-              <span className="block text-slate-600">Judge 2</span>
-              <span className="block font-bold text-slate-900">{judgesEvaluations[1]?.judgeName || 'Judge 2'}</span>
-            </div>
-
-            <div>
-              <div className="h-10 border-b border-slate-400 mb-1" />
-              <span className="block text-slate-600">Judge 3</span>
-              <span className="block font-bold text-slate-900">{judgesEvaluations[2]?.judgeName || 'Judge 3'}</span>
-            </div>
+          <div
+            className="pt-8 border-t border-slate-300 grid gap-6 text-center text-xs text-slate-600"
+            style={{
+              gridTemplateColumns: `repeat(${Math.max(1, judgesEvaluations.length)}, minmax(0, 1fr))`
+            }}
+          >
+            {judgesEvaluations.length === 0 ? (
+              <div>
+                <div className="h-10 border-b border-slate-400 mb-1" />
+                <span className="block font-bold text-slate-900">Judge Signature</span>
+              </div>
+            ) : (
+              judgesEvaluations.map((j) => (
+                <div key={j.judgeEmail}>
+                  <div className="h-10 border-b border-slate-400 mb-1" />
+                  <span className="block font-bold text-slate-900">{j.judgeName}</span>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Footer stamp */}
