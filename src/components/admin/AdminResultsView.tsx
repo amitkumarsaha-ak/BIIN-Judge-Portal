@@ -41,6 +41,7 @@ export const AdminResultsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<ApplicationType | 'All'>('All');
   const [filterCategory, setFilterCategory] = useState<HeadCategoryCode | 'All'>('All');
+  const isStudentSecondary = filterType === 'Student-Secondary';
   const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
   const [selectedProjectId, setSelectedProjectId] = useState<string>(allProjects[0]?.id || '');
   const [activePrintResult, setActivePrintResult] = useState<CombinedProjectResult | null>(null);
@@ -67,7 +68,7 @@ export const AdminResultsView: React.FC = () => {
       const pHeadCat = canonicalHeadCategory(res.project.headCategory);
 
       if (filterType !== 'All' && pAppType !== filterType) return false;
-      if (filterCategory !== 'All' && pHeadCat !== filterCategory) return false;
+      if (pAppType !== 'Student-Secondary' && filterCategory !== 'All' && pHeadCat !== filterCategory) return false;
       if (q) {
         const hay = [
           res.project.title,
@@ -167,7 +168,7 @@ export const AdminResultsView: React.FC = () => {
 
     return categoryGroups.filter(grp => {
       if (filterType !== 'All' && grp.appType !== filterType) return false;
-      if (filterCategory !== 'All' && grp.headCategoryCode !== filterCategory) return false;
+      if (grp.appType !== 'Student-Secondary' && filterCategory !== 'All' && grp.headCategoryCode !== filterCategory) return false;
       return true;
     }).map(grp => {
       if (!q) return grp;
@@ -384,7 +385,13 @@ export const AdminResultsView: React.FC = () => {
         {/* Application Type Filter (Rule 1 & 14) */}
         <select
           value={filterType}
-          onChange={e => setFilterType(e.target.value as ApplicationType | 'All')}
+          onChange={e => {
+            const val = e.target.value as ApplicationType | 'All';
+            setFilterType(val);
+            if (val === 'Student-Secondary' || canonicalAppType(val) === 'Student-Secondary') {
+              setFilterCategory('All');
+            }
+          }}
           className="w-full md:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-500 font-semibold"
         >
           <option value="All">All Application Types (4 Types)</option>
@@ -397,16 +404,23 @@ export const AdminResultsView: React.FC = () => {
 
         {/* Head Category Filter (Rule 2 & 14) */}
         <select
-          value={filterCategory}
+          value={isStudentSecondary ? 'All' : filterCategory}
           onChange={e => setFilterCategory(e.target.value as HeadCategoryCode | 'All')}
-          className="w-full md:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-500 font-semibold"
+          disabled={isStudentSecondary}
+          className={`w-full md:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-500 font-semibold ${
+            isStudentSecondary ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+          title={isStudentSecondary ? 'Head Category cannot be selected for Student-Secondary' : undefined}
         >
-          <option value="All">All Head Categories (5 Categories)</option>
-          {RESULT_HEAD_CATEGORIES.map(hc => (
-            <option key={hc.code} value={hc.code}>
-              {hc.code} — {hc.name}
-            </option>
-          ))}
+          <option value="All">
+            {isStudentSecondary ? 'No Head Category for Student-Secondary' : 'All Head Categories (5 Categories)'}
+          </option>
+          {!isStudentSecondary &&
+            RESULT_HEAD_CATEGORIES.map(hc => (
+              <option key={hc.code} value={hc.code}>
+                {hc.code} — {hc.name}
+              </option>
+            ))}
         </select>
 
         {/* View Mode Toggle: 20-Category Board vs Ranked Table */}
@@ -436,10 +450,14 @@ export const AdminResultsView: React.FC = () => {
           <span className="font-bold text-slate-900 dark:text-white">
             {filterType !== 'All' ? (RESULT_APPLICATION_TYPES.find(a => a.id === filterType)?.title || filterType) : 'All Application Types'}
           </span>
-          <span>×</span>
-          <span className="font-bold text-slate-900 dark:text-white">
-            {filterCategory !== 'All' ? (RESULT_HEAD_CATEGORIES.find(c => c.code === filterCategory)?.name || filterCategory) : 'All Head Categories'}
-          </span>
+          {!isStudentSecondary && (
+            <>
+              <span>×</span>
+              <span className="font-bold text-slate-900 dark:text-white">
+                {filterCategory !== 'All' ? (RESULT_HEAD_CATEGORIES.find(c => c.code === filterCategory)?.name || filterCategory) : 'All Head Categories'}
+              </span>
+            </>
+          )}
           {searchQuery && (
             <>
               <span>•</span>
