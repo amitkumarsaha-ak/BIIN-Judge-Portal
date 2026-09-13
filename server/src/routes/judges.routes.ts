@@ -14,8 +14,9 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
       .filter(u => u.role === 'judge')
       .map(({ password: _, ...judge }) => judge);
     res.json(judges);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to fetch judges.' });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errMsg || 'Failed to fetch judges.' });
   }
 });
 
@@ -47,8 +48,9 @@ router.patch('/:id/approve', async (req: Request, res: Response): Promise<void> 
 
     const { password: _, ...safeJudge } = updated!;
     res.json({ success: true, judge: safeJudge });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to approve judge.' });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errMsg || 'Failed to approve judge.' });
   }
 });
 
@@ -80,8 +82,9 @@ router.patch('/:id/reject', async (req: Request, res: Response): Promise<void> =
 
     const { password: _, ...safeJudge } = updated!;
     res.json({ success: true, judge: safeJudge });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to reject judge.' });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errMsg || 'Failed to reject judge.' });
   }
 });
 
@@ -113,8 +116,9 @@ router.patch('/:id/room', async (req: Request, res: Response): Promise<void> => 
 
     const { password: _, ...safeJudge } = updated!;
     res.json({ success: true, judge: safeJudge });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to assign judge room.' });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errMsg || 'Failed to assign judge room.' });
   }
 });
 
@@ -151,8 +155,9 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
     }
 
     res.json({ success, message: 'Judge deleted successfully.' });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to delete judge.' });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errMsg || 'Failed to delete judge.' });
   }
 });
 

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from '../types';
-import { getCurrentUser, setCurrentUserSession, findUserByEmail, saveUser, getUsers, USERS_KEY, approveJudge, resetJudgePassword } from '../services/storage';
+import { getCurrentUser, setCurrentUserSession, findUserByEmail, saveUser, getUsers, USERS_KEY, resetJudgePassword, isJudgeEmailRemoved } from '../services/storage';
 import { ADMIN_CONFIG } from '../config/authConfig';
 import { api } from '../services/api';
 
@@ -30,26 +30,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUserSession(null);
         return;
       }
-      // If judge session is pending or rejected, handle appropriately
+      // If judge session is pending or rejected or removed, handle appropriately
       if (user.role === 'judge') {
         const freshUser = findUserByEmail(user.email);
-        if (freshUser && freshUser.status === 'rejected') {
+        if (!freshUser || freshUser.status !== 'approved' || isJudgeEmailRemoved(user.email)) {
           setCurrentUser(null);
           setCurrentUserSession(null);
           return;
         }
-        // If session was already approved, ensure local storage stays approved
-        if (user.status === 'approved' && freshUser && freshUser.status !== 'approved') {
-          approveJudge(freshUser.id);
-        }
         // Async verify status with backend
         api.getMe(user.email).then(remoteUser => {
           if (remoteUser) {
-            if (remoteUser.status === 'rejected') {
+            if (remoteUser.status !== 'approved') {
               setCurrentUser(null);
               setCurrentUserSession(null);
-            } else if (remoteUser.status === 'approved') {
-              approveJudge(user.id);
             }
           }
         }).catch(() => {});
@@ -88,6 +82,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await api.login(trimmedEmail, cleanPass);
       if (response && response.success && response.user) {
+        if (response.user.status !== 'approved') {
+          return {
+            success: false,
+            error: response.user.status === 'pending'
+              ? 'Your account is currently pending Administrator approval. Please wait for an Admin to approve your registration before logging in.'
+              : 'Your judge registration has been declined by the Administrator. Access is denied.'
+          };
+        }
+
         const loggedJudge: User = {
           ...response.user,
           password: cleanPass // cache password locally for seamless offline capability
@@ -110,8 +113,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUserSession(loggedJudge);
         return { success: true };
       }
-    } catch (apiErr: any) {
-      const errMsg = apiErr?.message || '';
+    } catch (apiErr: unknown) {
+      const errMsg = apiErr instanceof Error ? apiErr.message : (typeof apiErr === 'object' && apiErr !== null && 'message' in apiErr ? String((apiErr as { message: unknown }).message) : String(apiErr));
 
       // If server returned an explicit auth error, bubble it up directly to user.
       // The server is authoritative: an invalid password or status rejection must NEVER be bypassed with stale local cache!
@@ -121,6 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         errMsg.includes('approval') ||
         errMsg.includes('pending') ||
         errMsg.includes('rejected') ||
+        errMsg.includes('declined') ||
         errMsg.includes('No user account found') ||
         errMsg.includes('reserved');
 
@@ -131,6 +135,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // 3. Offline LocalStorage Fallback
+    if (isJudgeEmailRemoved(trimmedEmail)) {
+      return { success: false, error: 'Invalid email or password.' };
+    }
+
     const existingUser = findUserByEmail(trimmedEmail);
     if (!existingUser) {
       return { success: false, error: 'Invalid email or password.' };
@@ -214,8 +222,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (regRes?.user?.id) {
         remoteUserId = regRes.user.id;
       }
-    } catch (apiErr: any) {
-      const errMsg = apiErr?.message || '';
+    } catch (apiErr: unknown) {
+      const errMsg = apiErr instanceof Error ? apiErr.message : (typeof apiErr === 'object' && apiErr !== null && 'message' in apiErr ? String((apiErr as { message: unknown }).message) : String(apiErr));
       if (errMsg.includes('already exists') || errMsg.includes('reserved')) {
         return { success: false, error: errMsg };
       }
@@ -261,6 +269,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'Passwords do not match. Please verify and try again.' };
     }
 
+    // Check local status first
+    const localUser = findUserByEmail(emailTrimmed);
+    if (localUser) {
+      if (localUser.status === 'pending') {
+        return {
+          success: false,
+          error: 'Your account is currently pending Administrator approval. Password cannot be reset until approved.'
+        };
+      }
+      if (localUser.status === 'rejected') {
+        return {
+          success: false,
+          error: 'Your judge registration has been declined by the Administrator. Access is denied.'
+        };
+      }
+    } else if (isJudgeEmailRemoved(emailTrimmed)) {
+      return {
+        success: false,
+        error: 'No judge account found with this email address.'
+      };
+    }
+
     // Call backend API to persist in database
     try {
       const res = await api.resetPassword(emailTrimmed, passTrimmed);
@@ -268,14 +298,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resetJudgePassword(emailTrimmed, passTrimmed);
         return { success: true };
       }
-    } catch (apiErr: any) {
-      const errMsg = apiErr?.message || '';
-      // If server explicitly returned an error (e.g. account not found, or admin account)
+    } catch (apiErr: unknown) {
+      const errMsg = apiErr instanceof Error ? apiErr.message : (typeof apiErr === 'object' && apiErr !== null && 'message' in apiErr ? String((apiErr as { message: unknown }).message) : String(apiErr));
+      // If server explicitly returned an error (e.g. account not found, or admin account, or pending/rejected)
       const isExplicitError = 
         errMsg.includes('No judge account found') ||
         errMsg.includes('Administrator credentials') ||
         errMsg.includes('least 4') ||
-        errMsg.includes('required');
+        errMsg.includes('pending') ||
+        errMsg.includes('approval') ||
+        errMsg.includes('declined') ||
+        errMsg.includes('rejected') ||
+        errMsg.includes('denied') ||
+        errMsg.includes('required') ||
+        errMsg.includes('only allowed');
 
       if (isExplicitError) {
         return { success: false, error: errMsg };
@@ -289,7 +325,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: errMsg || 'Failed to reset password. Please try again.' };
     }
 
-    return { success: true };
+    const localUpdated = resetJudgePassword(emailTrimmed, passTrimmed);
+    if (localUpdated) {
+      return { success: true };
+    }
+    return { success: false, error: 'No judge account found with this email address.' };
   };
 
   const logout = () => {

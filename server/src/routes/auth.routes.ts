@@ -96,8 +96,9 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     });
 
     res.json({ success: true, user: safeUser });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Internal authentication error' });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errMsg || 'Internal authentication error' });
   }
 });
 
@@ -155,8 +156,9 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       message: 'Registration submitted successfully. Waiting for Admin approval.',
       user: safeUser
     });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Internal registration error' });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errMsg || 'Internal registration error' });
   }
 });
 
@@ -193,8 +195,9 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
 
     const { password: _, ...safeUser } = user;
     res.json(safeUser);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Internal error' });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errMsg || 'Internal error' });
   }
 });
 
@@ -229,6 +232,26 @@ router.post('/reset-password', async (req: Request, res: Response): Promise<void
       return;
     }
 
+    if (user.role !== 'judge') {
+      res.status(403).json({ error: 'Only judge accounts may reset passwords through this form.' });
+      return;
+    }
+
+    if (user.status === 'pending') {
+      res.status(403).json({ error: 'Your account is currently pending Administrator approval. Password cannot be reset until approved.' });
+      return;
+    }
+
+    if (user.status === 'rejected') {
+      res.status(403).json({ error: 'Your judge registration has been declined by the Administrator. Access is denied.' });
+      return;
+    }
+
+    if (user.status !== 'approved') {
+      res.status(403).json({ error: 'Password reset is only allowed for approved judge accounts.' });
+      return;
+    }
+
     const updated = await userDb.updatePassword(cleanEmail, newPassword);
     if (!updated) {
       res.status(500).json({ error: 'Failed to update password in database.' });
@@ -246,8 +269,9 @@ router.post('/reset-password', async (req: Request, res: Response): Promise<void
     });
 
     res.json({ success: true, message: 'Password has been successfully updated.' });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Internal server error while resetting password.' });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errMsg || 'Internal server error while resetting password.' });
   }
 });
 
