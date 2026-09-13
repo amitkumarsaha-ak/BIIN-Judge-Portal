@@ -8,6 +8,11 @@ interface PrintResultReportSheetProps {
   onClose: () => void;
 }
 
+const cleanJudgeName = (name?: string): string => {
+  if (!name) return '';
+  return name.replace(/\s*[\(\[-]?\s*judge\s*\d+\s*[\)\]]?/gi, '').trim();
+};
+
 export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
   result,
   onClose
@@ -264,7 +269,7 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
                 <div key={j.judgeEmail}>
                   <div className="h-10 border-b border-slate-400 mb-1" />
                   <span className="block text-slate-600">Judge {idx + 1}</span>
-                  <span className="block font-bold text-slate-900">{j.judgeName}</span>
+                  <span className="block font-bold text-slate-900">{cleanJudgeName(j.judgeName) || j.judgeName}</span>
                 </div>
               ))
             )}
