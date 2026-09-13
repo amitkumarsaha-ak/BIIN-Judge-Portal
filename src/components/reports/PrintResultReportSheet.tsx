@@ -256,12 +256,14 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
             {judgesEvaluations.length === 0 ? (
               <div>
                 <div className="h-10 border-b border-slate-400 mb-1" />
+                <span className="block text-slate-600">Judge 1</span>
                 <span className="block font-bold text-slate-900">Judge Signature</span>
               </div>
             ) : (
-              judgesEvaluations.map((j) => (
+              judgesEvaluations.map((j, idx) => (
                 <div key={j.judgeEmail}>
                   <div className="h-10 border-b border-slate-400 mb-1" />
+                  <span className="block text-slate-600">Judge {idx + 1}</span>
                   <span className="block font-bold text-slate-900">{j.judgeName}</span>
                 </div>
               ))
