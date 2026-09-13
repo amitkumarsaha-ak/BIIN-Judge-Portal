@@ -1,7 +1,7 @@
 import type { User, Project, Evaluation, DashboardStats, Room, SystemSettings, AuditLog } from '../types';
 import { PRESEEDED_JUDGES, SAMPLE_PROJECTS } from '../data/mockData';
 import { ADMIN_CONFIG } from '../config/authConfig';
-import { matchesAppType, matchesCategory } from '../utils/evaluation';
+import { matchesAppType, matchesCategory, canonicalAppType, canonicalHeadCategory } from '../utils/evaluation';
 import { api } from './api';
 
 export const USERS_KEY = 'biin_portal_users';
@@ -98,7 +98,8 @@ export const DEFAULT_SETTINGS: SystemSettings = {
   evaluationsLocked: false,
   finalResultsLocked: false,
   lockedProjects: [],
-  autoRankingEnabled: true
+  autoRankingEnabled: true,
+  categoryLocks: {}
 };
 
 export const DEFAULT_AUDIT_LOGS: AuditLog[] = [
@@ -226,6 +227,29 @@ export const initializeStorage = () => {
   // Initialize Projects
   if (!localStorage.getItem(PROJECTS_KEY)) {
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(SAMPLE_PROJECTS));
+  } else {
+    // Safely migrate stored projects with 'Student' to 'Student-Secondary'
+    try {
+      const rawProjects = localStorage.getItem(PROJECTS_KEY);
+      if (rawProjects) {
+        const parsed: Project[] = JSON.parse(rawProjects);
+        let hasChanges = false;
+        const migrated = parsed.map(p => {
+          if (p.applicationType === 'Student') {
+            hasChanges = true;
+            return {
+              ...p,
+              applicationType: 'Student-Secondary' as const,
+              headCategory: 'N/A'
+            };
+          }
+          return p;
+        });
+        if (hasChanges) {
+          localStorage.setItem(PROJECTS_KEY, JSON.stringify(migrated));
+        }
+      }
+    } catch {}
   }
 
   // Initialize Rooms
@@ -541,6 +565,45 @@ export const updateSystemSettings = (settings: SystemSettings, actor?: { email: 
   api.updateSettings(settings, actor).catch(() => {});
   if (actor) {
     logAuditAction(actor.email, actor.name, 'UPDATE_SETTINGS', 'settings', `Updated system configuration & lock rules.`);
+  }
+};
+
+export const getCategoryLockKey = (appType?: string, headCategory?: string | null): string => {
+  const normType = canonicalAppType(appType);
+  if (normType === 'Student-Secondary') {
+    return 'Student-Secondary___NONE';
+  }
+  const normCategory = canonicalHeadCategory(headCategory || '');
+  return `${normType}___${normCategory}`;
+};
+
+export const isCategoryEvaluationLocked = (appType?: string, headCategory?: string | null): boolean => {
+  const settings = getSystemSettings();
+  const key = getCategoryLockKey(appType, headCategory);
+  return Boolean(settings.categoryLocks && settings.categoryLocks[key]);
+};
+
+export const toggleCategoryEvaluationLock = (
+  appType: string,
+  headCategory: string | null,
+  locked: boolean,
+  actor?: { email: string; name: string }
+): void => {
+  const settings = getSystemSettings();
+  const key = getCategoryLockKey(appType, headCategory);
+  if (!settings.categoryLocks) {
+    settings.categoryLocks = {};
+  }
+  settings.categoryLocks[key] = locked;
+  updateSystemSettings(settings, actor);
+  if (actor) {
+    logAuditAction(
+      actor.email,
+      actor.name,
+      locked ? 'LOCK_CATEGORY_EVALUATION' : 'UNLOCK_CATEGORY_EVALUATION',
+      'settings',
+      `${locked ? 'Locked' : 'Unlocked'} evaluation submissions for ${appType}${headCategory ? ` (${headCategory})` : ''}.`
+    );
   }
 };
 
@@ -915,7 +978,18 @@ export const setCurrentUserSession = (user: User | null): void => {
 export const getProjects = (): Project[] => {
   initializeStorage();
   const data = localStorage.getItem(PROJECTS_KEY);
-  return data ? JSON.parse(data) : [];
+  if (!data) return [];
+  const list: Project[] = JSON.parse(data);
+  return list.map(p => {
+    if (p.applicationType === 'Student') {
+      return {
+        ...p,
+        applicationType: 'Student-Secondary',
+        headCategory: 'N/A'
+      };
+    }
+    return p;
+  });
 };
 
 export const getProjectById = (id: string): Project | undefined => {
@@ -1096,13 +1170,15 @@ export const saveEvaluation = (evaluation: Evaluation, actor?: { email: string; 
     }
   }
 
-  // Check global evaluation lock
-  const settings = getSystemSettings();
-  if (settings.evaluationsLocked) {
-    throw new Error('All project evaluations are currently locked by the Administrator.');
+  // Check category-wise evaluation lock
+  const allProjects = getProjects();
+  const targetProject = allProjects.find(p => p.id === evaluation.projectId);
+  if (targetProject && isCategoryEvaluationLocked(targetProject.applicationType, targetProject.headCategory)) {
+    throw new Error('Evaluation is locked for this Application Type and Head Category.');
   }
 
   // Check individual project lock
+  const settings = getSystemSettings();
   if (settings.lockedProjects.includes(evaluation.projectId)) {
     throw new Error('Evaluations for this specific project are currently locked by the Administrator.');
   }
@@ -1166,7 +1242,7 @@ export const getProjectsForJudge = (applicationType?: string, headCategory?: str
     const isActive = !p.status || p.status === 'active';
     if (!isActive) return false;
     if (applicationType && !matchesAppType(p.applicationType, applicationType)) return false;
-    if (headCategory && !matchesCategory(p.headCategory, headCategory)) return false;
+    if (headCategory && !matchesCategory(p.headCategory, headCategory, p.applicationType)) return false;
     return true;
   });
 };

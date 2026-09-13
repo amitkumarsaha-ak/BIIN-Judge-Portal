@@ -6,6 +6,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import {
   getProjectsForJudge, getEvaluationsByJudge, getSystemSettings,
+  isCategoryEvaluationLocked,
   getDashboardStatsForJudge
 } from '../../services/storage';
 import { StatsCard } from '../dashboard/StatsCard';
@@ -100,16 +101,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Lock Notice If Applicable */}
-      {settings.evaluationsLocked && (
-        <div className="flex items-center space-x-3 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-500/30 p-4 text-xs text-red-700 dark:text-red-300 shadow-sm">
-          <Lock className="h-5 w-5 shrink-0 text-red-500" />
-          <div>
-            <p className="font-bold">Evaluation Submissions Are Currently Locked</p>
-            <p className="text-[11px] text-red-600 dark:text-red-400 mt-0.5">The administrator has temporarily paused evaluations. You may review existing submissions, but cannot submit new scores.</p>
-          </div>
-        </div>
-      )}
+
 
       {/* Stats Cards Grid - 2 columns on mobile, 4 columns on desktop */}
       <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
@@ -217,11 +209,11 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
 
                     <button
                       onClick={() => onSelectProjectForEvaluation(proj)}
-                      disabled={settings.evaluationsLocked}
-                      className={`w-full flex items-center justify-center space-x-1.5 rounded-xl py-2.5 px-3 text-xs font-bold transition-all min-h-[40px] ${isEvaluated ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-600 hover:text-white' : 'btn-primary text-white shadow-md'} disabled:opacity-50`}
+                      disabled={isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)}
+                      className={`w-full flex items-center justify-center space-x-1.5 rounded-xl py-2.5 px-3 text-xs font-bold transition-all min-h-[40px] ${(isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)) ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700' : isEvaluated ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-600 hover:text-white' : 'btn-primary text-white shadow-md'}`}
                     >
-                      <Eye className="h-3.5 w-3.5" />
-                      <span>{isEvaluated ? 'Review / Edit Score' : 'Evaluate Project'}</span>
+                      {(isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)) ? <Lock className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      <span>{(isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)) ? 'Locked' : isEvaluated ? 'Review / Edit Score' : 'Evaluate Project'}</span>
                     </button>
                   </div>
                 );
@@ -278,11 +270,11 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
                         <td className="px-4 py-3.5 text-center">
                           <button
                             onClick={() => onSelectProjectForEvaluation(proj)}
-                            disabled={settings.evaluationsLocked}
-                            className={`inline-flex items-center space-x-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${isEvaluated ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-600 hover:text-white' : 'btn-primary text-white shadow-md'} disabled:opacity-50`}
+                            disabled={isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)}
+                            className={`inline-flex items-center space-x-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${(isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)) ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700' : isEvaluated ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-600 hover:text-white' : 'btn-primary text-white shadow-md'}`}
                           >
-                            <Eye className="h-3 w-3" />
-                            <span>{isEvaluated ? 'Edit Score' : 'Evaluate'}</span>
+                            {(isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)) ? <Lock className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                            <span>{(isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)) ? 'Locked' : isEvaluated ? 'Edit Score' : 'Evaluate'}</span>
                           </button>
                         </td>
                       </tr>

@@ -117,7 +117,7 @@ export const ORGANISATION_AND_INDIVIDUAL_CRITERIA: CriteriaInfo[] = [
 ];
 
 export const getCriteriaForApplicationType = (type: ApplicationType): CriteriaInfo[] => {
-  if (type === 'Student') {
+  if (type === 'Student' || type === 'Student-Secondary') {
     return STUDENT_CRITERIA;
   }
   if (type === 'Student-Tertiary' || type === 'Student -Tertiary (University Level)') {
@@ -171,7 +171,7 @@ export const calculateConvertedScore = (rawTotal: number, maxRawScore: number): 
 import type { HeadCategoryCode } from '../types';
 
 export const RESULT_APPLICATION_TYPES: { id: ApplicationType; title: string; shortTitle: string }[] = [
-  { id: 'Student', title: 'Student', shortTitle: 'Student' },
+  { id: 'Student-Secondary', title: 'Student-Secondary', shortTitle: 'Student-Secondary' },
   { id: 'Student-Tertiary', title: 'Student Tertiary (University Level)', shortTitle: 'Student Tertiary' },
   { id: 'Organisation', title: 'Organization', shortTitle: 'Organization' },
   { id: 'Individual or Group', title: 'Individual/Group', shortTitle: 'Individual/Group' }
@@ -182,7 +182,7 @@ export const RESULT_HEAD_CATEGORIES: { code: HeadCategoryCode; name: string }[] 
   { code: 'HC-BS', name: 'Business Services' },
   { code: 'HC-I', name: 'Industrial' },
   { code: 'HC-PSG', name: 'Public Sector and Government' },
-  { code: 'HC-ICS', name: 'Individual & Communication Services' }
+  { code: 'HC-ICS', name: 'Inclusions & Community' }
 ];
 
 export const canonicalAppType = (type?: string): ApplicationType => {
@@ -190,8 +190,8 @@ export const canonicalAppType = (type?: string): ApplicationType => {
   if (t.includes('tertiary') || t === 'student-tertiary') {
     return 'Student-Tertiary';
   }
-  if (t === 'student') {
-    return 'Student';
+  if (t === 'student' || t === 'student-secondary' || t.includes('secondary')) {
+    return 'Student-Secondary';
   }
   if (t.includes('org')) {
     return 'Organisation';
@@ -199,11 +199,12 @@ export const canonicalAppType = (type?: string): ApplicationType => {
   if (t.includes('individual') || t.includes('group')) {
     return 'Individual or Group';
   }
-  return 'Student';
+  return 'Student-Secondary';
 };
 
 export const canonicalHeadCategory = (cat?: string): HeadCategoryCode => {
   const c = (cat || '').toLowerCase().trim();
+  if (!c || c === 'n/a' || c === 'none' || c === 'null') return 'N/A';
   if (c === 'hc-c' || c.includes('consumer')) return 'HC-C';
   if (c === 'hc-bs' || c.includes('business')) return 'HC-BS';
   if (c === 'hc-i' || c.includes('industrial')) return 'HC-I';
@@ -219,7 +220,10 @@ export const matchesAppType = (projectType?: string, filterType?: string): boole
   return canonicalAppType(projectType) === canonicalAppType(filterType);
 };
 
-export const matchesCategory = (projectCategory?: string, filterCategory?: string): boolean => {
+export const matchesCategory = (projectCategory?: string, filterCategory?: string, projectAppType?: string): boolean => {
+  if (projectAppType && canonicalAppType(projectAppType) === 'Student-Secondary') {
+    return !filterCategory || filterCategory === 'All' || filterCategory === 'All Head Category';
+  }
   if (!filterCategory || filterCategory === 'All' || filterCategory === 'All Head Category') return true;
   if (!projectCategory || projectCategory === 'All' || projectCategory === 'All Head Category') return true;
   if (projectCategory === filterCategory) return true;
@@ -329,6 +333,38 @@ export const calculateCategorizedResults = (
   const groups: CategoryResultGroup[] = [];
 
   for (const app of RESULT_APPLICATION_TYPES) {
+    if (app.id === 'Student-Secondary') {
+      const categoryProjects = allProjects.filter((p) => {
+        return canonicalAppType(p.applicationType) === 'Student-Secondary';
+      });
+
+      const results: CombinedProjectResult[] = categoryProjects.map((p) =>
+        getProjectCombinedResult(p, allProjects, allEvaluations)
+      );
+
+      results.sort((a, b) => b.finalAverageScore - a.finalAverageScore);
+
+      const champions = results.filter((r) => r.award === 'Champion');
+      const winners = results.filter((r) => r.award === 'Winner');
+      const merits = results.filter((r) => r.award === 'Merit');
+      const noAwards = results.filter((r) => r.award === 'No Award' || r.award === 'Participant');
+
+      groups.push({
+        appType: app.id,
+        appTypeTitle: app.title,
+        headCategoryCode: 'N/A' as HeadCategoryCode,
+        headCategoryName: 'General (No Head Category)',
+        categoryKey: `${app.id}__NA`,
+        totalApplicants: results.length,
+        champions,
+        winners,
+        merits,
+        noAwards,
+        allResults: results
+      });
+      continue;
+    }
+
     for (const hc of RESULT_HEAD_CATEGORIES) {
       // Get all applications matching this applicationType and headCategory
       const categoryProjects = allProjects.filter((p) => {

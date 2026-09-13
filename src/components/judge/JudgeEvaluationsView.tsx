@@ -5,7 +5,8 @@ import {
 import type { Project } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import {
-  getEvaluationsByJudge, getProjectsForJudge, getSystemSettings
+  getEvaluationsByJudge, getProjectsForJudge, getSystemSettings,
+  isCategoryEvaluationLocked
 } from '../../services/storage';
 import { HEAD_CATEGORIES } from '../../data/mockData';
 import { getCriteriaForApplicationType } from '../../utils/evaluation';
@@ -78,7 +79,7 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
                       <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                         {project?.applicationType}
                       </span>
-                      {project?.headCategory && (
+                      {project?.headCategory && project?.headCategory !== 'N/A' && (
                         <span className="rounded-md bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 px-2 py-0.5 text-[11px] font-semibold flex items-center space-x-1">
                           <Layers className="h-3 w-3" />
                           <span>{categoryObj?.name || project.headCategory}</span>
@@ -103,8 +104,8 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
                       </div>
 
                       <div className="text-left sm:text-right pl-2 border-l border-slate-200 dark:border-slate-800 sm:border-l-0 sm:pl-0">
-                        <p className="text-[10px] text-emerald-600 uppercase font-bold">Converted</p>
-                        <span className="font-heading font-black text-2xl text-emerald-600 dark:text-emerald-400 font-mono">
+                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-semibold">Final Converted</p>
+                        <span className="font-heading font-black text-lg text-emerald-600 dark:text-emerald-400 font-mono">
                           {converted.toFixed(1)} / 100
                         </span>
                       </div>
@@ -113,7 +114,7 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
                     {project && (
                       <button
                         onClick={() => onSelectProjectForEvaluation(project)}
-                        disabled={settings.evaluationsLocked}
+                        disabled={isCategoryEvaluationLocked(project.applicationType, project.headCategory) || settings.lockedProjects.includes(project.id)}
                         className="btn-primary flex items-center justify-center space-x-1.5 rounded-xl px-3.5 sm:px-4 py-2 text-xs font-bold text-white shadow-md disabled:opacity-50 min-h-[38px] ml-auto sm:ml-0"
                       >
                         <Pencil className="h-3.5 w-3.5" />

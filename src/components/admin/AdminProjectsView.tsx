@@ -19,6 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 const getAppTypeIcon = (type: ApplicationType) => {
   const canon = canonicalAppType(type);
   switch (canon) {
+    case 'Student-Secondary':
     case 'Student': return GraduationCap;
     case 'Organisation': return Building2;
     case 'Student-Tertiary': return University;
@@ -29,6 +30,7 @@ const getAppTypeIcon = (type: ApplicationType) => {
 const getAppTypeColor = (type: ApplicationType) => {
   const canon = canonicalAppType(type);
   switch (canon) {
+    case 'Student-Secondary':
     case 'Student': return 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20';
     case 'Organisation': return 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
     case 'Student-Tertiary': return 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20';
@@ -315,7 +317,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
       problemStatement: (form.problemStatement || '').trim(),
       solutionSummary: (form.solutionSummary || '').trim(),
       applicationType: form.applicationType || 'All Application Types',
-      headCategory: form.headCategory || 'All Head Category',
+      headCategory: form.applicationType === 'Student-Secondary' ? 'N/A' : (form.headCategory || 'All Head Category'),
       applicationId: form.applicationId || `BIIN-2026-${String(Date.now()).slice(-4)}`,
       projectCode: form.projectCode || `PROJ-${String(Date.now()).slice(-4)}`,
       teamOrOrgName: form.teamOrOrgName || solName || 'Independent',
@@ -373,23 +375,32 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
               <label className={labelCls}>Application Type *</label>
               <select className={inputCls('applicationType')} value={form.applicationType} onChange={set('applicationType')}>
                 <option value="All Application Types">All Application Types</option>
-                <option value="Student">Student</option>
+                <option value="Student-Secondary">Student-Secondary</option>
                 <option value="Student -Tertiary (University Level)">Student -Tertiary (University Level)</option>
                 <option value="Organization">Organization</option>
                 <option value="Individual/Group">Individual/Group</option>
               </select>
             </div>
-            <div>
-              <label className={labelCls}>Head Category *</label>
-              <select className={inputCls('headCategory')} value={form.headCategory} onChange={set('headCategory')}>
-                <option value="All Head Category">All Head Category</option>
-                <option value="Consumer">Consumer</option>
-                <option value="Business Services">Business Services</option>
-                <option value="Industrial">Industrial</option>
-                <option value="Public Sector and Government">Public Sector and Government</option>
-                <option value="Individual & Communication Services">Individual & Communication Services</option>
-              </select>
-            </div>
+            {form.applicationType !== 'Student-Secondary' ? (
+              <div>
+                <label className={labelCls}>Head Category *</label>
+                <select className={inputCls('headCategory')} value={form.headCategory} onChange={set('headCategory')}>
+                  <option value="All Head Category">All Head Category</option>
+                  <option value="Consumer">Consumer</option>
+                  <option value="Business Services">Business Services</option>
+                  <option value="Industrial">Industrial</option>
+                  <option value="Public Sector and Government">Public Sector and Government</option>
+                  <option value="Inclusions & Community">Inclusions & Community</option>
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className={labelCls}>Head Category</label>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/40 px-3.5 py-2.5 text-xs text-slate-500 dark:text-slate-400 italic">
+                  Not required for Student-Secondary
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Project Overview */}
@@ -479,7 +490,7 @@ export const AdminProjectsView: React.FC = () => {
       if (!matchesAppType(p.applicationType, filterType)) return false;
 
       // Filter by Head Category
-      if (!matchesCategory(p.headCategory, filterCategory)) return false;
+      if (!matchesCategory(p.headCategory, filterCategory, p.applicationType)) return false;
 
       // Filter by Status
       if (filterStatus !== 'All' && p.status !== filterStatus) return false;
@@ -692,11 +703,17 @@ export const AdminProjectsView: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center flex-wrap gap-2">
             <select
               value={filterType}
-              onChange={e => setFilterType(e.target.value as ApplicationType | 'All')}
+              onChange={e => {
+                const val = e.target.value as ApplicationType | 'All';
+                setFilterType(val);
+                if (val === 'Student-Secondary') {
+                  setFilterCategory('All');
+                }
+              }}
               className="w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500 min-h-[38px]"
             >
               <option value="All">All Application Types</option>
-              <option value="Student">Student</option>
+              <option value="Student-Secondary">Student-Secondary</option>
               <option value="Student -Tertiary (University Level)">Student -Tertiary (University Level)</option>
               <option value="Organization">Organization</option>
               <option value="Individual/Group">Individual/Group</option>
@@ -705,14 +722,19 @@ export const AdminProjectsView: React.FC = () => {
             <select
               value={filterCategory}
               onChange={e => setFilterCategory(e.target.value as HeadCategoryCode | 'All')}
-              className="w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500 min-h-[38px]"
+              disabled={filterType === 'Student-Secondary'}
+              className={`w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500 min-h-[38px] ${filterType === 'Student-Secondary' ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <option value="All">All Head Categories</option>
-              <option value="HC-C">Consumer</option>
-              <option value="HC-BS">Business Services</option>
-              <option value="HC-I">Industrial</option>
-              <option value="HC-PSG">Public Sector and Government</option>
-              <option value="HC-ICS">Individual & Communication Services</option>
+              <option value="All">{filterType === 'Student-Secondary' ? 'No Head Category for Student-Secondary' : 'All Head Categories'}</option>
+              {filterType !== 'Student-Secondary' && (
+                <>
+                  <option value="HC-C">Consumer</option>
+                  <option value="HC-BS">Business Services</option>
+                  <option value="HC-I">Industrial</option>
+                  <option value="HC-PSG">Public Sector and Government</option>
+                  <option value="HC-ICS">Inclusions & Community</option>
+                </>
+              )}
             </select>
 
             <select
@@ -833,10 +855,12 @@ export const AdminProjectsView: React.FC = () => {
                         <AppTypeIcon className="h-2.5 w-2.5" />
                         <span>{project.applicationType}</span>
                       </span>
-                      <span className="inline-flex items-center space-x-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 font-medium text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20">
-                        <Layers className="h-2.5 w-2.5" />
-                        <span>{category?.name || project.headCategory}</span>
-                      </span>
+                      {canonicalAppType(project.applicationType) !== 'Student-Secondary' && (
+                        <span className="inline-flex items-center space-x-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 font-medium text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20">
+                          <Layers className="h-2.5 w-2.5" />
+                          <span>{category?.name || project.headCategory}</span>
+                        </span>
+                      )}
                       {evalCount > 0 && (
                         <span className="inline-flex items-center space-x-1 rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                           <BookOpen className="h-2.5 w-2.5" />

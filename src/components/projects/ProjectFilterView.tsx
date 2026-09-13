@@ -13,9 +13,11 @@ interface ProjectFilterViewProps {
   initialCategory?: HeadCategoryCode | null;
 }
 
+import { matchesAppType, matchesCategory, canonicalAppType } from '../../utils/evaluation';
+
 export const ProjectFilterView: React.FC<ProjectFilterViewProps> = ({
   onSelectProject,
-  initialType = 'Student',
+  initialType = 'Student-Secondary',
   initialCategory = 'HC-C'
 }) => {
   const { currentUser } = useAuth();
@@ -27,10 +29,10 @@ export const ProjectFilterView: React.FC<ProjectFilterViewProps> = ({
   const judgeEvaluations = currentUser ? getEvaluationsByJudge(currentUser.email) : [];
 
   const filteredProjects = allProjects.filter((project) => {
-    if (selectedType && project.applicationType !== selectedType) {
+    if (selectedType && !matchesAppType(project.applicationType, selectedType)) {
       return false;
     }
-    if (selectedCategory && project.headCategory !== selectedCategory) {
+    if (selectedCategory && canonicalAppType(project.applicationType) !== 'Student-Secondary' && !matchesCategory(project.headCategory, selectedCategory, project.applicationType)) {
       return false;
     }
     if (searchQuery.trim()) {
@@ -92,12 +94,14 @@ export const ProjectFilterView: React.FC<ProjectFilterViewProps> = ({
       </div>
 
       {/* Step 2: Select Head Category */}
-      <div className="glass-panel rounded-3xl p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <HeadCategorySelector
-          selectedCategory={selectedCategory}
-          onSelectCategory={(code) => setSelectedCategory(code)}
-        />
-      </div>
+      {selectedType !== 'Student-Secondary' && (
+        <div className="glass-panel rounded-3xl p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <HeadCategorySelector
+            selectedCategory={selectedCategory}
+            onSelectCategory={(code) => setSelectedCategory(code)}
+          />
+        </div>
+      )}
 
       {/* Active Filter Summary Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900/90 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">

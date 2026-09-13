@@ -14,7 +14,12 @@ import { ScoreSummaryBar } from './ScoreSummaryBar';
 import { ConfirmationModal } from './ConfirmationModal';
 import { AlreadyEvaluatedAlert } from './AlreadyEvaluatedAlert';
 import { EvaluationSuccessView } from './EvaluationSuccessView';
-import { getEvaluationForProject, saveEvaluation, getSystemSettings } from '../../services/storage';
+import {
+  getEvaluationForProject,
+  saveEvaluation,
+  getSystemSettings,
+  isCategoryEvaluationLocked
+} from '../../services/storage';
 import { useAuth } from '../../context/AuthContext';
 
 interface ProjectEvaluationViewProps {
@@ -54,7 +59,9 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
 
   // Re-read on every render so lock changes from admin are always reflected
   const settings = getSystemSettings();
-  const isLocked = settings.evaluationsLocked || settings.lockedProjects.includes(project.id);
+  const isCategoryLocked = isCategoryEvaluationLocked(project.applicationType, project.headCategory);
+  const isProjectLocked = settings.lockedProjects.includes(project.id);
+  const isLocked = isCategoryLocked || isProjectLocked;
 
   const rawTotalScore = calculateRawTotal(scores, activeCriteria);
   const convertedScore = calculateConvertedScore(rawTotalScore, maxRawScore);
@@ -71,7 +78,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
     setValidationError(null);
 
     if (isLocked) {
-      setValidationError('Evaluations are currently locked by the Administrator.');
+      setValidationError('Evaluation is locked for this Application Type and Head Category.');
       return;
     }
 
@@ -93,6 +100,12 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
 
   const handleConfirmSubmit = () => {
     if (!currentUser) return;
+
+    if (isLocked) {
+      setValidationError('Evaluation is locked for this Application Type and Head Category.');
+      setIsModalOpen(false);
+      return;
+    }
 
     const evaluationRecord: Evaluation = {
       id: existingEvaluation?.id || `eval-${Date.now()}`,
@@ -152,6 +165,19 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
 
       {/* 1. Project Details Header Panel */}
       <ProjectInfoPanel project={project} />
+
+      {/* Lock Notice Banner If Locked */}
+      {isLocked && (
+        <div className="flex items-center space-x-3 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-500/30 p-4 text-xs text-red-700 dark:text-red-300 shadow-sm">
+          <Lock className="h-5 w-5 shrink-0 text-red-500" />
+          <div>
+            <p className="font-bold">Evaluation Locked</p>
+            <p className="text-[11px] text-red-600 dark:text-red-400 mt-0.5">
+              Evaluation is locked for this Application Type and Head Category.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Official Scoring Guidelines Banner */}
       <div className="rounded-2xl bg-indigo-50/90 dark:bg-indigo-950/60 p-4 sm:p-5 border border-indigo-200 dark:border-indigo-500/40 space-y-1.5 shadow-sm">

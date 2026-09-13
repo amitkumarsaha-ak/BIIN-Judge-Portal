@@ -14,7 +14,9 @@ import {
   getMaxRawScoreForApplicationType,
   getCriteriaForApplicationType,
   formatScoreNumber,
-  calculateConvertedScore
+  calculateConvertedScore,
+  matchesAppType,
+  matchesCategory
 } from '../../utils/evaluation';
 import { HEAD_CATEGORIES } from '../../data/mockData';
 
@@ -176,8 +178,8 @@ export const AdminEvaluationsView: React.FC = () => {
   const filteredProjects = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return projects.filter(p => {
-      if (filterType !== 'All' && p.applicationType !== filterType) return false;
-      if (filterCategory !== 'All' && p.headCategory !== filterCategory) return false;
+      if (!matchesAppType(p.applicationType, filterType)) return false;
+      if (!matchesCategory(p.headCategory, filterCategory, p.applicationType)) return false;
       if (q) {
         const hay = [
           p.title,
@@ -352,11 +354,17 @@ export const AdminEvaluationsView: React.FC = () => {
         {/* Filter by Application Type */}
         <select
           value={filterType}
-          onChange={e => setFilterType(e.target.value as ApplicationType | 'All')}
+          onChange={e => {
+            const val = e.target.value as ApplicationType | 'All';
+            setFilterType(val);
+            if (val === 'Student-Secondary') {
+              setFilterCategory('All');
+            }
+          }}
           className="w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold min-h-[38px]"
         >
           <option value="All">All Application Types</option>
-          <option value="Student">Student</option>
+          <option value="Student-Secondary">Student-Secondary</option>
           <option value="Student-Tertiary">Student-Tertiary Categories (University Level)</option>
           <option value="Organisation">Organisation</option>
           <option value="Individual or Group">Individual or Group</option>
@@ -366,10 +374,11 @@ export const AdminEvaluationsView: React.FC = () => {
         <select
           value={filterCategory}
           onChange={e => setFilterCategory(e.target.value as HeadCategoryCode | 'All')}
-          className="w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold min-h-[38px]"
+          disabled={filterType === 'Student-Secondary'}
+          className={`w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold min-h-[38px] ${filterType === 'Student-Secondary' ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          <option value="All">All Head Categories</option>
-          {HEAD_CATEGORIES.map(hc => (
+          <option value="All">{filterType === 'Student-Secondary' ? 'No Head Category for Student-Secondary' : 'All Head Categories'}</option>
+          {filterType !== 'Student-Secondary' && HEAD_CATEGORIES.map(hc => (
             <option key={hc.code} value={hc.code}>
               {hc.code} — {hc.name}
             </option>

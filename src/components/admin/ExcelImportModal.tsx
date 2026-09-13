@@ -27,7 +27,7 @@ interface RowValidationError {
 const VALID_APP_TYPES: { match: string[]; target: ApplicationType }[] = [
   { match: ['all application types', 'all application type', 'all types', 'all'], target: 'All Application Types' },
   { match: ['student -tertiary (university level)', 'student tertiary', 'student-tertiary', 'university level', 'university', 'tertiary', 'undergraduate', 'postgraduate', 'higher education'], target: 'Student -Tertiary (University Level)' },
-  { match: ['student', 'school', 'college', 'secondary', 'k-12'], target: 'Student' },
+  { match: ['student-secondary', 'student secondary', 'secondary', 'school', 'college', 'student', 'k-12'], target: 'Student-Secondary' },
   { match: ['organization', 'organisation', 'org', 'company', 'startup', 'corporate', 'institution', 'ngo', 'firm'], target: 'Organization' },
   { match: ['individual/group', 'individual or group', 'individual', 'group', 'team', 'solo', 'general'], target: 'Individual/Group' }
 ];
@@ -38,12 +38,12 @@ const VALID_HEAD_CATEGORIES: { match: string[]; code: HeadCategoryCode }[] = [
   { match: ['hc-bs', 'hc-02', 'hc-2', 'business service', 'business services', 'business', 'b2b', 'enterprise', 'fintech', 'saas'], code: 'HC-BS' },
   { match: ['hc-i', 'hc-03', 'hc-3', 'industrial', 'industrial tech', 'robotics', 'iot', 'hardware', 'agritech', 'manufacturing'], code: 'HC-I' },
   { match: ['hc-psg', 'hc-04', 'hc-4', 'public sector and government', 'public sector & government', 'public sector', 'government', 'gov', 'smart city', 'civic', 'e-gov'], code: 'HC-PSG' },
-  { match: ['hc-ics', 'hc-05', 'hc-5', 'individual & communication services', 'individual and communication services', 'individual & communication', 'individual and communication', 'communication services', 'communication', 'inclusion & community service', 'inclusion & community', 'community & social', 'inclusion', 'community', 'social', 'media', 'telecom'], code: 'HC-ICS' }
+  { match: ['hc-ics', 'hc-05', 'hc-5', 'inclusions & community', 'inclusions and community', 'inclusion & community', 'inclusion and community', 'individual & communication services', 'individual and communication services', 'individual & communication', 'individual and communication', 'communication services', 'communication', 'inclusion & community service', 'community & social', 'inclusion', 'community', 'social', 'media', 'telecom'], code: 'HC-ICS' }
 ];
 
 const APPLICATION_TYPE_OPTIONS: { id: ApplicationType; label: string; icon: React.FC<{ className?: string }> }[] = [
   { id: 'All Application Types', label: 'All Application Types', icon: Layers },
-  { id: 'Student', label: 'Student', icon: GraduationCap },
+  { id: 'Student-Secondary', label: 'Student-Secondary', icon: GraduationCap },
   { id: 'Student -Tertiary (University Level)', label: 'Student -Tertiary (University Level)', icon: University },
   { id: 'Organization', label: 'Organization', icon: Building2 },
   { id: 'Individual/Group', label: 'Individual/Group', icon: Users },
@@ -127,7 +127,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
   // 1. Download Sample Excel Template (Customized for selected Application Type & Head Category)
   const handleDownloadTemplate = () => {
-    const appTypeLabel = selectedAppType !== 'All Application Types' ? selectedAppType : 'Student';
+    const appTypeLabel = selectedAppType !== 'All Application Types' ? selectedAppType : 'Student-Secondary';
     const headCatLabel = selectedHeadCategory !== 'All Head Category' ? selectedHeadCategory : 'Consumer';
 
     const sampleData = [
@@ -137,7 +137,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         'Problem Statement': 'Farmers lack accessible, instantaneous, low-cost soil nutrient analysis tools before planting crops.',
         'Solution Summary': 'Portable handheld optical spectrometer paired with a cloud-assisted micro-ML diagnostic application.',
         'Application Type': appTypeLabel,
-        'Head Category': headCatLabel
+        'Head Category': appTypeLabel === 'Student-Secondary' ? 'N/A' : headCatLabel
       },
       {
         'Solution Name': 'OmniLedger Enterprise Audit Hub',
@@ -399,19 +399,22 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           resolvedAppType = mapApplicationType(rawAppType);
         }
         if (!resolvedAppType || resolvedAppType === 'All Application Types') {
-          resolvedAppType = selectedAppType !== 'All Application Types' ? selectedAppType : 'Student';
+          resolvedAppType = selectedAppType !== 'All Application Types' ? selectedAppType : 'Student-Secondary';
         }
         const finalAppType = canonicalAppType(resolvedAppType);
 
         // Determine Head Category
-        let resolvedCategory: HeadCategoryCode | null = null;
-        if (rawHeadCat) {
-          resolvedCategory = mapHeadCategory(rawHeadCat);
+        let finalCategory: HeadCategoryCode = 'N/A';
+        if (finalAppType !== 'Student-Secondary') {
+          let resolvedCategory: HeadCategoryCode | null = null;
+          if (rawHeadCat) {
+            resolvedCategory = mapHeadCategory(rawHeadCat);
+          }
+          if (!resolvedCategory || resolvedCategory === 'All Head Category') {
+            resolvedCategory = selectedHeadCategory !== 'All Head Category' ? selectedHeadCategory : 'HC-C';
+          }
+          finalCategory = canonicalHeadCategory(resolvedCategory);
         }
-        if (!resolvedCategory || resolvedCategory === 'All Head Category') {
-          resolvedCategory = selectedHeadCategory !== 'All Head Category' ? selectedHeadCategory : 'HC-C';
-        }
-        const finalCategory = canonicalHeadCategory(resolvedCategory);
 
         // Duplicate Check against Database (only for user-specified IDs from file)
         if (!wasAppIdAuto) {
@@ -658,7 +661,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white shadow-sm focus:border-emerald-500 focus:outline-none"
                 >
                   <option value="All Application Types">All Application Types</option>
-                  <option value="Student">Student</option>
+                  <option value="Student-Secondary">Student-Secondary</option>
                   <option value="Student -Tertiary (University Level)">Student -Tertiary (University Level)</option>
                   <option value="Organization">Organization</option>
                   <option value="Individual/Group">Individual/Group</option>
@@ -673,14 +676,19 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <select
                   value={selectedHeadCategory}
                   onChange={e => setSelectedHeadCategory(e.target.value as HeadCategoryCode)}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white shadow-sm focus:border-emerald-500 focus:outline-none"
+                  disabled={selectedAppType === 'Student-Secondary'}
+                  className={`w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white shadow-sm focus:border-emerald-500 focus:outline-none ${selectedAppType === 'Student-Secondary' ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <option value="All Head Category">All Head Category (Auto-detect from file)</option>
-                  <option value="HC-C">Consumer</option>
-                  <option value="HC-BS">Business Services</option>
-                  <option value="HC-I">Industrial</option>
-                  <option value="HC-PSG">Public Sector and Government</option>
-                  <option value="HC-ICS">Individual & Communication Services</option>
+                  <option value="All Head Category">{selectedAppType === 'Student-Secondary' ? 'No Head Category for Student-Secondary' : 'All Head Category (Auto-detect from file)'}</option>
+                  {selectedAppType !== 'Student-Secondary' && (
+                    <>
+                      <option value="HC-C">Consumer</option>
+                      <option value="HC-BS">Business Services</option>
+                      <option value="HC-I">Industrial</option>
+                      <option value="HC-PSG">Public Sector and Government</option>
+                      <option value="HC-ICS">Inclusions & Community</option>
+                    </>
+                  )}
                 </select>
               </div>
             </div>

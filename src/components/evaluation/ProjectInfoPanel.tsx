@@ -2,14 +2,17 @@ import React from 'react';
 import { GraduationCap, Building2, Users, University } from 'lucide-react';
 import type { Project } from '../../types';
 
+import { canonicalAppType } from '../../utils/evaluation';
+
 interface ProjectInfoPanelProps {
   project: Project;
 }
 
 export const ProjectInfoPanel: React.FC<ProjectInfoPanelProps> = ({ project }) => {
-  const isStudent = project.applicationType === 'Student';
-  const isStudentTertiary = project.applicationType === 'Student-Tertiary' || project.applicationType === 'Student -Tertiary (University Level)';
-  const isOrg = project.applicationType === 'Organisation' || project.applicationType === 'Organization';
+  const canon = canonicalAppType(project.applicationType);
+  const isStudent = canon === 'Student-Secondary';
+  const isStudentTertiary = canon === 'Student-Tertiary';
+  const isOrg = canon === 'Organisation';
 
   return (
     <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl space-y-6">
@@ -17,9 +20,11 @@ export const ProjectInfoPanel: React.FC<ProjectInfoPanelProps> = ({ project }) =
       {/* Header Badges & Solution Name */}
       <div>
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          <span className="inline-flex items-center space-x-1 rounded-full bg-indigo-50 dark:bg-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
-            <span>{project.headCategory}</span>
-          </span>
+          {project.headCategory && project.headCategory !== 'N/A' && canon !== 'Student-Secondary' && (
+            <span className="inline-flex items-center space-x-1 rounded-full bg-indigo-50 dark:bg-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
+              <span>{project.headCategory}</span>
+            </span>
+          )}
 
           <span className="inline-flex items-center space-x-1.5 rounded-full bg-cyan-50 dark:bg-cyan-500/20 px-3 py-1 text-xs font-semibold text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30">
             {isStudent ? (

@@ -1,5 +1,6 @@
 export type ApplicationType =
   | 'All Application Types'
+  | 'Student-Secondary'
   | 'Student'
   | 'Student -Tertiary (University Level)'
   | 'Student-Tertiary'
@@ -19,6 +20,7 @@ export type HeadCategoryCode =
   | 'Business Services'
   | 'Industrial'
   | 'Public Sector and Government'
+  | 'Inclusions & Community'
   | 'Individual & Communication Services'
   | string;
 
@@ -57,11 +59,18 @@ export interface Room {
   createdAt: string;
 }
 
+export interface CategoryEvaluationLock {
+  applicationType: ApplicationType | string;
+  headCategory: HeadCategoryCode | null;
+  locked: boolean;
+}
+
 export interface SystemSettings {
   evaluationsLocked: boolean;
   finalResultsLocked: boolean;
   lockedProjects: string[]; // project IDs locked individually
   autoRankingEnabled: boolean;
+  categoryLocks?: Record<string, boolean>;
 }
 
 export interface AuditLog {

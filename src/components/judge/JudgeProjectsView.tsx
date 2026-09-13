@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   FolderGit2, Search, CheckCircle2, Clock,
-  Eye, Building2, GraduationCap, Users, University, Filter
+  Eye, Building2, GraduationCap, Users, University, Filter, Lock
 } from 'lucide-react';
 import type { Project } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import {
-  getProjectsForJudge, getEvaluationsByJudge, getSystemSettings
+  getProjectsForJudge, getEvaluationsByJudge, getSystemSettings,
+  isCategoryEvaluationLocked
 } from '../../services/storage';
 import { HEAD_CATEGORIES } from '../../data/mockData';
 import {
@@ -45,15 +46,27 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
   }, [currentUser]);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<string>('All');
-  const [filterCategory, setFilterCategory] = useState<string>('All');
+  const [filterType, setFilterType] = useState<string>('');
+  const [filterCategory, setFilterCategory] = useState<string>('');
+
+  const isStudentSecondary = Boolean(filterType && canonicalAppType(filterType) === 'Student-Secondary');
+  const hasRequiredFilters = Boolean(
+    filterType && (
+      isStudentSecondary ||
+      (filterCategory && filterCategory !== 'All')
+    )
+  );
 
   const filteredProjects = useMemo(() => {
+    if (!hasRequiredFilters) {
+      return [];
+    }
+
     const q = searchQuery.toLowerCase().trim();
     return assignedProjects.filter(p => {
       if (p.status && p.status !== 'active') return false;
       if (!matchesAppType(p.applicationType, filterType)) return false;
-      if (!matchesCategory(p.headCategory, filterCategory)) return false;
+      if (!isStudentSecondary && !matchesCategory(p.headCategory, filterCategory, p.applicationType)) return false;
       if (q) {
         const hay = [
           p.title,
@@ -71,13 +84,16 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
       }
       return true;
     });
-  }, [assignedProjects, searchQuery, filterType, filterCategory]);
+  }, [assignedProjects, searchQuery, filterType, filterCategory, hasRequiredFilters, isStudentSecondary]);
 
   const getAppTypeIcon = (type: string) => {
     const canonical = canonicalAppType(type);
     switch (canonical) {
+      case 'Student-Secondary':
       case 'Student': return GraduationCap;
-      case 'Organization': return Building2;
+      case 'Organization':
+      case 'Organisation': return Building2;
+      case 'Student-Tertiary':
       case 'Student -Tertiary (University Level)': return University;
       default: return Users;
     }
@@ -86,8 +102,11 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
   const getAppTypeColor = (type: string) => {
     const canonical = canonicalAppType(type);
     switch (canonical) {
+      case 'Student-Secondary':
       case 'Student': return 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20';
-      case 'Organization': return 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
+      case 'Organization':
+      case 'Organisation': return 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
+      case 'Student-Tertiary':
       case 'Student -Tertiary (University Level)': return 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20';
       default: return 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20';
     }
@@ -130,24 +149,33 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
         </div>
 
         <select
+          id="judge-select-app-type"
           value={filterType}
-          onChange={e => setFilterType(e.target.value)}
-          className="w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 min-h-[38px]"
+          onChange={e => {
+            const val = e.target.value;
+            setFilterType(val);
+            if (canonicalAppType(val) === 'Student-Secondary') {
+              setFilterCategory('');
+            }
+          }}
+          className="w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 min-h-[38px] font-semibold"
         >
-          <option value="All">All Application Types</option>
-          <option value="Student">Student</option>
+          <option value="">Select Application Type</option>
+          <option value="Student-Secondary">Student-Secondary</option>
           <option value="Student -Tertiary (University Level)">Student -Tertiary (University Level)</option>
           <option value="Organization">Organization</option>
           <option value="Individual/Group">Individual/Group</option>
         </select>
 
         <select
+          id="judge-select-head-category"
           value={filterCategory}
           onChange={e => setFilterCategory(e.target.value)}
-          className="w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 min-h-[38px]"
+          disabled={isStudentSecondary}
+          className={`w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 min-h-[38px] font-semibold ${isStudentSecondary ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          <option value="All">All Head Categories</option>
-          {HEAD_CATEGORIES.map(hc => (
+          <option value="">{isStudentSecondary ? 'No Head Category for Student-Secondary' : 'Select Head Category'}</option>
+          {!isStudentSecondary && HEAD_CATEGORIES.map(hc => (
             <option key={hc.code} value={hc.code}>
               {hc.name}
             </option>
@@ -156,11 +184,27 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
       </div>
 
       {/* Projects Grid */}
-      {filteredProjects.length === 0 ? (
+      {!hasRequiredFilters ? (
+        <div className="glass-panel rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 mb-4">
+            <Filter className="h-8 w-8" />
+          </div>
+          <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white">
+            {filterType && !isStudentSecondary
+              ? 'Please select Head Category to view projects.'
+              : 'Please select Application Type and Head Category to view projects.'}
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 max-w-sm mx-auto">
+            {filterType && !isStudentSecondary
+              ? 'Choose a Head Category from the dropdown above to display nominated projects.'
+              : 'Select an Application Type and the required Head Category above to begin viewing and evaluating projects.'}
+          </p>
+        </div>
+      ) : filteredProjects.length === 0 ? (
         <div className="glass-panel rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <FolderGit2 className="mx-auto h-12 w-12 text-slate-400 mb-3" />
           <h3 className="text-lg font-bold text-slate-900 dark:text-white">No matching projects found</h3>
-          <p className="text-xs text-slate-500 mt-1">Try adjusting your search query, application type, or head category filter.</p>
+          <p className="text-xs text-slate-500 mt-1">Try adjusting your search query or filters.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
@@ -200,7 +244,9 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
                   <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
                     <p><span className="text-slate-400">Participant:</span> <strong className="text-slate-800 dark:text-slate-200">{project.teamOrOrgName}</strong></p>
                     <p><span className="text-slate-400">Representative:</span> {project.representativeName}</p>
-                    <p><span className="text-slate-400">Category:</span> {category?.name || project.headCategory}</p>
+                    {canonicalAppType(project.applicationType) !== 'Student-Secondary' && (
+                      <p><span className="text-slate-400">Category:</span> {category?.name || project.headCategory}</p>
+                    )}
                   </div>
 
                   <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed">
@@ -218,14 +264,19 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
                     </div>
                   )}
 
-                  <button
-                    onClick={() => onSelectProjectForEvaluation(project)}
-                    disabled={settings.evaluationsLocked}
-                    className={`w-full inline-flex items-center justify-center space-x-2 rounded-2xl py-3 text-xs font-bold transition-all ${isEvaluated ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-600 hover:text-white' : 'btn-primary text-white shadow-lg'} disabled:opacity-50`}
-                  >
-                    <Eye className="h-4 w-4" />
-                    <span>{isEvaluated ? 'Review / Edit Score' : 'Evaluate Project'}</span>
-                  </button>
+                  {(() => {
+                    const isLocked = isCategoryEvaluationLocked(project.applicationType, project.headCategory) || settings.lockedProjects.includes(project.id);
+                    return (
+                      <button
+                        onClick={() => onSelectProjectForEvaluation(project)}
+                        disabled={isLocked}
+                        className={`w-full inline-flex items-center justify-center space-x-2 rounded-2xl py-3 text-xs font-bold transition-all ${isLocked ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700' : isEvaluated ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-600 hover:text-white' : 'btn-primary text-white shadow-lg'}`}
+                      >
+                        {isLocked ? <Lock className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        <span>{isLocked ? 'Evaluation Locked' : isEvaluated ? 'Review / Edit Score' : 'Evaluate Project'}</span>
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             );

@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import {
   getProjects, getJudges, getEvaluations,
-  getSystemSettings, toggleEvaluationLock, toggleFinalResultLock,
+  getSystemSettings, toggleFinalResultLock,
+  isCategoryEvaluationLocked, toggleCategoryEvaluationLock,
   getAuditLogs
 } from '../../services/storage';
 import { api } from '../../services/api';
@@ -70,9 +71,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     globalAverageScore = Number((sum / evaluations.length).toFixed(1));
   }
 
-  const handleToggleEvalLock = () => {
+  const [lockFilterType, setLockFilterType] = useState<string>('All');
+
+  const lockCategoriesList = [
+    { applicationType: 'Student-Secondary', headCategory: 'N/A', headCategoryCode: null },
+    { applicationType: 'Organization', headCategory: 'Consumer', headCategoryCode: 'HC-C' },
+    { applicationType: 'Organization', headCategory: 'Business Services', headCategoryCode: 'HC-BS' },
+    { applicationType: 'Organization', headCategory: 'Industrial', headCategoryCode: 'HC-I' },
+    { applicationType: 'Organization', headCategory: 'Public Sector and Government', headCategoryCode: 'HC-PSG' },
+    { applicationType: 'Organization', headCategory: 'Inclusions & Community', headCategoryCode: 'HC-ICS' },
+    { applicationType: 'Individual/Group', headCategory: 'Consumer', headCategoryCode: 'HC-C' },
+    { applicationType: 'Individual/Group', headCategory: 'Business Services', headCategoryCode: 'HC-BS' },
+    { applicationType: 'Individual/Group', headCategory: 'Industrial', headCategoryCode: 'HC-I' },
+    { applicationType: 'Individual/Group', headCategory: 'Public Sector and Government', headCategoryCode: 'HC-PSG' },
+    { applicationType: 'Individual/Group', headCategory: 'Inclusions & Community', headCategoryCode: 'HC-ICS' },
+    { applicationType: 'Student -Tertiary (University Level)', headCategory: 'Consumer', headCategoryCode: 'HC-C' },
+    { applicationType: 'Student -Tertiary (University Level)', headCategory: 'Business Services', headCategoryCode: 'HC-BS' },
+    { applicationType: 'Student -Tertiary (University Level)', headCategory: 'Industrial', headCategoryCode: 'HC-I' },
+    { applicationType: 'Student -Tertiary (University Level)', headCategory: 'Public Sector and Government', headCategoryCode: 'HC-PSG' },
+    { applicationType: 'Student -Tertiary (University Level)', headCategory: 'Inclusions & Community', headCategoryCode: 'HC-ICS' },
+  ];
+
+  const displayedLockCategories = lockCategoriesList.filter(cat => {
+    if (lockFilterType === 'All') return true;
+    return cat.applicationType === lockFilterType;
+  });
+
+  const handleToggleCategoryLock = (appType: string, headCategory: string | null, isCurrentlyLocked: boolean) => {
     if (currentUser) {
-      toggleEvaluationLock(!settings.evaluationsLocked, { email: currentUser.email, name: currentUser.fullName });
+      toggleCategoryEvaluationLock(appType, headCategory, !isCurrentlyLocked, { email: currentUser.email, name: currentUser.fullName });
       refreshData();
     }
   };
@@ -187,31 +214,84 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      {/* Control Status & System Lock Engine Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Evaluation Lock Toggle */}
-        <div className={`rounded-3xl border p-5 sm:p-6 transition-all ${settings.evaluationsLocked ? 'bg-red-50/70 dark:bg-red-950/20 border-red-200 dark:border-red-500/30' : 'bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30'}`}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Control Status & Category-Wise Evaluation Lock Engine Bar */}
+      <div className="space-y-6">
+        {/* Category-Wise Evaluation Lock Engine */}
+        <div className="rounded-3xl border p-5 sm:p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800/80">
             <div className="flex items-center space-x-3">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border shrink-0 ${settings.evaluationsLocked ? 'bg-red-100 dark:bg-red-500/20 text-red-600 border-red-200 dark:border-red-500/30' : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 border-emerald-200 dark:border-emerald-500/30'}`}>
-                {settings.evaluationsLocked ? <Lock className="h-6 w-6" /> : <Unlock className="h-6 w-6" />}
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border shrink-0 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 border-indigo-200 dark:border-indigo-500/30">
+                <Lock className="h-6 w-6" />
               </div>
               <div>
                 <h3 className="font-heading text-base font-bold text-slate-900 dark:text-white">
-                  {settings.evaluationsLocked ? 'Evaluations Locked' : 'Evaluations Active & Open'}
+                  Category-Wise Evaluation Lock Control
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                  {settings.evaluationsLocked ? 'Judges cannot submit or edit any evaluation scores.' : 'Judges can submit & edit scores for assigned projects.'}
+                  Control evaluation lock status independently by Application Type and Head Category.
                 </p>
               </div>
             </div>
-            <button
-              id="admin-toggle-eval-lock"
-              onClick={handleToggleEvalLock}
-              className={`w-full sm:w-auto rounded-xl px-4 py-2.5 text-xs font-bold transition-all shadow-md min-h-[40px] shrink-0 text-center ${settings.evaluationsLocked ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}
-            >
-              {settings.evaluationsLocked ? 'Unlock Evaluations' : 'Lock All Evaluations'}
-            </button>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                Filter:
+              </span>
+              <select
+                id="admin-lock-filter-type"
+                value={lockFilterType}
+                onChange={e => setLockFilterType(e.target.value)}
+                className="rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 font-semibold"
+              >
+                <option value="All">All Application Types</option>
+                <option value="Student-Secondary">Student-Secondary</option>
+                <option value="Organization">Organization</option>
+                <option value="Individual/Group">Individual/Group</option>
+                <option value="Student -Tertiary (University Level)">Student-Tertiary</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto mt-4">
+            <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+              <thead className="bg-slate-50 dark:bg-slate-950/80 uppercase font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="px-4 py-3">Application Type</th>
+                  <th className="px-4 py-3">Head Category</th>
+                  <th className="px-4 py-3 text-center">Status</th>
+                  <th className="px-4 py-3 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {displayedLockCategories.map(cat => {
+                  const isLocked = isCategoryEvaluationLocked(cat.applicationType, cat.headCategoryCode || cat.headCategory);
+                  const rowId = `lock-row-${cat.applicationType.replace(/[^a-zA-Z0-9]/g, '_')}-${(cat.headCategoryCode || cat.headCategory || 'NONE').replace(/[^a-zA-Z0-9]/g, '_')}`;
+                  return (
+                    <tr key={`${cat.applicationType}___${cat.headCategory}`} id={rowId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                        {cat.applicationType}
+                      </td>
+                      <td className="px-4 py-3 font-medium text-slate-600 dark:text-slate-400">
+                        {cat.headCategory}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex items-center space-x-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${isLocked ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/30' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30'}`}>
+                          {isLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                          <span>{isLocked ? 'Locked' : 'Unlocked'}</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => handleToggleCategoryLock(cat.applicationType, cat.headCategoryCode || cat.headCategory, isLocked)}
+                          className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all shadow-sm min-h-[32px] ${isLocked ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}
+                        >
+                          {isLocked ? 'Unlock' : 'Lock'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
 
