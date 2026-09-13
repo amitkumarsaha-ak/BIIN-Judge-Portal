@@ -26,6 +26,9 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
       {/* CSS Print Styles override */}
       <style>{`
         @media print {
+          @page {
+            size: A4;
+          }
           body {
             background-color: #ffffff !important;
             color: #000000 !important;
@@ -36,6 +39,7 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
           }
           .print-wrapper {
             padding: 0 !important;
+            padding-top: 1.5in !important;
             margin: 0 !important;
             max-width: 100% !important;
             width: 100% !important;
@@ -97,7 +101,7 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
         </div>
 
         {/* Printable Report Sheet Layout */}
-        <div className="print-wrapper print-card rounded-3xl bg-white p-4 sm:p-8 md:p-12 text-slate-900 shadow-2xl border border-slate-200 space-y-6">
+        <div className="print-wrapper print-card rounded-3xl bg-white p-4 sm:p-8 md:p-12 pt-[1.5in] sm:pt-[1.5in] text-slate-900 shadow-2xl border border-slate-200 space-y-6">
           
           {/* Organization / Header Section */}
           <div className="print-header flex flex-col sm:flex-row sm:items-center justify-between border-b-2 border-slate-900 pb-6 gap-4">
@@ -164,8 +168,7 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
                   <th className="p-2 border border-slate-300 text-center">Max Mark</th>
                   {judgesEvaluations.map((j, idx) => (
                     <th key={j.judgeEmail} className="p-2 border border-slate-300 text-center">
-                      Judge {idx + 1}<br/>
-                      <span className="text-[9px] font-normal text-slate-600">({j.judgeName.split(' ')[0]})</span>
+                      Judge {idx + 1}
                     </th>
                   ))}
                 </tr>
@@ -247,20 +250,20 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
           <div className="pt-8 border-t border-slate-300 grid grid-cols-3 gap-6 text-center text-xs text-slate-600">
             <div>
               <div className="h-10 border-b border-slate-400 mb-1" />
-              <span className="font-semibold text-slate-900">Judge 1 Signature</span>
-              <span className="block text-[10px] text-slate-500">{judgesEvaluations[0]?.judgeName || 'Judge 1'}</span>
+              <span className="block text-slate-600">Judge 1</span>
+              <span className="block font-bold text-slate-900">{judgesEvaluations[0]?.judgeName || 'Judge 1'}</span>
             </div>
 
             <div>
               <div className="h-10 border-b border-slate-400 mb-1" />
-              <span className="font-semibold text-slate-900">Judge 2 Signature</span>
-              <span className="block text-[10px] text-slate-500">{judgesEvaluations[1]?.judgeName || 'Judge 2'}</span>
+              <span className="block text-slate-600">Judge 2</span>
+              <span className="block font-bold text-slate-900">{judgesEvaluations[1]?.judgeName || 'Judge 2'}</span>
             </div>
 
             <div>
               <div className="h-10 border-b border-slate-400 mb-1" />
-              <span className="font-semibold text-slate-900">Judge 3 Signature</span>
-              <span className="block text-[10px] text-slate-500">{judgesEvaluations[2]?.judgeName || 'Judge 3'}</span>
+              <span className="block text-slate-600">Judge 3</span>
+              <span className="block font-bold text-slate-900">{judgesEvaluations[2]?.judgeName || 'Judge 3'}</span>
             </div>
           </div>
 
