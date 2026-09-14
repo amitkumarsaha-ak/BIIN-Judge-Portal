@@ -28,10 +28,6 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
   const [assignedProjects, setAssignedProjects] = useState<Project[]>(() =>
     getProjectsForJudge(currentUser?.email)
   );
-  const [isLoading, setIsLoading] = useState(() => {
-    const initial = getProjectsForJudge(currentUser?.email);
-    return initial.length === 0;
-  });
   const [myEvaluations, setMyEvaluations] = useState(() =>
     currentUser ? getEvaluationsByJudge(currentUser.email) : []
   );
@@ -96,7 +92,6 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
           setMyEvaluations(getEvaluationsByJudge(currentUser.email));
           setStats(getDashboardStatsForJudge(currentUser.email));
         }
-        setIsLoading(false);
       }
     };
 
@@ -219,13 +214,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
           </button>
         </div>
 
-        {isLoading ? (
-          <div className="py-8 space-y-3">
-            {[1, 2].map(i => (
-              <div key={i} className="h-14 rounded-2xl bg-slate-100 dark:bg-slate-800/60 animate-pulse" />
-            ))}
-          </div>
-        ) : assignedProjects.length === 0 ? (
+        {assignedProjects.length === 0 ? (
           <div className="text-center py-12 text-slate-500">
             <p className="text-xs">No nominated projects found.</p>
           </div>

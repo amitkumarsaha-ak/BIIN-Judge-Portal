@@ -29,10 +29,6 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
   const [assignedProjects, setAssignedProjects] = useState<Project[]>(() =>
     getProjectsForJudge(currentUser?.email)
   );
-  const [isLoading, setIsLoading] = useState(() => {
-    const initial = getProjectsForJudge(currentUser?.email);
-    return initial.length === 0;
-  });
   const [myEvaluations, setMyEvaluations] = useState(() =>
     currentUser ? getEvaluationsByJudge(currentUser.email) : []
   );
@@ -87,7 +83,6 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
         if (currentUser) {
           setMyEvaluations(getEvaluationsByJudge(currentUser.email));
         }
-        setIsLoading(false);
       }
     };
 
@@ -242,23 +237,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
       </div>
 
       {/* Projects Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="glass-panel rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-md animate-pulse space-y-4">
-              <div className="flex justify-between items-center">
-                <div className="h-6 w-28 bg-slate-200 dark:bg-slate-800 rounded-full" />
-                <div className="h-5 w-16 bg-slate-200 dark:bg-slate-800 rounded-full" />
-              </div>
-              <div className="space-y-2">
-                <div className="h-5 w-3/4 bg-slate-200 dark:bg-slate-800 rounded-lg" />
-                <div className="h-3 w-1/2 bg-slate-200 dark:bg-slate-800 rounded" />
-              </div>
-              <div className="h-12 bg-slate-100 dark:bg-slate-800/60 rounded-xl" />
-            </div>
-          ))}
-        </div>
-      ) : assignedProjects.length === 0 ? (
+      {assignedProjects.length === 0 ? (
         <div className="glass-panel rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 mb-4">
             <FolderGit2 className="h-8 w-8" />
