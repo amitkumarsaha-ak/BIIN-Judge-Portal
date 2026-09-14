@@ -592,9 +592,43 @@ export const syncWithBackend = async (): Promise<boolean> => {
       localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(auditRes.value));
     }
     if (assignmentsRes.status === 'fulfilled' && Array.isArray(assignmentsRes.value)) {
-      localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignmentsRes.value));
+      const remoteAssignments = assignmentsRes.value;
+      const localAssignments = getJudgeAssignments();
+
+      const mergedMap = new Map<string, JudgeAssignment>();
+      for (const ra of remoteAssignments) {
+        if (ra && ra.id) {
+          mergedMap.set(ra.id, ra);
+        }
+      }
+
+      const localOnlyAssignments: JudgeAssignment[] = [];
+      for (const la of localAssignments) {
+        if (!la || !la.id) continue;
+        if (!mergedMap.has(la.id)) {
+          // Check if identical assignment exists remotely
+          const isDupe = Array.from(mergedMap.values()).some(ra =>
+            normalizeEmail(ra.judgeEmail) === normalizeEmail(la.judgeEmail) &&
+            ra.applicationType === la.applicationType &&
+            (ra.headCategory || null) === (la.headCategory || null) &&
+            JSON.stringify(ra.projectIds || []) === JSON.stringify(la.projectIds || [])
+          );
+          if (!isDupe) {
+            mergedMap.set(la.id, la);
+            localOnlyAssignments.push(la);
+          }
+        }
+      }
+
+      const mergedAssignments = Array.from(mergedMap.values());
+      localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(mergedAssignments));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_assignments_updated'));
+        window.dispatchEvent(new Event('biin_projects_updated'));
+      }
+
+      if (localOnlyAssignments.length > 0) {
+        Promise.allSettled(localOnlyAssignments.map(a => api.saveAssignment(a))).catch(() => {});
       }
     }
 
@@ -1395,15 +1429,30 @@ export const getJudgeAssignments = (): JudgeAssignment[] => {
   }
 };
 
-export const getJudgeAssignmentsByJudge = (judgeEmail: string): JudgeAssignment[] => {
+export const getJudgeAssignmentsByJudge = (judgeIdentifier: string): JudgeAssignment[] => {
   const all = getJudgeAssignments();
-  const clean = normalizeEmail(judgeEmail);
-  return all.filter(a => normalizeEmail(a.judgeEmail) === clean);
+  if (!judgeIdentifier) return [];
+  const clean = normalizeEmail(judgeIdentifier);
+
+  const users = getUsers();
+  const matchedUser = users.find(u => normalizeEmail(u.email) === clean || u.id === judgeIdentifier);
+  const userCleanEmail = matchedUser ? normalizeEmail(matchedUser.email) : clean;
+  const userId = matchedUser ? matchedUser.id : judgeIdentifier;
+
+  return all.filter(a => {
+    const aCleanEmail = normalizeEmail(a.judgeEmail);
+    return (
+      aCleanEmail === clean ||
+      aCleanEmail === userCleanEmail ||
+      a.judgeId === userId ||
+      a.judgeId === judgeIdentifier
+    );
+  });
 };
 
-export const isProjectAssignedToJudge = (judgeEmail: string, project: Project): boolean => {
-  if (!judgeEmail || !project) return false;
-  const assignments = getJudgeAssignmentsByJudge(judgeEmail);
+export const isProjectAssignedToJudge = (judgeIdentifier: string, project: Project): boolean => {
+  if (!judgeIdentifier || !project) return false;
+  const assignments = getJudgeAssignmentsByJudge(judgeIdentifier);
   if (assignments.length === 0) return false;
 
   return assignments.some(asgn => {
@@ -1423,7 +1472,10 @@ export const isProjectAssignedToJudge = (judgeEmail: string, project: Project): 
 
     // 3. Project IDs check if explicitly specified
     if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
-      return asgn.projectIds.includes(project.id);
+      const matchId = asgn.projectIds.includes(project.id);
+      const matchAppId = Boolean(project.applicationId) && asgn.projectIds.includes(project.applicationId);
+      const matchCode = Boolean(project.projectCode) && asgn.projectIds.includes(project.projectCode);
+      return matchId || matchAppId || matchCode;
     }
 
     return true;
@@ -1497,13 +1549,17 @@ export const deleteJudgeAssignment = (id: string, actor?: { email: string; name:
  */
 export const getProjectsForJudge = (judgeEmail?: string, applicationType?: string, headCategory?: string): Project[] => {
   const allProjects = getProjects();
+  const session = getCurrentUser();
+  const effectiveEmail = judgeEmail || (session && session.role !== 'admin' ? session.email : undefined);
 
-  // If judge email is provided, restrict strictly to assigned projects
-  if (judgeEmail) {
-    const assignments = getJudgeAssignmentsByJudge(judgeEmail);
+  // If judge email is provided or a judge is logged in, restrict strictly to assigned projects
+  if (effectiveEmail) {
+    const assignments = getJudgeAssignmentsByJudge(effectiveEmail);
     if (assignments.length === 0) {
       return []; // Unassigned judge sees no projects
     }
+  } else if (!judgeEmail && session && session.role !== 'admin') {
+    return [];
   }
 
   return allProjects.filter(p => {
@@ -1511,7 +1567,7 @@ export const getProjectsForJudge = (judgeEmail?: string, applicationType?: strin
     if (!isActive) return false;
 
     // Assignment filter
-    if (judgeEmail && !isProjectAssignedToJudge(judgeEmail, p)) {
+    if (effectiveEmail && !isProjectAssignedToJudge(effectiveEmail, p)) {
       return false;
     }
 

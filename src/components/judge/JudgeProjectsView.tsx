@@ -60,23 +60,17 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
       canonicalAppType(filterType) === 'Individual or Group'
     )
   );
-  const hasRequiredFilters = Boolean(
-    filterType && (
-      isNoCategory ||
-      (filterCategory && filterCategory !== 'All')
-    )
-  );
 
   const filteredProjects = useMemo(() => {
-    if (!hasRequiredFilters) {
-      return [];
-    }
-
     const q = searchQuery.toLowerCase().trim();
     return assignedProjects.filter(p => {
       if (p.status && p.status !== 'active') return false;
-      if (!matchesAppType(p.applicationType, filterType)) return false;
-      if (!isNoCategory && !matchesCategory(p.headCategory, filterCategory, p.applicationType)) return false;
+      if (filterType && filterType !== 'All' && !matchesAppType(p.applicationType, filterType)) {
+        return false;
+      }
+      if (!isNoCategory && filterCategory && filterCategory !== 'All' && !matchesCategory(p.headCategory, filterCategory, p.applicationType)) {
+        return false;
+      }
       if (q) {
         const hay = [
           p.title,
@@ -95,7 +89,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
       }
       return true;
     });
-  }, [assignedProjects, searchQuery, filterType, filterCategory, hasRequiredFilters, isNoCategory]);
+  }, [assignedProjects, searchQuery, filterType, filterCategory, isNoCategory]);
 
   const getAppTypeIcon = (type: string) => {
     const canonical = canonicalAppType(type);
@@ -172,7 +166,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
           }}
           className="w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 min-h-[38px] font-semibold"
         >
-          <option value="">Select Application Type</option>
+          <option value="">All Application Types</option>
           <option value="Student-Secondary">Student-Secondary</option>
           <option value="Student -Tertiary (University Level)">Student -Tertiary (University Level)</option>
           <option value="Organization">Organization</option>
@@ -186,7 +180,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
           disabled={isNoCategory}
           className={`w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 min-h-[38px] font-semibold ${isNoCategory ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          <option value="">{isNoCategory ? 'No Head Category for this type' : 'Select Head Category'}</option>
+          <option value="">{isNoCategory ? 'No Head Category for this type' : 'All Head Categories'}</option>
           {!isNoCategory && HEAD_CATEGORIES.map(hc => (
             <option key={hc.code} value={hc.code}>
               {hc.name}
@@ -206,22 +200,6 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 max-w-sm mx-auto leading-relaxed">
             No projects or categories have been assigned to your judge account yet. Please contact the administrator.
-          </p>
-        </div>
-      ) : !hasRequiredFilters ? (
-        <div className="glass-panel rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 mb-4">
-            <Filter className="h-8 w-8" />
-          </div>
-          <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white">
-            {filterType && !isNoCategory
-              ? 'Please select Head Category to view projects.'
-              : 'Please select Application Type to view projects.'}
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 max-w-sm mx-auto">
-            {filterType && !isNoCategory
-              ? 'Choose a Head Category from the dropdown above to display nominated projects.'
-              : 'Select an Application Type from the dropdown above to begin viewing and evaluating projects.'}
           </p>
         </div>
       ) : filteredProjects.length === 0 ? (

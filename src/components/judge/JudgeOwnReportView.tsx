@@ -14,7 +14,7 @@ export const JudgeOwnReportView: React.FC = () => {
   if (!currentUser) return null;
 
   const myEvaluations = getEvaluationsByJudge(currentUser.email);
-  const assignedProjects = getProjectsForJudge();
+  const assignedProjects = getProjectsForJudge(currentUser.email);
 
   let avgScore = 0;
   if (myEvaluations.length > 0) {

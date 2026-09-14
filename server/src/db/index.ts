@@ -805,10 +805,10 @@ export const assignmentDb = {
     return [...(memoryStore.assignments || [])];
   },
 
-  async getByJudge(email: string): Promise<SeedAssignment[]> {
+  async getByJudge(identifier: string): Promise<SeedAssignment[]> {
     const all = await assignmentDb.getAll();
-    const clean = email.trim().toLowerCase();
-    return all.filter(a => a.judgeEmail.trim().toLowerCase() === clean);
+    const clean = identifier.trim().toLowerCase();
+    return all.filter(a => a.judgeEmail.trim().toLowerCase() === clean || a.judgeId.trim().toLowerCase() === clean);
   },
 
   async create(assignment: SeedAssignment): Promise<SeedAssignment> {

@@ -95,7 +95,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         }
 
         if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
-          return asgn.projectIds.includes(targetProject.id);
+          const matchId = asgn.projectIds.includes(targetProject.id);
+          const matchAppId = Boolean(targetProject.applicationId) && asgn.projectIds.includes(targetProject.applicationId);
+          const matchCode = Boolean(targetProject.projectCode) && asgn.projectIds.includes(targetProject.projectCode);
+          return matchId || matchAppId || matchCode;
         }
         return true;
       });

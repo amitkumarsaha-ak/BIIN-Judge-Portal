@@ -3,7 +3,8 @@ import type { User } from '../types';
 import {
   getCurrentUser, setCurrentUserSession, findUserByEmail,
   saveUser, getUsers, USERS_KEY, resetJudgePassword,
-  isJudgeEmailRemoved, normalizeEmail, normalizeAndDeduplicateUsers
+  isJudgeEmailRemoved, normalizeEmail, normalizeAndDeduplicateUsers,
+  syncWithBackend
 } from '../services/storage';
 import { ADMIN_CONFIG } from '../config/authConfig';
 import { api } from '../services/api';
@@ -121,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setCurrentUser(loggedJudge);
         setCurrentUserSession(loggedJudge);
+        syncWithBackend().catch(() => {});
         return { success: true };
       }
     } catch (apiErr: unknown) {
@@ -184,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setCurrentUser(existingUser);
       setCurrentUserSession(existingUser);
+      syncWithBackend().catch(() => {});
       return { success: true };
     }
 
