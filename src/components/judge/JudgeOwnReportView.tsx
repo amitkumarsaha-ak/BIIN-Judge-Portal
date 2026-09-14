@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileText, Calendar
 } from 'lucide-react';
@@ -8,13 +8,37 @@ import {
 } from '../../services/storage';
 import { HEAD_CATEGORIES } from '../../data/mockData';
 import { getCriteriaForApplicationType, formatScoreNumber } from '../../utils/evaluation';
+import type { Project, Evaluation } from '../../types';
 
 export const JudgeOwnReportView: React.FC = () => {
   const { currentUser } = useAuth();
-  if (!currentUser) return null;
+  const [myEvaluations, setMyEvaluations] = useState<Evaluation[]>(() =>
+    currentUser ? getEvaluationsByJudge(currentUser.email) : []
+  );
+  const [assignedProjects, setAssignedProjects] = useState<Project[]>(() =>
+    currentUser ? getProjectsForJudge(currentUser.email) : []
+  );
 
-  const myEvaluations = getEvaluationsByJudge(currentUser.email);
-  const assignedProjects = getProjectsForJudge(currentUser.email);
+  useEffect(() => {
+    if (!currentUser) return;
+    const refresh = () => {
+      setMyEvaluations(getEvaluationsByJudge(currentUser.email));
+      setAssignedProjects(getProjectsForJudge(currentUser.email));
+    };
+
+    window.addEventListener('biin_evaluations_updated', refresh);
+    window.addEventListener('biin_projects_updated', refresh);
+    window.addEventListener('biin_assignments_updated', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('biin_evaluations_updated', refresh);
+      window.removeEventListener('biin_projects_updated', refresh);
+      window.removeEventListener('biin_assignments_updated', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, [currentUser]);
+
+  if (!currentUser) return null;
 
   let avgScore = 0;
   if (myEvaluations.length > 0) {

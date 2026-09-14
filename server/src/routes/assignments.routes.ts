@@ -46,22 +46,26 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       judgeName: judgeName || 'Judge',
       applicationType,
       headCategory: headCategory || null,
-      projectIds: Array.isArray(projectIds) ? projectIds : [],
+      projectIds: Array.isArray(projectIds) ? projectIds.filter(Boolean) : [],
       createdAt: new Date().toISOString()
     };
 
     const saved = await assignmentDb.create(assignment);
 
     if (_actor) {
-      await auditDb.create({
-        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        actorEmail: _actor.email,
-        actorName: _actor.name,
-        action: 'ASSIGN_PROJECTS',
-        targetType: 'judge',
-        details: `Assigned ${applicationType}${headCategory ? ` (${headCategory})` : ''} to Judge ${saved.judgeName} (${saved.judgeEmail}).`,
-        timestamp: new Date().toISOString()
-      });
+      try {
+        await auditDb.create({
+          id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          actorEmail: _actor.email || 'admin@biin.org',
+          actorName: _actor.name || 'Administrator',
+          action: 'ASSIGN_PROJECTS',
+          targetType: 'judge',
+          details: `Assigned ${applicationType}${headCategory ? ` (${headCategory})` : ''} to Judge ${saved.judgeName} (${saved.judgeEmail}).`,
+          timestamp: new Date().toISOString()
+        });
+      } catch (auditErr) {
+        console.warn('[Audit] Failed to create assignment audit record:', auditErr);
+      }
     }
 
     res.status(201).json(saved);

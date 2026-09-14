@@ -120,18 +120,55 @@ router.post('/bulk', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const insertedCount = await projectDb.bulkCreate(projects);
+    const sanitizedProjects = projects.map((p, index) => {
+      const title = (p.solutionName || p.title || 'Untitled Project').trim();
+      const appId = (p.applicationId || `BIIN-2026-${Date.now().toString().slice(-4)}-${index}`).trim();
+      const appType = p.applicationType || 'Student-Secondary';
+      const isNoHeadCategory = appType === 'Student-Secondary' || appType === 'Individual/Group' || appType === 'Individual or Group';
+      const headCat = isNoHeadCategory ? 'N/A' : (p.headCategory || null);
+      const desc = (p.projectOverview || p.description || p.solutionSummary || 'No description').trim();
+
+      return {
+        id: p.id || `proj-${Date.now()}-${index}`,
+        title,
+        solutionName: title,
+        applicationId: appId,
+        projectCode: (p.projectCode || appId).trim(),
+        applicationType: appType,
+        headCategory: headCat,
+        teamOrOrgName: (p.teamOrOrgName || title || 'Independent').trim(),
+        representativeName: (p.representativeName || 'Lead Contact').trim(),
+        teamLeadName: p.teamLeadName || '',
+        members: Array.isArray(p.members) ? p.members : [],
+        email: p.email || 'contact@biin.org',
+        contactNumber: p.contactNumber || 'N/A',
+        institutionOrOrg: p.institutionOrOrg || '',
+        description: desc,
+        projectOverview: desc,
+        problemStatement: p.problemStatement || '',
+        solutionSummary: p.solutionSummary || '',
+        tags: Array.isArray(p.tags) ? p.tags : [],
+        roomNumber: p.roomNumber || '',
+        status: (p.status || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active'
+      };
+    });
+
+    const insertedCount = await projectDb.bulkCreate(sanitizedProjects as any);
 
     if (actor) {
-      await auditDb.create({
-        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        actorEmail: actor.email,
-        actorName: actor.name,
-        action: 'BULK_IMPORT_PROJECTS',
-        targetType: 'project',
-        details: `Bulk imported ${insertedCount} projects into database.`,
-        timestamp: new Date().toISOString()
-      });
+      try {
+        await auditDb.create({
+          id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          actorEmail: actor.email || 'admin@biin.org',
+          actorName: actor.name || 'Administrator',
+          action: 'BULK_IMPORT_PROJECTS',
+          targetType: 'project',
+          details: `Bulk imported ${insertedCount} projects into database.`,
+          timestamp: new Date().toISOString()
+        });
+      } catch (auditErr) {
+        console.warn('[Audit] Failed to log bulk import audit:', auditErr);
+      }
     }
 
     res.json({ success: true, count: insertedCount, message: `Imported ${insertedCount} new projects.` });

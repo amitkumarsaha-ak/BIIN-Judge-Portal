@@ -188,6 +188,30 @@ export async function initDatabase(): Promise<DbStatus> {
         );
       }
 
+      // Ensure default projects exist if table is empty
+      const projCountRes = await client.query('SELECT COUNT(*)::int as count FROM projects');
+      if ((projCountRes.rows[0]?.count ?? 0) === 0 && Array.isArray(SEED_PROJECTS) && SEED_PROJECTS.length > 0) {
+        console.log(`[Database] Seeding ${SEED_PROJECTS.length} starter projects into PostgreSQL...`);
+        for (const p of SEED_PROJECTS) {
+          await client.query(`
+            INSERT INTO projects (
+              id, title, application_id, project_code, application_type, head_category,
+              team_or_org_name, representative_name, team_lead_name, members, email, contact_number,
+              institution_or_org, description, problem_statement, solution_summary,
+              tags, room_number, status
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+            ON CONFLICT (application_id) DO NOTHING
+          `, [
+            p.id, p.title, p.applicationId, p.projectCode, p.applicationType, p.headCategory || null,
+            p.teamOrOrgName, p.representativeName, p.teamLeadName || null, JSON.stringify(p.members || []),
+            p.email, p.contactNumber, p.institutionOrOrg || null, p.description,
+            p.problemStatement || null, p.solutionSummary || null, JSON.stringify(p.tags || []),
+            p.roomNumber || null, p.status || 'active'
+          ]);
+        }
+        console.log('[Database] Starter projects seeded successfully.');
+      }
+
       // Ensure global settings record exists
       await client.query(
         `INSERT INTO system_settings (id, evaluations_locked, final_results_locked, locked_projects, auto_ranking_enabled)
@@ -195,16 +219,16 @@ export async function initDatabase(): Promise<DbStatus> {
          ON CONFLICT (id) DO NOTHING`
       );
 
-        // Seed audit log
-        for (const a of SEED_AUDIT_LOGS) {
-          await client.query(
-            `INSERT INTO audit_logs (id, actor_email, actor_name, action, target_type, details, timestamp)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (id) DO NOTHING`,
-            [a.id, a.actorEmail, a.actorName, a.action, a.targetType, a.details, a.timestamp]
-          );
-        }
-        console.log('[Database] PostgreSQL initialized successfully.');
+      // Seed audit log
+      for (const a of SEED_AUDIT_LOGS) {
+        await client.query(
+          `INSERT INTO audit_logs (id, actor_email, actor_name, action, target_type, details, timestamp)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           ON CONFLICT (id) DO NOTHING`,
+          [a.id, a.actorEmail || 'admin@biin.org', a.actorName || 'Administrator', a.action, a.targetType, a.details, a.timestamp]
+        );
+      }
+      console.log('[Database] PostgreSQL initialized successfully.');
 
       console.log('✅ [Database] PostgreSQL connected and ready!');
       return {
@@ -485,6 +509,40 @@ export const projectDb = {
   },
 
   async create(project: SeedProject): Promise<SeedProject> {
+    const title = (project.title || (project as any).solutionName || 'Untitled Project').trim();
+    const appId = (project.applicationId || `BIIN-2026-${Date.now().toString().slice(-4)}`).trim();
+    const projCode = (project.projectCode || appId).trim();
+    const appType = project.applicationType || 'Student-Secondary';
+    const headCat = project.headCategory || null;
+    const team = (project.teamOrOrgName || title || 'Independent').trim();
+    const rep = (project.representativeName || 'Lead Contact').trim();
+    const desc = (project.description || (project as any).projectOverview || (project as any).solutionSummary || 'No project description provided.').trim();
+    const prob = project.problemStatement || null;
+    const sol = project.solutionSummary || null;
+    const email = project.email || 'contact@biin.org';
+    const contact = project.contactNumber || 'N/A';
+    const inst = project.institutionOrOrg || null;
+    const status = (project.status || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active';
+    const tags = Array.isArray(project.tags) ? project.tags : [];
+    const members = Array.isArray(project.members) ? project.members : [];
+    const id = project.id || `proj-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+    const sanitized: SeedProject = {
+      ...project,
+      id,
+      title,
+      applicationId: appId,
+      projectCode: projCode,
+      applicationType: appType,
+      headCategory: headCat || 'N/A',
+      teamOrOrgName: team,
+      representativeName: rep,
+      description: desc,
+      email,
+      contactNumber: contact,
+      status
+    };
+
     if (isPostgresConnected) {
       await pool.query(`
         INSERT INTO projects (
@@ -512,25 +570,31 @@ export const projectDb = {
           room_number = EXCLUDED.room_number,
           status = EXCLUDED.status
       `, [
-        project.id, project.title, project.applicationId, project.projectCode, project.applicationType, project.headCategory || null,
-        project.teamOrOrgName, project.representativeName, project.teamLeadName || null, JSON.stringify(project.members || []),
-        project.email, project.contactNumber, project.institutionOrOrg || null, project.description,
-        project.problemStatement || null, project.solutionSummary || null, JSON.stringify(project.tags || []),
-        project.roomNumber || null, project.status
+        id, title, appId, projCode, appType, headCat,
+        team, rep, project.teamLeadName || null, JSON.stringify(members),
+        email, contact, inst, desc,
+        prob, sol, JSON.stringify(tags),
+        project.roomNumber || null, status
       ]);
-      return project;
+      return sanitized;
     }
-    const idx = memoryStore.projects.findIndex(p => p.id === project.id || p.applicationId === project.applicationId);
+    const idx = memoryStore.projects.findIndex(p => p.id === id || p.applicationId === appId);
     if (idx >= 0) {
-      memoryStore.projects[idx] = project;
+      memoryStore.projects[idx] = sanitized;
     } else {
-      memoryStore.projects.push(project);
+      memoryStore.projects.push(sanitized);
     }
     saveMemoryFallback();
-    return project;
+    return sanitized;
   },
 
   async update(project: SeedProject): Promise<SeedProject> {
+    const title = (project.title || (project as any).solutionName || 'Untitled Project').trim();
+    const desc = (project.description || (project as any).projectOverview || (project as any).solutionSummary || 'No description').trim();
+    const status = (project.status || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active';
+    const team = (project.teamOrOrgName || title || 'Independent').trim();
+    const rep = (project.representativeName || 'Lead Contact').trim();
+
     if (isPostgresConnected) {
       await pool.query(`
         UPDATE projects
@@ -540,11 +604,11 @@ export const projectDb = {
             tags = $17, room_number = $18, status = $19
         WHERE id = $1
       `, [
-        project.id, project.title, project.applicationId, project.projectCode, project.applicationType, project.headCategory || null,
-        project.teamOrOrgName, project.representativeName, project.teamLeadName || null, JSON.stringify(project.members || []),
-        project.email, project.contactNumber, project.institutionOrOrg || null, project.description,
+        project.id, title, project.applicationId, project.projectCode, project.applicationType, project.headCategory || null,
+        team, rep, project.teamLeadName || null, JSON.stringify(project.members || []),
+        project.email || 'contact@biin.org', project.contactNumber || 'N/A', project.institutionOrOrg || null, desc,
         project.problemStatement || null, project.solutionSummary || null, JSON.stringify(project.tags || []),
-        project.roomNumber || null, project.status
+        project.roomNumber || null, status
       ]);
       return project;
     }
@@ -594,10 +658,15 @@ export const projectDb = {
   async bulkCreate(projects: SeedProject[]): Promise<number> {
     let count = 0;
     for (const proj of projects) {
-      const existing = await projectDb.findById(proj.id);
-      if (!existing) {
-        await projectDb.create(proj);
-        count++;
+      try {
+        const existing = (await projectDb.findById(proj.id)) ||
+                         (proj.applicationId ? (await projectDb.getAll()).find(p => p.applicationId === proj.applicationId) : undefined);
+        if (!existing) {
+          await projectDb.create(proj);
+          count++;
+        }
+      } catch (err) {
+        console.warn('[projectDb.bulkCreate] Skipped invalid project row:', err);
       }
     }
     return count;
@@ -771,21 +840,31 @@ export const auditDb = {
 
   async create(entry: {
     id: string;
-    actorEmail: string;
-    actorName: string;
+    actorEmail?: string;
+    actorName?: string;
     action: string;
     targetType: string;
     details: string;
     timestamp: string;
   }): Promise<void> {
+    const safeEmail = (entry.actorEmail || 'admin@biin.org').trim().toLowerCase();
+    const safeName = (entry.actorName || 'Administrator').trim();
     if (isPostgresConnected) {
-      await pool.query(`
-        INSERT INTO audit_logs (id, actor_email, actor_name, action, target_type, details, timestamp)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [entry.id, entry.actorEmail, entry.actorName, entry.action, entry.targetType, entry.details, entry.timestamp]);
+      try {
+        await pool.query(`
+          INSERT INTO audit_logs (id, actor_email, actor_name, action, target_type, details, timestamp)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [entry.id, safeEmail, safeName, entry.action, entry.targetType, entry.details, entry.timestamp]);
+      } catch (err) {
+        console.warn('[auditDb.create] Failed to write audit log:', err);
+      }
       return;
     }
-    memoryStore.auditLogs.unshift(entry);
+    memoryStore.auditLogs.unshift({
+      ...entry,
+      actorEmail: safeEmail,
+      actorName: safeName
+    });
     if (memoryStore.auditLogs.length > 200) {
       memoryStore.auditLogs.pop();
     }

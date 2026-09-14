@@ -205,11 +205,11 @@ export const canonicalAppType = (type?: string): ApplicationType => {
 export const canonicalHeadCategory = (cat?: string): HeadCategoryCode => {
   const c = (cat || '').toLowerCase().trim();
   if (!c || c === 'n/a' || c === 'none' || c === 'null') return 'N/A';
-  if (c === 'hc-c' || c.includes('consumer')) return 'HC-C';
-  if (c === 'hc-bs' || c.includes('business')) return 'HC-BS';
-  if (c === 'hc-i' || c.includes('industrial')) return 'HC-I';
-  if (c === 'hc-psg' || c.includes('public') || c.includes('government')) return 'HC-PSG';
-  if (c === 'hc-ics' || c.includes('communication') || c.includes('inclusion') || c.includes('community')) return 'HC-ICS';
+  if (c === 'hc-c' || c === 'hc-01' || c === 'hc-1' || c.includes('consumer')) return 'HC-C';
+  if (c === 'hc-bs' || c === 'hc-02' || c === 'hc-2' || c.includes('business')) return 'HC-BS';
+  if (c === 'hc-i' || c === 'hc-03' || c === 'hc-3' || c.includes('industrial') || c.includes('robot')) return 'HC-I';
+  if (c === 'hc-psg' || c === 'hc-04' || c === 'hc-4' || c.includes('public') || c.includes('government') || c.includes('smart city') || c.includes('civic')) return 'HC-PSG';
+  if (c === 'hc-ics' || c === 'hc-05' || c === 'hc-5' || c.includes('communication') || c.includes('inclusion') || c.includes('community')) return 'HC-ICS';
   return cat ? (cat.trim() as HeadCategoryCode) : 'HC-C';
 };
 
@@ -227,9 +227,15 @@ export const matchesCategory = (projectCategory?: string, filterCategory?: strin
       return true;
     }
   }
-  if (!filterCategory || filterCategory === 'All' || filterCategory === 'All Head Category' || filterCategory === 'N/A') return true;
-  if (!projectCategory || projectCategory === 'All' || projectCategory === 'All Head Category') return true;
-  if (projectCategory === filterCategory) return true;
+  const fc = (filterCategory || '').toLowerCase().trim();
+  if (!fc || fc === 'all' || fc === 'all head category' || fc === 'all head categories' || fc === 'all categories' || fc === 'all category' || fc === 'n/a' || fc === 'null' || fc === 'none') {
+    return true;
+  }
+  const pc = (projectCategory || '').toLowerCase().trim();
+  if (!pc || pc === 'all' || pc === 'all head category' || pc === 'all head categories' || pc === 'all categories' || pc === 'all category' || pc === 'n/a' || pc === 'null' || pc === 'none') {
+    return true;
+  }
+  if (pc === fc) return true;
   return canonicalHeadCategory(projectCategory) === canonicalHeadCategory(filterCategory);
 };
 

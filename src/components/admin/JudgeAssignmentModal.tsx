@@ -34,7 +34,10 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
   onUpdated
 }) => {
   const { currentUser } = useAuth();
-  const actor = currentUser ? { email: currentUser.email, name: currentUser.fullName } : undefined;
+  const safeActor = {
+    email: currentUser?.email || 'admin@biin.org',
+    name: currentUser?.fullName || 'Administrator'
+  };
 
   const [assignments, setAssignments] = useState<JudgeAssignment[]>(() =>
     getJudgeAssignmentsByJudge(judge.email)
@@ -56,7 +59,8 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
   // Matching projects based on selected scope
   const matchingProjects = useMemo(() => {
     return allProjects.filter(p => {
-      if (p.status && p.status !== 'active') return false;
+      const statusStr = (p.status || 'active').trim().toLowerCase();
+      if (statusStr !== 'active') return false;
       if (!matchesAppType(p.applicationType, selectedAppType)) return false;
       if (!isNoHeadCategory && selectedHeadCategory && selectedHeadCategory !== 'All Head Category') {
         if (!matchesCategory(p.headCategory, selectedHeadCategory, p.applicationType)) return false;
@@ -116,11 +120,16 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
       createdAt: new Date().toISOString()
     };
 
-    saveJudgeAssignment(newAsgn, actor);
+    saveJudgeAssignment(newAsgn, safeActor);
     try {
-      await api.saveAssignment(newAsgn, actor);
+      await api.saveAssignment(newAsgn, safeActor);
     } catch {
       // Offline fallback already stored locally
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('biin_assignments_updated'));
+      window.dispatchEvent(new Event('biin_projects_updated'));
     }
 
     const updated = getJudgeAssignmentsByJudge(judge.email);
@@ -138,12 +147,18 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
   };
 
   const handleDeleteAssignment = async (id: string) => {
-    deleteJudgeAssignment(id, actor);
+    deleteJudgeAssignment(id, safeActor);
     try {
-      await api.deleteAssignment(id, actor);
+      await api.deleteAssignment(id, safeActor);
     } catch {
       // Offline fallback
     }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('biin_assignments_updated'));
+      window.dispatchEvent(new Event('biin_projects_updated'));
+    }
+
     const updated = getJudgeAssignmentsByJudge(judge.email);
     setAssignments(updated);
     onUpdated?.();

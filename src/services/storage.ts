@@ -273,14 +273,29 @@ export const syncWithBackend = async (): Promise<boolean> => {
     ]);
 
     if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value)) {
-      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projectsRes.value));
+      const localProjects = getProjects();
+      if (projectsRes.value.length > 0) {
+        // Remote projects exist: merge so we keep any non-duplicated local projects
+        const remoteIds = new Set(projectsRes.value.map(p => p.id || p.applicationId));
+        const nonDuplicateLocal = localProjects.filter(lp => !remoteIds.has(lp.id) && !remoteIds.has(lp.applicationId));
+        const merged = [...projectsRes.value, ...nonDuplicateLocal];
+        localStorage.setItem(PROJECTS_KEY, JSON.stringify(merged));
+        if (nonDuplicateLocal.length > 0) {
+          api.bulkCreateProjects(nonDuplicateLocal).catch(() => {});
+        }
+      } else if (localProjects.length > 0) {
+        // Backend is empty but local storage has projects: seed them to backend
+        api.bulkCreateProjects(localProjects).catch(() => {});
+      }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_projects_updated'));
       }
     }
 
     if (evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value)) {
-      localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evalsRes.value));
+      if (evalsRes.value.length > 0) {
+        localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evalsRes.value));
+      }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_projects_updated'));
       }
@@ -317,7 +332,18 @@ export const syncWithBackend = async (): Promise<boolean> => {
     }
 
     if (assignmentsRes.status === 'fulfilled' && Array.isArray(assignmentsRes.value)) {
-      localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignmentsRes.value));
+      const localAssignments = getJudgeAssignments();
+      if (assignmentsRes.value.length > 0) {
+        const remoteIds = new Set(assignmentsRes.value.map(a => a.id));
+        const nonDupLocal = localAssignments.filter(la => !remoteIds.has(la.id));
+        const mergedAssignments = [...assignmentsRes.value, ...nonDupLocal];
+        localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(mergedAssignments));
+        if (nonDupLocal.length > 0) {
+          nonDupLocal.forEach(la => api.saveAssignment(la).catch(() => {}));
+        }
+      } else if (localAssignments.length > 0) {
+        localAssignments.forEach(la => api.saveAssignment(la).catch(() => {}));
+      }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_assignments_updated'));
         window.dispatchEvent(new Event('biin_projects_updated'));
@@ -1096,17 +1122,25 @@ export const getJudgeAssignmentsByJudge = (judgeIdentifier: string): JudgeAssign
   const all = getJudgeAssignments();
   if (!judgeIdentifier) return [];
   const clean = normalizeEmail(judgeIdentifier);
+  const cleanId = judgeIdentifier.trim().toLowerCase();
 
   const users = getUsers();
-  const matchedUser = users.find(u => normalizeEmail(u.email) === clean || u.id === judgeIdentifier);
+  const matchedUser = users.find(u => 
+    normalizeEmail(u.email) === clean || 
+    u.id === judgeIdentifier || 
+    (u.id && u.id.toLowerCase() === cleanId)
+  );
   const userCleanEmail = matchedUser ? normalizeEmail(matchedUser.email) : clean;
   const userId = matchedUser ? matchedUser.id : judgeIdentifier;
+  const userIdClean = userId ? userId.trim().toLowerCase() : cleanId;
 
   return all.filter(a => {
     const aCleanEmail = normalizeEmail(a.judgeEmail);
+    const aJudgeId = (a.judgeId || '').trim().toLowerCase();
     return (
-      aCleanEmail === clean ||
-      aCleanEmail === userCleanEmail ||
+      (clean && aCleanEmail === clean) ||
+      (userCleanEmail && aCleanEmail === userCleanEmail) ||
+      (aJudgeId && (aJudgeId === cleanId || aJudgeId === userIdClean)) ||
       a.judgeId === userId ||
       a.judgeId === judgeIdentifier
     );
@@ -1121,10 +1155,13 @@ export const isProjectAssignedToJudge = (judgeIdentifier: string, project: Proje
   return assignments.some(asgn => {
     // 1. Specific project assignment takes precedence
     if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
-      const matchId = asgn.projectIds.includes(project.id);
-      const matchAppId = Boolean(project.applicationId) && asgn.projectIds.includes(project.applicationId);
-      const matchCode = Boolean(project.projectCode) && asgn.projectIds.includes(project.projectCode);
-      return matchId || matchAppId || matchCode;
+      const pId = String(project.id || '').trim().toLowerCase();
+      const pAppId = String(project.applicationId || '').trim().toLowerCase();
+      const pCode = String(project.projectCode || '').trim().toLowerCase();
+      return asgn.projectIds.some(id => {
+        const cleanId = String(id || '').trim().toLowerCase();
+        return cleanId && (cleanId === pId || cleanId === pAppId || cleanId === pCode);
+      });
     }
 
     // 2. Scope-wide assignment: Application Type matching
@@ -1135,8 +1172,17 @@ export const isProjectAssignedToJudge = (judgeIdentifier: string, project: Proje
     // 3. Head category matching (only for application types with head categories)
     const canon = canonicalAppType(project.applicationType);
     const isNoHeadCat = canon === 'Student-Secondary' || canon === 'Individual or Group';
-    if (!isNoHeadCat && asgn.headCategory && asgn.headCategory !== 'All Head Category' && asgn.headCategory !== 'N/A') {
-      if (!matchesCategory(project.headCategory, asgn.headCategory, project.applicationType)) {
+    const normHeadCat = (asgn.headCategory || '').trim().toLowerCase();
+    const isAllHeadCat = !normHeadCat ||
+      normHeadCat === 'all' ||
+      normHeadCat === 'all head category' ||
+      normHeadCat === 'all head categories' ||
+      normHeadCat === 'n/a' ||
+      normHeadCat === 'none' ||
+      normHeadCat === 'null';
+
+    if (!isNoHeadCat && !isAllHeadCat) {
+      if (!matchesCategory(project.headCategory, asgn.headCategory || undefined, project.applicationType)) {
         return false;
       }
     }
@@ -1168,12 +1214,13 @@ export const saveJudgeAssignment = (assignment: JudgeAssignment, actor?: { email
     window.dispatchEvent(new Event('biin_projects_updated'));
   }
 
-  api.saveAssignment(safe, actor).catch(() => {});
+  const safeActor = actor || { email: 'admin@biin.org', name: 'Administrator' };
+  api.saveAssignment(safe, safeActor).catch(() => {});
 
-  if (actor) {
+  if (safeActor) {
     logAuditAction(
-      actor.email,
-      actor.name,
+      safeActor.email,
+      safeActor.name,
       'ASSIGN_PROJECTS',
       'judge',
       `Assigned ${safe.applicationType}${safe.headCategory ? ` (${safe.headCategory})` : ''} to Judge ${safe.judgeName} (${safe.judgeEmail}).`
@@ -1192,12 +1239,13 @@ export const deleteJudgeAssignment = (id: string, actor?: { email: string; name:
     window.dispatchEvent(new Event('biin_projects_updated'));
   }
 
-  api.deleteAssignment(id, actor).catch(() => {});
+  const safeActor = actor || { email: 'admin@biin.org', name: 'Administrator' };
+  api.deleteAssignment(id, safeActor).catch(() => {});
 
-  if (target && actor) {
+  if (target && safeActor) {
     logAuditAction(
-      actor.email,
-      actor.name,
+      safeActor.email,
+      safeActor.name,
       'DELETE_ASSIGNMENT',
       'judge',
       `Removed project assignment for Judge ${target.judgeName} (${target.applicationType}).`
@@ -1226,7 +1274,8 @@ export const getProjectsForJudge = (judgeEmail?: string, applicationType?: strin
   }
 
   return allProjects.filter(p => {
-    const isActive = !p.status || p.status === 'active';
+    const statusStr = (p.status || 'active').trim().toLowerCase();
+    const isActive = statusStr === 'active';
     if (!isActive) return false;
 
     // Assignment filter

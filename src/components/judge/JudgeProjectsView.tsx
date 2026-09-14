@@ -7,7 +7,8 @@ import type { Project } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import {
   getProjectsForJudge, getEvaluationsByJudge, getSystemSettings,
-  isCategoryEvaluationLocked, PROJECTS_KEY, ASSIGNMENTS_KEY
+  isCategoryEvaluationLocked, PROJECTS_KEY, ASSIGNMENTS_KEY,
+  getProjects, getJudgeAssignments
 } from '../../services/storage';
 import { api } from '../../services/api';
 import { HEAD_CATEGORIES } from '../../data/mockData';
@@ -38,18 +39,35 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
     const refresh = async () => {
       if (currentUser?.email) {
         try {
-          const [projectsRes, assignmentsRes, evalsRes] = await Promise.allSettled([
+          const [projectsRes, assignmentsRes, judgeAssignmentsRes, evalsRes] = await Promise.allSettled([
             api.getProjects(),
             api.getAssignments(),
+            api.getAssignmentsByJudge(currentUser.email),
             api.getEvaluationsByJudge(currentUser.email)
           ]);
 
-          if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value)) {
-            localStorage.setItem(PROJECTS_KEY, JSON.stringify(projectsRes.value));
+          if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value) && projectsRes.value.length > 0) {
+            const currentProjects = getProjects();
+            const pMap = new Map(currentProjects.map(p => [p.id, p]));
+            projectsRes.value.forEach(p => pMap.set(p.id, p));
+            localStorage.setItem(PROJECTS_KEY, JSON.stringify(Array.from(pMap.values())));
           }
-          if (assignmentsRes.status === 'fulfilled' && Array.isArray(assignmentsRes.value)) {
-            localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignmentsRes.value));
+
+          let incomingAssignments: any[] = [];
+          if (assignmentsRes.status === 'fulfilled' && Array.isArray(assignmentsRes.value) && assignmentsRes.value.length > 0) {
+            incomingAssignments = incomingAssignments.concat(assignmentsRes.value);
           }
+          if (judgeAssignmentsRes.status === 'fulfilled' && Array.isArray(judgeAssignmentsRes.value) && judgeAssignmentsRes.value.length > 0) {
+            incomingAssignments = incomingAssignments.concat(judgeAssignmentsRes.value);
+          }
+
+          if (incomingAssignments.length > 0) {
+            const currentAsgns = getJudgeAssignments();
+            const asgnMap = new Map(currentAsgns.map(a => [a.id, a]));
+            incomingAssignments.forEach(a => asgnMap.set(a.id, a));
+            localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(Array.from(asgnMap.values())));
+          }
+
           if (evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value)) {
             if (mounted) {
               setMyEvaluations(evalsRes.value);
@@ -96,7 +114,8 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
   const filteredProjects = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return assignedProjects.filter(p => {
-      if (p.status && p.status !== 'active') return false;
+      const statusStr = (p.status || 'active').trim().toLowerCase();
+      if (statusStr !== 'active') return false;
       if (filterType && filterType !== 'All' && !matchesAppType(p.applicationType, filterType)) {
         return false;
       }
