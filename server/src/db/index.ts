@@ -181,16 +181,6 @@ export async function initDatabase(): Promise<DbStatus> {
         );
       }
 
-      // Ensure default rooms exist
-      for (const r of SEED_ROOMS) {
-        await client.query(
-          `INSERT INTO rooms (id, room_number, name, location, capacity, description, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           ON CONFLICT (room_number) DO NOTHING`,
-          [r.id, r.roomNumber, r.name, r.location || null, r.capacity || 10, r.description || null, r.createdAt]
-        );
-      }
-
       // Ensure default projects exist if table is empty
       const projCountRes = await client.query('SELECT COUNT(*)::int as count FROM projects');
       if ((projCountRes.rows[0]?.count ?? 0) === 0 && Array.isArray(SEED_PROJECTS) && SEED_PROJECTS.length > 0) {
@@ -411,11 +401,15 @@ export const userDb = {
 export const roomDb = {
   async getAll(): Promise<SeedRoom[]> {
     if (isPostgresConnected) {
-      const res = await pool.query(`
-        SELECT id, room_number as "roomNumber", name, location, capacity, description, created_at as "createdAt"
-        FROM rooms ORDER BY room_number ASC
-      `);
-      return res.rows;
+      try {
+        const res = await pool.query(`
+          SELECT id, room_number as "roomNumber", name, location, capacity, description, created_at as "createdAt"
+          FROM rooms ORDER BY room_number ASC
+        `);
+        return res.rows;
+      } catch {
+        return [];
+      }
     }
     return [...memoryStore.rooms];
   },

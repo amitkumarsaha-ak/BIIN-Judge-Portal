@@ -13,18 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Rooms Table
-CREATE TABLE IF NOT EXISTS rooms (
-    id VARCHAR(64) PRIMARY KEY,
-    room_number VARCHAR(64) UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    location VARCHAR(255),
-    capacity INT DEFAULT 10,
-    description TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 3. Projects Table
+-- 2. Projects Table
 CREATE TABLE IF NOT EXISTS projects (
     id VARCHAR(64) PRIMARY KEY,
     title VARCHAR(500) NOT NULL,
