@@ -13,7 +13,8 @@ import {
   SeedUser,
   SeedRoom,
   SeedProject,
-  SeedEvaluation
+  SeedEvaluation,
+  SeedAssignment
 } from './seedData.js';
 
 dotenv.config();
@@ -61,6 +62,7 @@ interface MemoryStoreState {
   rooms: SeedRoom[];
   projects: SeedProject[];
   evaluations: SeedEvaluation[];
+  assignments: SeedAssignment[];
   settings: typeof SEED_SETTINGS;
   auditLogs: typeof SEED_AUDIT_LOGS;
 }
@@ -74,6 +76,7 @@ function loadMemoryFallback(): MemoryStoreState {
         rooms: (Array.isArray(parsed.rooms) ? parsed.rooms : [...SEED_ROOMS]) as SeedRoom[],
         projects: (Array.isArray(parsed.projects) ? parsed.projects : [...SEED_PROJECTS]) as SeedProject[],
         evaluations: (Array.isArray(parsed.evaluations) ? parsed.evaluations : [...SEED_EVALUATIONS]) as SeedEvaluation[],
+        assignments: (Array.isArray(parsed.assignments) ? parsed.assignments : []) as SeedAssignment[],
         settings: parsed.settings || { ...SEED_SETTINGS },
         auditLogs: (Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [...SEED_AUDIT_LOGS]) as typeof SEED_AUDIT_LOGS
       };
@@ -84,6 +87,7 @@ function loadMemoryFallback(): MemoryStoreState {
     rooms: [...SEED_ROOMS],
     projects: [...SEED_PROJECTS],
     evaluations: [...SEED_EVALUATIONS],
+    assignments: [],
     settings: { ...SEED_SETTINGS },
     auditLogs: [...SEED_AUDIT_LOGS]
   };
@@ -149,6 +153,14 @@ export async function initDatabase(): Promise<DbStatus> {
       if (fs.existsSync(schemaPath)) {
         const schemaSql = fs.readFileSync(schemaPath, 'utf8');
         await client.query(schemaSql);
+      }
+
+      // Safe schema migrations for existing databases
+      try {
+        await client.query('ALTER TABLE projects ADD COLUMN IF NOT EXISTS team_lead_name VARCHAR(255)');
+        await client.query('ALTER TABLE projects ALTER COLUMN head_category DROP NOT NULL');
+      } catch (migErr) {
+        console.warn('[Database] Migration notice:', migErr);
       }
 
       // Check if data is already seeded
@@ -467,6 +479,7 @@ export const projectDb = {
         SELECT id, title, application_id as "applicationId", project_code as "projectCode",
                application_type as "applicationType", head_category as "headCategory",
                team_or_org_name as "teamOrOrgName", representative_name as "representativeName",
+               team_lead_name as "teamLeadName",
                members, email, contact_number as "contactNumber", institution_or_org as "institutionOrOrg",
                description, problem_statement as "problemStatement", solution_summary as "solutionSummary",
                tags, room_number as "roomNumber", status
@@ -487,6 +500,7 @@ export const projectDb = {
         SELECT id, title, application_id as "applicationId", project_code as "projectCode",
                application_type as "applicationType", head_category as "headCategory",
                team_or_org_name as "teamOrOrgName", representative_name as "representativeName",
+               team_lead_name as "teamLeadName",
                members, email, contact_number as "contactNumber", institution_or_org as "institutionOrOrg",
                description, problem_statement as "problemStatement", solution_summary as "solutionSummary",
                tags, room_number as "roomNumber", status
@@ -508,10 +522,10 @@ export const projectDb = {
       await pool.query(`
         INSERT INTO projects (
           id, title, application_id, project_code, application_type, head_category,
-          team_or_org_name, representative_name, members, email, contact_number,
+          team_or_org_name, representative_name, team_lead_name, members, email, contact_number,
           institution_or_org, description, problem_statement, solution_summary,
           tags, room_number, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
         ON CONFLICT (application_id) DO UPDATE SET
           title = EXCLUDED.title,
           project_code = EXCLUDED.project_code,
@@ -519,6 +533,7 @@ export const projectDb = {
           head_category = EXCLUDED.head_category,
           team_or_org_name = EXCLUDED.team_or_org_name,
           representative_name = EXCLUDED.representative_name,
+          team_lead_name = EXCLUDED.team_lead_name,
           members = EXCLUDED.members,
           email = EXCLUDED.email,
           contact_number = EXCLUDED.contact_number,
@@ -530,8 +545,8 @@ export const projectDb = {
           room_number = EXCLUDED.room_number,
           status = EXCLUDED.status
       `, [
-        project.id, project.title, project.applicationId, project.projectCode, project.applicationType, project.headCategory,
-        project.teamOrOrgName, project.representativeName, JSON.stringify(project.members || []),
+        project.id, project.title, project.applicationId, project.projectCode, project.applicationType, project.headCategory || null,
+        project.teamOrOrgName, project.representativeName, project.teamLeadName || null, JSON.stringify(project.members || []),
         project.email, project.contactNumber, project.institutionOrOrg || null, project.description,
         project.problemStatement || null, project.solutionSummary || null, JSON.stringify(project.tags || []),
         project.roomNumber || null, project.status
@@ -553,13 +568,13 @@ export const projectDb = {
       await pool.query(`
         UPDATE projects
         SET title = $2, application_id = $3, project_code = $4, application_type = $5, head_category = $6,
-            team_or_org_name = $7, representative_name = $8, members = $9, email = $10, contact_number = $11,
-            institution_or_org = $12, description = $13, problem_statement = $14, solution_summary = $15,
-            tags = $16, room_number = $17, status = $18
+            team_or_org_name = $7, representative_name = $8, team_lead_name = $9, members = $10, email = $11, contact_number = $12,
+            institution_or_org = $13, description = $14, problem_statement = $15, solution_summary = $16,
+            tags = $17, room_number = $18, status = $19
         WHERE id = $1
       `, [
-        project.id, project.title, project.applicationId, project.projectCode, project.applicationType, project.headCategory,
-        project.teamOrOrgName, project.representativeName, JSON.stringify(project.members || []),
+        project.id, project.title, project.applicationId, project.projectCode, project.applicationType, project.headCategory || null,
+        project.teamOrOrgName, project.representativeName, project.teamLeadName || null, JSON.stringify(project.members || []),
         project.email, project.contactNumber, project.institutionOrOrg || null, project.description,
         project.problemStatement || null, project.solutionSummary || null, JSON.stringify(project.tags || []),
         project.roomNumber || null, project.status
@@ -769,5 +784,74 @@ export const auditDb = {
       memoryStore.auditLogs.pop();
     }
     saveMemoryFallback();
+  }
+};
+
+// --- JUDGE ASSIGNMENT DATA ACCESS OBJECT ---
+export const assignmentDb = {
+  async getAll(): Promise<SeedAssignment[]> {
+    if (isPostgresConnected) {
+      const res = await pool.query(`
+        SELECT id, judge_id as "judgeId", judge_email as "judgeEmail", judge_name as "judgeName",
+               application_type as "applicationType", head_category as "headCategory",
+               project_ids as "projectIds", created_at as "createdAt"
+        FROM judge_assignments ORDER BY created_at DESC
+      `);
+      return res.rows.map(row => ({
+        ...row,
+        projectIds: typeof row.projectIds === 'string' ? JSON.parse(row.projectIds) : row.projectIds || []
+      }));
+    }
+    return [...(memoryStore.assignments || [])];
+  },
+
+  async getByJudge(email: string): Promise<SeedAssignment[]> {
+    const all = await assignmentDb.getAll();
+    const clean = email.trim().toLowerCase();
+    return all.filter(a => a.judgeEmail.trim().toLowerCase() === clean);
+  },
+
+  async create(assignment: SeedAssignment): Promise<SeedAssignment> {
+    if (isPostgresConnected) {
+      await pool.query(`
+        INSERT INTO judge_assignments (
+          id, judge_id, judge_email, judge_name, application_type, head_category, project_ids, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (id) DO UPDATE SET
+          judge_name = EXCLUDED.judge_name,
+          application_type = EXCLUDED.application_type,
+          head_category = EXCLUDED.head_category,
+          project_ids = EXCLUDED.project_ids
+      `, [
+        assignment.id, assignment.judgeId, assignment.judgeEmail.trim().toLowerCase(), assignment.judgeName,
+        assignment.applicationType, assignment.headCategory || null,
+        JSON.stringify(assignment.projectIds || []), assignment.createdAt || new Date().toISOString()
+      ]);
+      return assignment;
+    }
+    if (!memoryStore.assignments) memoryStore.assignments = [];
+    const idx = memoryStore.assignments.findIndex(a => a.id === assignment.id);
+    if (idx >= 0) {
+      memoryStore.assignments[idx] = assignment;
+    } else {
+      memoryStore.assignments.push(assignment);
+    }
+    saveMemoryFallback();
+    return assignment;
+  },
+
+  async delete(id: string): Promise<boolean> {
+    if (isPostgresConnected) {
+      const res = await pool.query('DELETE FROM judge_assignments WHERE id = $1', [id]);
+      return (res.rowCount ?? 0) > 0;
+    }
+    if (!memoryStore.assignments) return false;
+    const initial = memoryStore.assignments.length;
+    memoryStore.assignments = memoryStore.assignments.filter(a => a.id !== id);
+    if (memoryStore.assignments.length < initial) {
+      saveMemoryFallback();
+      return true;
+    }
+    return false;
   }
 };

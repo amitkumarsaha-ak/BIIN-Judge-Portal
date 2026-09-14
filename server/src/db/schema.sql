@@ -31,9 +31,10 @@ CREATE TABLE IF NOT EXISTS projects (
     application_id VARCHAR(100) UNIQUE NOT NULL,
     project_code VARCHAR(100),
     application_type VARCHAR(100) NOT NULL,
-    head_category VARCHAR(50) NOT NULL,
+    head_category VARCHAR(50),
     team_or_org_name VARCHAR(255) NOT NULL,
     representative_name VARCHAR(255) NOT NULL,
+    team_lead_name VARCHAR(255),
     members JSONB DEFAULT '[]'::jsonb,
     email VARCHAR(255) NOT NULL,
     contact_number VARCHAR(100) NOT NULL,
@@ -87,6 +88,18 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     timestamp TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 7. Judge Assignments Table
+CREATE TABLE IF NOT EXISTS judge_assignments (
+    id VARCHAR(64) PRIMARY KEY,
+    judge_id VARCHAR(64) NOT NULL,
+    judge_email VARCHAR(255) NOT NULL,
+    judge_name VARCHAR(255) NOT NULL,
+    application_type VARCHAR(100) NOT NULL,
+    head_category VARCHAR(50),
+    project_ids JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Indexes for optimal querying
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
@@ -94,4 +107,5 @@ CREATE INDEX IF NOT EXISTS idx_projects_app_type ON projects(application_type);
 CREATE INDEX IF NOT EXISTS idx_projects_head_cat ON projects(head_category);
 CREATE INDEX IF NOT EXISTS idx_evaluations_project ON evaluations(project_id);
 CREATE INDEX IF NOT EXISTS idx_evaluations_judge ON evaluations(judge_email);
+CREATE INDEX IF NOT EXISTS idx_assignments_judge_email ON judge_assignments(judge_email);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC);

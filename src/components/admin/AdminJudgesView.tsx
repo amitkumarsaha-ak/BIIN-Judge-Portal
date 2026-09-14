@@ -1,20 +1,23 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Users, Search, Check, X, UserCheck, Clock, XCircle,
-  ShieldCheck, Mail, Calendar, UserX, Trash2, RefreshCw
+  ShieldCheck, Mail, Calendar, UserX, Trash2, RefreshCw, Sliders
 } from 'lucide-react';
-import type { User, JudgeStatus } from '../../types';
+import type { User, JudgeStatus, JudgeAssignment } from '../../types';
 import {
   getJudges, approveJudge, rejectJudge, deleteUser,
   getUsers, USERS_KEY,
-  normalizeEmail, normalizeAndDeduplicateUsers, getRemovedJudgeEmails
+  normalizeEmail, normalizeAndDeduplicateUsers, getRemovedJudgeEmails,
+  getJudgeAssignments
 } from '../../services/storage';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { JudgeAssignmentModal } from './JudgeAssignmentModal';
 
 export const AdminJudgesView: React.FC = () => {
   const { currentUser } = useAuth();
   const [judges, setJudges] = useState<User[]>(() => getJudges());
+  const [assignments, setAssignments] = useState<JudgeAssignment[]>(() => getJudgeAssignments());
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | JudgeStatus>(() => {
     const initial = getJudges();
@@ -23,6 +26,7 @@ export const AdminJudgesView: React.FC = () => {
   });
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [assignTarget, setAssignTarget] = useState<User | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -78,6 +82,7 @@ export const AdminJudgesView: React.FC = () => {
         const dedupedAll = normalizeAndDeduplicateUsers(reconciled);
         localStorage.setItem(USERS_KEY, JSON.stringify(dedupedAll));
         setJudges(dedupedAll.filter(u => u.role === 'judge'));
+        setAssignments(getJudgeAssignments());
         setIsRefreshing(false);
         return;
       }
@@ -85,6 +90,7 @@ export const AdminJudgesView: React.FC = () => {
       // Backend offline or unreachable fallback
     }
     setJudges(getJudges());
+    setAssignments(getJudgeAssignments());
     setIsRefreshing(false);
   }, []);
 
@@ -94,10 +100,12 @@ export const AdminJudgesView: React.FC = () => {
 
     const handleStorageChange = () => {
       refresh();
+      setAssignments(getJudgeAssignments());
     };
 
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('biin_users_updated', handleStorageChange);
+    window.addEventListener('biin_assignments_updated', handleStorageChange);
 
     // Auto-poll every 4 seconds for real-time registrations
     const interval = setInterval(refresh, 4000);
@@ -105,6 +113,7 @@ export const AdminJudgesView: React.FC = () => {
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('biin_users_updated', handleStorageChange);
+      window.removeEventListener('biin_assignments_updated', handleStorageChange);
       clearInterval(interval);
     };
   }, [refresh]);
@@ -216,6 +225,18 @@ export const AdminJudgesView: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Judge Assignment Modal */}
+      {assignTarget && (
+        <JudgeAssignmentModal
+          judge={assignTarget}
+          onClose={() => setAssignTarget(null)}
+          onUpdated={() => {
+            refresh();
+            setAssignments(getJudgeAssignments());
+          }}
+        />
       )}
 
       {/* Header Banner */}
@@ -467,6 +488,24 @@ export const AdminJudgesView: React.FC = () => {
                       </span>
                     </div>
 
+                    {status === 'approved' && (() => {
+                      const judgeAssignments = assignments.filter(a => normalizeEmail(a.judgeEmail) === normalizeEmail(judge.email));
+                      const asgnCount = judgeAssignments.length;
+                      return (
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-slate-500">Project Access:</span>
+                          <span className={`inline-flex items-center space-x-1 rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                            asgnCount > 0
+                              ? 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-700'
+                              : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700'
+                          }`}>
+                            <Sliders className="h-3 w-3" />
+                            <span>{asgnCount > 0 ? `${asgnCount} Assignment${asgnCount > 1 ? 's' : ''}` : 'Unassigned'}</span>
+                          </span>
+                        </div>
+                      );
+                    })()}
+
                     <div className="flex items-center justify-between text-[11px] text-slate-500">
                       <span className="flex items-center space-x-1">
                         <Calendar className="h-3 w-3" />
@@ -500,15 +539,28 @@ export const AdminJudgesView: React.FC = () => {
                     </>
                   )}
 
-                  {status === 'approved' && (
-                    <button
-                      onClick={() => handleReject(judge)}
-                      className="w-full flex items-center justify-center space-x-1.5 rounded-xl border border-rose-300 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 py-2.5 px-3 text-xs font-semibold transition-colors min-h-[40px]"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                      <span>Revoke / Reject Access</span>
-                    </button>
-                  )}
+                  {status === 'approved' && (() => {
+                    const judgeAssignments = assignments.filter(a => normalizeEmail(a.judgeEmail) === normalizeEmail(judge.email));
+                    const asgnCount = judgeAssignments.length;
+                    return (
+                      <div className="w-full flex flex-col gap-2">
+                        <button
+                          onClick={() => setAssignTarget(judge)}
+                          className="w-full flex items-center justify-center space-x-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 py-2.5 px-3 text-xs font-bold text-white shadow-md shadow-violet-600/20 transition-colors min-h-[40px]"
+                        >
+                          <Sliders className="h-3.5 w-3.5" />
+                          <span>Assign Projects ({asgnCount})</span>
+                        </button>
+                        <button
+                          onClick={() => handleReject(judge)}
+                          className="w-full flex items-center justify-center space-x-1.5 rounded-xl border border-rose-300 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 py-2 px-3 text-xs font-semibold transition-colors min-h-[36px]"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          <span>Revoke / Reject Access</span>
+                        </button>
+                      </div>
+                    );
+                  })()}
 
                   {status === 'rejected' && (
                     <button

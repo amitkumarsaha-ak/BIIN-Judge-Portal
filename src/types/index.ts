@@ -93,6 +93,7 @@ export interface Project {
   headCategory: HeadCategoryCode;
   teamOrOrgName: string;        // Participant/Organization Name
   representativeName: string;   // Member Name / Student Name / Representative Name
+  teamLeadName?: string;        // Team Lead Name
   members?: string[];
   email: string;
   contactNumber: string;
@@ -104,6 +105,17 @@ export interface Project {
   tags: string[];
   roomNumber?: string;          // Optional/deprecated
   status: ProjectStatus;        // active | inactive
+}
+
+export interface JudgeAssignment {
+  id: string;
+  judgeId: string;
+  judgeEmail: string;
+  judgeName: string;
+  applicationType: ApplicationType;
+  headCategory?: HeadCategoryCode | null;
+  projectIds?: string[];
+  createdAt: string;
 }
 
 export type CriteriaKey =

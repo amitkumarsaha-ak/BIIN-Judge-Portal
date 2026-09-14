@@ -1,4 +1,4 @@
-import type { User, Project, Evaluation, Room, SystemSettings, AuditLog } from '../types';
+import type { User, Project, Evaluation, Room, SystemSettings, AuditLog, JudgeAssignment } from '../types';
 
 const API_BASE = (import.meta as any).env?.VITE_API_URL 
   ? `${(import.meta as any).env.VITE_API_URL.replace(/\/$/, '')}/api` 
@@ -258,6 +258,29 @@ export const api = {
     return request('/audit', {
       method: 'POST',
       body: JSON.stringify({ actorEmail, actorName, action, targetType, details })
+    });
+  },
+
+  // Judge Assignments
+  async getAssignments(): Promise<JudgeAssignment[]> {
+    return request('/assignments');
+  },
+
+  async getAssignmentsByJudge(email: string): Promise<JudgeAssignment[]> {
+    return request(`/assignments/judge/${encodeURIComponent(email)}`);
+  },
+
+  async saveAssignment(assignment: Partial<JudgeAssignment>, actor?: { email: string; name: string }): Promise<JudgeAssignment> {
+    return request('/assignments', {
+      method: 'POST',
+      body: JSON.stringify({ ...assignment, _actor: actor })
+    });
+  },
+
+  async deleteAssignment(id: string, actor?: { email: string; name: string }): Promise<{ success: boolean }> {
+    return request(`/assignments/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ actor })
     });
   }
 };

@@ -53,6 +53,7 @@ const EMPTY_FORM: Omit<Project, 'id'> = {
   headCategory: 'All Head Category',
   teamOrOrgName: '',
   representativeName: '',
+  teamLeadName: '',
   members: [],
   email: '',
   contactNumber: '',
@@ -180,6 +181,12 @@ const DetailModal: React.FC<DetailModalProps> = ({ project, evalCount, onClose, 
               <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Authorized Representative</p>
               <p className="text-slate-900 dark:text-white font-medium mt-0.5">{project.representativeName}</p>
             </div>
+            {project.teamLeadName && (
+              <div>
+                <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Team Lead Name</p>
+                <p className="text-slate-900 dark:text-white font-medium mt-0.5">{project.teamLeadName}</p>
+              </div>
+            )}
             <div>
               <p className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Email Address</p>
               <p className="text-slate-900 dark:text-white font-medium mt-0.5">{project.email || 'N/A'}</p>
@@ -282,6 +289,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
   const [form, setForm] = useState({
     ...initialData,
     solutionName: initialData.solutionName || initialData.title || '',
+    teamLeadName: initialData.teamLeadName || '',
     projectOverview: initialData.projectOverview || initialData.description || '',
     problemStatement: initialData.problemStatement || '',
     solutionSummary: initialData.solutionSummary || '',
@@ -303,6 +311,8 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
     return Object.keys(errs).length === 0;
   };
 
+  const isNoHeadCategory = form.applicationType === 'Student-Secondary' || form.applicationType === 'Individual/Group' || form.applicationType === 'Individual or Group';
+
   const handleSave = () => {
     if (!validate()) return;
     const solName = form.solutionName.trim();
@@ -317,7 +327,8 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
       problemStatement: (form.problemStatement || '').trim(),
       solutionSummary: (form.solutionSummary || '').trim(),
       applicationType: form.applicationType || 'All Application Types',
-      headCategory: form.applicationType === 'Student-Secondary' ? 'N/A' : (form.headCategory || 'All Head Category'),
+      headCategory: isNoHeadCategory ? 'N/A' : (form.headCategory || 'All Head Category'),
+      teamLeadName: (form.teamLeadName || '').trim() || undefined,
       applicationId: form.applicationId || `BIIN-2026-${String(Date.now()).slice(-4)}`,
       projectCode: form.projectCode || `PROJ-${String(Date.now()).slice(-4)}`,
       teamOrOrgName: form.teamOrOrgName || solName || 'Independent',
@@ -369,6 +380,17 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
             {errors.solutionName && <p className="mt-1 text-xs text-red-500">{errors.solutionName}</p>}
           </div>
 
+          {/* Team Lead Name */}
+          <div>
+            <label className={labelCls}>Team Lead Name</label>
+            <input
+              className={inputCls('teamLeadName')}
+              value={form.teamLeadName}
+              onChange={set('teamLeadName')}
+              placeholder="e.g. Dr. John Doe / Sarah Jenkins"
+            />
+          </div>
+
           {/* Application Type & Head Category */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -381,7 +403,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
                 <option value="Individual/Group">Individual/Group</option>
               </select>
             </div>
-            {form.applicationType !== 'Student-Secondary' ? (
+            {!isNoHeadCategory ? (
               <div>
                 <label className={labelCls}>Head Category *</label>
                 <select className={inputCls('headCategory')} value={form.headCategory} onChange={set('headCategory')}>
@@ -397,7 +419,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({ mode, initialData, 
               <div>
                 <label className={labelCls}>Head Category</label>
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/40 px-3.5 py-2.5 text-xs text-slate-500 dark:text-slate-400 italic">
-                  Not required for Student-Secondary
+                  Not required for {form.applicationType}
                 </div>
               </div>
             )}
@@ -706,7 +728,7 @@ export const AdminProjectsView: React.FC = () => {
               onChange={e => {
                 const val = e.target.value as ApplicationType | 'All';
                 setFilterType(val);
-                if (val === 'Student-Secondary') {
+                if (val === 'Student-Secondary' || val === 'Individual/Group' || val === 'Individual or Group') {
                   setFilterCategory('All');
                 }
               }}
@@ -719,23 +741,28 @@ export const AdminProjectsView: React.FC = () => {
               <option value="Individual/Group">Individual/Group</option>
             </select>
 
-            <select
-              value={filterCategory}
-              onChange={e => setFilterCategory(e.target.value as HeadCategoryCode | 'All')}
-              disabled={filterType === 'Student-Secondary'}
-              className={`w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500 min-h-[38px] ${filterType === 'Student-Secondary' ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <option value="All">{filterType === 'Student-Secondary' ? 'No Head Category for Student-Secondary' : 'All Head Categories'}</option>
-              {filterType !== 'Student-Secondary' && (
-                <>
-                  <option value="HC-C">Consumer</option>
-                  <option value="HC-BS">Business Services</option>
-                  <option value="HC-I">Industrial</option>
-                  <option value="HC-PSG">Public Sector and Government</option>
-                  <option value="HC-ICS">Inclusions & Community</option>
-                </>
-              )}
-            </select>
+            {(() => {
+              const isNoCat = filterType === 'Student-Secondary' || filterType === 'Individual/Group' || filterType === 'Individual or Group';
+              return (
+                <select
+                  value={filterCategory}
+                  onChange={e => setFilterCategory(e.target.value as HeadCategoryCode | 'All')}
+                  disabled={isNoCat}
+                  className={`w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500 min-h-[38px] ${isNoCat ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <option value="All">{isNoCat ? `No Head Category for ${filterType}` : 'All Head Categories'}</option>
+                  {!isNoCat && (
+                    <>
+                      <option value="HC-C">Consumer</option>
+                      <option value="HC-BS">Business Services</option>
+                      <option value="HC-I">Industrial</option>
+                      <option value="HC-PSG">Public Sector and Government</option>
+                      <option value="HC-ICS">Inclusions & Community</option>
+                    </>
+                  )}
+                </select>
+              );
+            })()}
 
             <select
               value={filterStatus}

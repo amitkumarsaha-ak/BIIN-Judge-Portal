@@ -128,30 +128,34 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   // 1. Download Sample Excel Template (Customized for selected Application Type & Head Category)
   const handleDownloadTemplate = () => {
     const appTypeLabel = selectedAppType !== 'All Application Types' ? selectedAppType : 'Student-Secondary';
-    const headCatLabel = selectedHeadCategory !== 'All Head Category' ? selectedHeadCategory : 'Consumer';
+    const isNoCat = appTypeLabel === 'Student-Secondary' || appTypeLabel === 'Individual/Group' || appTypeLabel === 'Individual or Group';
+    const headCatLabel = isNoCat ? 'N/A' : (selectedHeadCategory !== 'All Head Category' ? selectedHeadCategory : 'Consumer');
 
     const sampleData = [
       {
         'Solution Name': 'Smart AgriSense - Portable Soil Scanner',
+        'Team Lead Name': 'Dr. Tariq Rahman',
         'Project Overview': 'An innovative IoT and AI-driven soil quality scanning device for real-time agricultural telemetry.',
         'Problem Statement': 'Farmers lack accessible, instantaneous, low-cost soil nutrient analysis tools before planting crops.',
         'Solution Summary': 'Portable handheld optical spectrometer paired with a cloud-assisted micro-ML diagnostic application.',
         'Application Type': appTypeLabel,
-        'Head Category': appTypeLabel === 'Student-Secondary' ? 'N/A' : headCatLabel
+        'Head Category': headCatLabel
       },
       {
         'Solution Name': 'OmniLedger Enterprise Audit Hub',
+        'Team Lead Name': 'Sarah Jenkins',
         'Project Overview': 'Next-generation compliance and internal audit automation platform for enterprise financial workflows.',
         'Problem Statement': 'Manual audit reviews cause severe delays, data discrepancies, and regulatory vulnerability.',
         'Solution Summary': 'Distributed ledger and smart validation pipeline providing continuous immutable audit trails.',
         'Application Type': selectedAppType !== 'All Application Types' ? selectedAppType : 'Organization',
-        'Head Category': selectedHeadCategory !== 'All Head Category' ? selectedHeadCategory : 'Business Services'
+        'Head Category': selectedAppType === 'Individual/Group' ? 'N/A' : (selectedHeadCategory !== 'All Head Category' ? selectedHeadCategory : 'Business Services')
       }
     ];
 
     const worksheet = XLSX.utils.json_to_sheet(sampleData);
     worksheet['!cols'] = [
       { wch: 38 }, // Solution Name
+      { wch: 25 }, // Team Lead Name
       { wch: 55 }, // Project Overview
       { wch: 45 }, // Problem Statement
       { wch: 45 }, // Solution Summary
@@ -291,6 +295,11 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         'HeadCat', 'Sector', 'ক্যাটাগরি'
       ]);
 
+      const keyTeamLead = findKey([
+        'Team Lead Name', 'Team Lead', 'TeamLeadName', 'TeamLead', 'Lead Name',
+        'LeadName', 'Team Leader', 'TeamLeader', 'दलনেতার নাম'
+      ]);
+
       // Legacy fallback keys (if present in file)
       const keyAppId = findKey(['Application ID', 'ApplicationId', 'App ID', 'AppId', 'Application No', 'App No', 'ID']);
       const keyProjCode = findKey(['Project Code', 'ProjectCode', 'Code', 'Serial', 'Serial No', 'SL', 'Sl No']);
@@ -367,6 +376,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         let rawCode = keyProjCode ? normalizeStr(row[keyProjCode]) : '';
         let rawTeam = keyTeam ? normalizeStr(row[keyTeam]) : '';
         let rawRep = keyRep ? normalizeStr(row[keyRep]) : '';
+        const rawTeamLead = keyTeamLead ? normalizeStr(row[keyTeamLead]) : '';
         const rawEmail = keyEmail ? normalizeStr(row[keyEmail]) : '';
         const rawContact = keyContact ? normalizeStr(row[keyContact]) : '';
 
@@ -403,9 +413,10 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         }
         const finalAppType = canonicalAppType(resolvedAppType);
 
-        // Determine Head Category
+        // Determine Head Category (Student-Secondary and Individual/Group require NO Head Category)
+        const isNoCategoryType = finalAppType === 'Student-Secondary' || finalAppType === 'Individual/Group' || finalAppType === 'Individual or Group';
         let finalCategory: HeadCategoryCode = 'N/A';
-        if (finalAppType !== 'Student-Secondary') {
+        if (!isNoCategoryType) {
           let resolvedCategory: HeadCategoryCode | null = null;
           if (rawHeadCat) {
             resolvedCategory = mapHeadCategory(rawHeadCat);
@@ -473,6 +484,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             headCategory: finalCategory,
             teamOrOrgName: rawTeam,
             representativeName: rawRep,
+            teamLeadName: rawTeamLead || undefined,
             email: rawEmail || 'contact@biin.org',
             contactNumber: rawContact || 'N/A',
             tags: [finalCategory, finalAppType].filter(Boolean),
@@ -673,23 +685,28 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
                   Head Category
                 </label>
-                <select
-                  value={selectedHeadCategory}
-                  onChange={e => setSelectedHeadCategory(e.target.value as HeadCategoryCode)}
-                  disabled={selectedAppType === 'Student-Secondary'}
-                  className={`w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white shadow-sm focus:border-emerald-500 focus:outline-none ${selectedAppType === 'Student-Secondary' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <option value="All Head Category">{selectedAppType === 'Student-Secondary' ? 'No Head Category for Student-Secondary' : 'All Head Category (Auto-detect from file)'}</option>
-                  {selectedAppType !== 'Student-Secondary' && (
-                    <>
-                      <option value="HC-C">Consumer</option>
-                      <option value="HC-BS">Business Services</option>
-                      <option value="HC-I">Industrial</option>
-                      <option value="HC-PSG">Public Sector and Government</option>
-                      <option value="HC-ICS">Inclusions & Community</option>
-                    </>
-                  )}
-                </select>
+                {(() => {
+                  const isNoCat = selectedAppType === 'Student-Secondary' || selectedAppType === 'Individual/Group';
+                  return (
+                    <select
+                      value={selectedHeadCategory}
+                      onChange={e => setSelectedHeadCategory(e.target.value as HeadCategoryCode)}
+                      disabled={isNoCat}
+                      className={`w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white shadow-sm focus:border-emerald-500 focus:outline-none ${isNoCat ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <option value="All Head Category">{isNoCat ? `No Head Category for ${selectedAppType}` : 'All Head Category (Auto-detect from file)'}</option>
+                      {!isNoCat && (
+                        <>
+                          <option value="HC-C">Consumer</option>
+                          <option value="HC-BS">Business Services</option>
+                          <option value="HC-I">Industrial</option>
+                          <option value="HC-PSG">Public Sector and Government</option>
+                          <option value="HC-ICS">Inclusions & Community</option>
+                        </>
+                      )}
+                    </select>
+                  );
+                })()}
               </div>
             </div>
 

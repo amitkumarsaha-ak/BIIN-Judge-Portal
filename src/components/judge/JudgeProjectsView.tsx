@@ -24,7 +24,9 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
   onSelectProjectForEvaluation
 }) => {
   const { currentUser } = useAuth();
-  const [assignedProjects, setAssignedProjects] = useState<Project[]>(() => getProjectsForJudge());
+  const [assignedProjects, setAssignedProjects] = useState<Project[]>(() =>
+    getProjectsForJudge(currentUser?.email)
+  );
   const [myEvaluations, setMyEvaluations] = useState(() =>
     currentUser ? getEvaluationsByJudge(currentUser.email) : []
   );
@@ -32,15 +34,18 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
 
   useEffect(() => {
     const refresh = () => {
-      setAssignedProjects(getProjectsForJudge());
+      setAssignedProjects(getProjectsForJudge(currentUser?.email));
       if (currentUser) {
         setMyEvaluations(getEvaluationsByJudge(currentUser.email));
       }
     };
+    refresh();
     window.addEventListener('biin_projects_updated', refresh);
+    window.addEventListener('biin_assignments_updated', refresh);
     window.addEventListener('storage', refresh);
     return () => {
       window.removeEventListener('biin_projects_updated', refresh);
+      window.removeEventListener('biin_assignments_updated', refresh);
       window.removeEventListener('storage', refresh);
     };
   }, [currentUser]);
@@ -49,10 +54,15 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
   const [filterType, setFilterType] = useState<string>('');
   const [filterCategory, setFilterCategory] = useState<string>('');
 
-  const isStudentSecondary = Boolean(filterType && canonicalAppType(filterType) === 'Student-Secondary');
+  const isNoCategory = Boolean(
+    filterType && (
+      canonicalAppType(filterType) === 'Student-Secondary' ||
+      canonicalAppType(filterType) === 'Individual or Group'
+    )
+  );
   const hasRequiredFilters = Boolean(
     filterType && (
-      isStudentSecondary ||
+      isNoCategory ||
       (filterCategory && filterCategory !== 'All')
     )
   );
@@ -66,7 +76,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
     return assignedProjects.filter(p => {
       if (p.status && p.status !== 'active') return false;
       if (!matchesAppType(p.applicationType, filterType)) return false;
-      if (!isStudentSecondary && !matchesCategory(p.headCategory, filterCategory, p.applicationType)) return false;
+      if (!isNoCategory && !matchesCategory(p.headCategory, filterCategory, p.applicationType)) return false;
       if (q) {
         const hay = [
           p.title,
@@ -75,6 +85,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
           p.projectCode,
           p.teamOrOrgName,
           p.representativeName,
+          p.teamLeadName,
           p.description,
           p.projectOverview,
           p.problemStatement,
@@ -84,7 +95,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
       }
       return true;
     });
-  }, [assignedProjects, searchQuery, filterType, filterCategory, hasRequiredFilters, isStudentSecondary]);
+  }, [assignedProjects, searchQuery, filterType, filterCategory, hasRequiredFilters, isNoCategory]);
 
   const getAppTypeIcon = (type: string) => {
     const canonical = canonicalAppType(type);
@@ -154,7 +165,8 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
           onChange={e => {
             const val = e.target.value;
             setFilterType(val);
-            if (canonicalAppType(val) === 'Student-Secondary') {
+            const canon = canonicalAppType(val);
+            if (canon === 'Student-Secondary' || canon === 'Individual or Group') {
               setFilterCategory('');
             }
           }}
@@ -171,11 +183,11 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
           id="judge-select-head-category"
           value={filterCategory}
           onChange={e => setFilterCategory(e.target.value)}
-          disabled={isStudentSecondary}
-          className={`w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 min-h-[38px] font-semibold ${isStudentSecondary ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={isNoCategory}
+          className={`w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 min-h-[38px] font-semibold ${isNoCategory ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          <option value="">{isStudentSecondary ? 'No Head Category for Student-Secondary' : 'Select Head Category'}</option>
-          {!isStudentSecondary && HEAD_CATEGORIES.map(hc => (
+          <option value="">{isNoCategory ? 'No Head Category for this type' : 'Select Head Category'}</option>
+          {!isNoCategory && HEAD_CATEGORIES.map(hc => (
             <option key={hc.code} value={hc.code}>
               {hc.name}
             </option>
@@ -184,20 +196,32 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
       </div>
 
       {/* Projects Grid */}
-      {!hasRequiredFilters ? (
+      {assignedProjects.length === 0 ? (
+        <div className="glass-panel rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 mb-4">
+            <FolderGit2 className="h-8 w-8" />
+          </div>
+          <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white">
+            No Projects Assigned
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 max-w-sm mx-auto leading-relaxed">
+            No projects or categories have been assigned to your judge account yet. Please contact the administrator.
+          </p>
+        </div>
+      ) : !hasRequiredFilters ? (
         <div className="glass-panel rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 mb-4">
             <Filter className="h-8 w-8" />
           </div>
           <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white">
-            {filterType && !isStudentSecondary
+            {filterType && !isNoCategory
               ? 'Please select Head Category to view projects.'
-              : 'Please select Application Type and Head Category to view projects.'}
+              : 'Please select Application Type to view projects.'}
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 max-w-sm mx-auto">
-            {filterType && !isStudentSecondary
+            {filterType && !isNoCategory
               ? 'Choose a Head Category from the dropdown above to display nominated projects.'
-              : 'Select an Application Type and the required Head Category above to begin viewing and evaluating projects.'}
+              : 'Select an Application Type from the dropdown above to begin viewing and evaluating projects.'}
           </p>
         </div>
       ) : filteredProjects.length === 0 ? (
@@ -244,7 +268,10 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
                   <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
                     <p><span className="text-slate-400">Participant:</span> <strong className="text-slate-800 dark:text-slate-200">{project.teamOrOrgName}</strong></p>
                     <p><span className="text-slate-400">Representative:</span> {project.representativeName}</p>
-                    {canonicalAppType(project.applicationType) !== 'Student-Secondary' && (
+                    {project.teamLeadName && (
+                      <p><span className="text-slate-400">Team Lead:</span> <strong className="text-slate-800 dark:text-slate-200">{project.teamLeadName}</strong></p>
+                    )}
+                    {canonicalAppType(project.applicationType) !== 'Student-Secondary' && canonicalAppType(project.applicationType) !== 'Individual or Group' && (
                       <p><span className="text-slate-400">Category:</span> {category?.name || project.headCategory}</p>
                     )}
                   </div>

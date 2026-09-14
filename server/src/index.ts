@@ -11,6 +11,7 @@ import judgesRoutes from './routes/judges.routes.js';
 import roomsRoutes from './routes/rooms.routes.js';
 import settingsRoutes from './routes/settings.routes.js';
 import auditRoutes from './routes/audit.routes.js';
+import assignmentsRoutes from './routes/assignments.routes.js';
 
 dotenv.config();
 
@@ -41,6 +42,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectsRoutes);
 app.use('/api/evaluations', evaluationsRoutes);
 app.use('/api/judges', judgesRoutes);
+app.use('/api/assignments', assignmentsRoutes);
 app.use('/api/rooms', roomsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/audit', auditRoutes);

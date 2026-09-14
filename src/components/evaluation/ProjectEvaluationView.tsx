@@ -18,7 +18,8 @@ import {
   getEvaluationForProject,
   saveEvaluation,
   getSystemSettings,
-  isCategoryEvaluationLocked
+  isCategoryEvaluationLocked,
+  isProjectAssignedToJudge
 } from '../../services/storage';
 import { useAuth } from '../../context/AuthContext';
 
@@ -89,6 +90,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
   const isCategoryLocked = isCategoryEvaluationLocked(project.applicationType, project.headCategory);
   const isProjectLocked = settings.lockedProjects.includes(project.id);
   const isLocked = isCategoryLocked || isProjectLocked;
+  const isAssigned = currentUser ? isProjectAssignedToJudge(currentUser.email, project) : false;
 
   const rawTotalScore = calculateRawTotal(scores, activeCriteria);
   const convertedScore = calculateConvertedScore(rawTotalScore, maxRawScore);
@@ -106,6 +108,11 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
 
     if (isLocked) {
       setValidationError('Evaluation is locked for this Application Type and Head Category.');
+      return;
+    }
+
+    if (!isAssigned) {
+      setValidationError('You are not assigned to evaluate this project. Only assigned judges can submit scores.');
       return;
     }
 
@@ -147,6 +154,12 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
 
     if (isLocked) {
       setValidationError('Evaluation is locked for this Application Type and Head Category.');
+      setIsModalOpen(false);
+      return;
+    }
+
+    if (!isAssigned) {
+      setValidationError('You are not assigned to evaluate this project.');
       setIsModalOpen(false);
       return;
     }
@@ -218,6 +231,19 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
             <p className="font-bold">Evaluation Locked</p>
             <p className="text-[11px] text-red-600 dark:text-red-400 mt-0.5">
               Evaluation is locked for this Application Type and Head Category.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Unassigned Notice Banner If Not Assigned to Judge */}
+      {!isAssigned && (
+        <div className="flex items-center space-x-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-500/30 p-4 text-xs text-amber-800 dark:text-amber-300 shadow-sm">
+          <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div>
+            <p className="font-bold">Project Not Assigned to You</p>
+            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+              This project is not within your assigned scope. Only judges explicitly assigned by the administrator may evaluate it.
             </p>
           </div>
         </div>
@@ -321,12 +347,14 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
           <button
             type="button"
             onClick={handleOpenSubmissionModal}
-            disabled={isLocked}
-            className={`w-full sm:w-auto inline-flex items-center justify-center space-x-2 sm:space-x-3 rounded-2xl px-5 sm:px-8 py-3.5 sm:py-4 text-xs sm:text-sm font-bold text-white shadow-2xl transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-h-[48px] ${isLocked ? 'bg-slate-500' : 'btn-primary'}`}
+            disabled={isLocked || !isAssigned}
+            className={`w-full sm:w-auto inline-flex items-center justify-center space-x-2 sm:space-x-3 rounded-2xl px-5 sm:px-8 py-3.5 sm:py-4 text-xs sm:text-sm font-bold text-white shadow-2xl transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-h-[48px] ${isLocked || !isAssigned ? 'bg-slate-500' : 'btn-primary'}`}
           >
-            {isLocked ? <Lock className="h-4 w-4 sm:h-5 sm:w-5" /> : <Send className="h-4 w-4 sm:h-5 sm:w-5" />}
+            {isLocked ? <Lock className="h-4 w-4 sm:h-5 sm:w-5" /> : !isAssigned ? <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5" /> : <Send className="h-4 w-4 sm:h-5 sm:w-5" />}
             {isLocked ? (
               <span>Submissions Locked</span>
+            ) : !isAssigned ? (
+              <span>Not Assigned to Project</span>
             ) : (
               <>
                 <span className="sm:hidden">

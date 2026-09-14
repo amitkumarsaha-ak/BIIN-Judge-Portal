@@ -210,7 +210,7 @@ export const canonicalHeadCategory = (cat?: string): HeadCategoryCode => {
   if (c === 'hc-i' || c.includes('industrial')) return 'HC-I';
   if (c === 'hc-psg' || c.includes('public') || c.includes('government')) return 'HC-PSG';
   if (c === 'hc-ics' || c.includes('communication') || c.includes('inclusion') || c.includes('community')) return 'HC-ICS';
-  return 'HC-C';
+  return cat ? (cat.trim() as HeadCategoryCode) : 'HC-C';
 };
 
 export const matchesAppType = (projectType?: string, filterType?: string): boolean => {
@@ -221,10 +221,13 @@ export const matchesAppType = (projectType?: string, filterType?: string): boole
 };
 
 export const matchesCategory = (projectCategory?: string, filterCategory?: string, projectAppType?: string): boolean => {
-  if (projectAppType && canonicalAppType(projectAppType) === 'Student-Secondary') {
-    return !filterCategory || filterCategory === 'All' || filterCategory === 'All Head Category';
+  if (projectAppType) {
+    const canon = canonicalAppType(projectAppType);
+    if (canon === 'Student-Secondary' || canon === 'Individual or Group') {
+      return true;
+    }
   }
-  if (!filterCategory || filterCategory === 'All' || filterCategory === 'All Head Category') return true;
+  if (!filterCategory || filterCategory === 'All' || filterCategory === 'All Head Category' || filterCategory === 'N/A') return true;
   if (!projectCategory || projectCategory === 'All' || projectCategory === 'All Head Category') return true;
   if (projectCategory === filterCategory) return true;
   return canonicalHeadCategory(projectCategory) === canonicalHeadCategory(filterCategory);
@@ -275,9 +278,10 @@ export const getProjectCombinedResult = (
   // Determine highest score in category (combination of ApplicationType and HeadCategory)
   const projectAppType = canonicalAppType(project.applicationType);
   const projectHeadCat = canonicalHeadCategory(project.headCategory);
+  const isNoHeadCategory = projectAppType === 'Student-Secondary' || projectAppType === 'Individual or Group';
 
   const sameCategoryProjects = allProjects.filter(
-    (p) => canonicalAppType(p.applicationType) === projectAppType && canonicalHeadCategory(p.headCategory) === projectHeadCat
+    (p) => canonicalAppType(p.applicationType) === projectAppType && (isNoHeadCategory || canonicalHeadCategory(p.headCategory) === projectHeadCat)
   );
 
   let categoryMaxScore = 0;
@@ -333,9 +337,9 @@ export const calculateCategorizedResults = (
   const groups: CategoryResultGroup[] = [];
 
   for (const app of RESULT_APPLICATION_TYPES) {
-    if (app.id === 'Student-Secondary') {
+    if (app.id === 'Student-Secondary' || app.id === 'Individual or Group') {
       const categoryProjects = allProjects.filter((p) => {
-        return canonicalAppType(p.applicationType) === 'Student-Secondary';
+        return canonicalAppType(p.applicationType) === app.id;
       });
 
       const results: CombinedProjectResult[] = categoryProjects.map((p) =>

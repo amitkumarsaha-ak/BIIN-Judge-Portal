@@ -1,4 +1,4 @@
-import type { User, Project, Evaluation, DashboardStats, Room, SystemSettings, AuditLog } from '../types';
+import type { User, Project, Evaluation, DashboardStats, Room, SystemSettings, AuditLog, JudgeAssignment } from '../types';
 import { PRESEEDED_JUDGES, SAMPLE_PROJECTS } from '../data/mockData';
 import { ADMIN_CONFIG } from '../config/authConfig';
 import { matchesAppType, matchesCategory, canonicalAppType, canonicalHeadCategory } from '../utils/evaluation';
@@ -8,6 +8,7 @@ export const USERS_KEY = 'biin_portal_users';
 export const CURRENT_USER_KEY = 'biin_portal_current_user';
 export const PROJECTS_KEY = 'biin_portal_projects';
 export const EVALUATIONS_KEY = 'biin_portal_evaluations';
+export const ASSIGNMENTS_KEY = 'biin_portal_judge_assignments';
 export const ROOMS_KEY = 'biin_portal_rooms';
 export const SETTINGS_KEY = 'biin_portal_settings';
 export const AUDIT_LOGS_KEY = 'biin_portal_audit_logs';
@@ -255,7 +256,7 @@ export const initializeStorage = () => {
   if (!localStorage.getItem(PROJECTS_KEY)) {
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(SAMPLE_PROJECTS));
   } else {
-    // Safely migrate stored projects with 'Student' to 'Student-Secondary'
+    // Safely migrate stored projects: 'Student' to 'Student-Secondary', and 'Individual/Group' to have headCategory: 'N/A'
     try {
       const rawProjects = localStorage.getItem(PROJECTS_KEY);
       if (rawProjects) {
@@ -270,6 +271,14 @@ export const initializeStorage = () => {
               headCategory: 'N/A'
             };
           }
+          const canon = canonicalAppType(p.applicationType);
+          if ((canon === 'Individual or Group' || p.applicationType === 'Individual/Group') && p.headCategory !== 'N/A') {
+            hasChanges = true;
+            return {
+              ...p,
+              headCategory: 'N/A'
+            };
+          }
           return p;
         });
         if (hasChanges) {
@@ -277,6 +286,11 @@ export const initializeStorage = () => {
         }
       }
     } catch {}
+  }
+
+  // Initialize Assignments
+  if (!localStorage.getItem(ASSIGNMENTS_KEY)) {
+    localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify([]));
   }
 
   // Initialize Rooms
@@ -400,13 +414,14 @@ export const syncWithBackend = async (): Promise<boolean> => {
     const health = await api.health();
     if (health.status !== 'online') return false;
 
-    const [projectsRes, evalsRes, judgesRes, roomsRes, settingsRes, auditRes] = await Promise.allSettled([
+    const [projectsRes, evalsRes, judgesRes, roomsRes, settingsRes, auditRes, assignmentsRes] = await Promise.allSettled([
       api.getProjects(),
       api.getEvaluations(),
       api.getJudges(),
       api.getRooms(),
       api.getSettings(),
-      api.getAuditLogs()
+      api.getAuditLogs(),
+      api.getAssignments()
     ]);
 
     if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value)) {
@@ -576,6 +591,12 @@ export const syncWithBackend = async (): Promise<boolean> => {
     if (auditRes.status === 'fulfilled' && Array.isArray(auditRes.value) && auditRes.value.length > 0) {
       localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(auditRes.value));
     }
+    if (assignmentsRes.status === 'fulfilled' && Array.isArray(assignmentsRes.value)) {
+      localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignmentsRes.value));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('biin_assignments_updated'));
+      }
+    }
 
     return true;
   } catch {
@@ -639,8 +660,8 @@ export const updateSystemSettings = (settings: SystemSettings, actor?: { email: 
 
 export const getCategoryLockKey = (appType?: string, headCategory?: string | null): string => {
   const normType = canonicalAppType(appType);
-  if (normType === 'Student-Secondary') {
-    return 'Student-Secondary___NONE';
+  if (normType === 'Student-Secondary' || normType === 'Individual or Group') {
+    return `${normType}___NONE`;
   }
   const normCategory = canonicalHeadCategory(headCategory || '');
   return `${normType}___${normCategory}`;
@@ -1106,6 +1127,13 @@ export const getProjects = (): Project[] => {
         headCategory: 'N/A'
       };
     }
+    const canon = canonicalAppType(p.applicationType);
+    if ((canon === 'Individual or Group' || p.applicationType === 'Individual/Group') && p.headCategory !== 'N/A') {
+      return {
+        ...p,
+        headCategory: 'N/A'
+      };
+    }
     return p;
   });
 };
@@ -1301,6 +1329,11 @@ export const saveEvaluation = (evaluation: Evaluation, actor?: { email: string; 
     throw new Error('Evaluations for this specific project are currently locked by the Administrator.');
   }
 
+  // Check judge assignment authorization
+  if (targetProject && !isProjectAssignedToJudge(evaluation.judgeEmail, targetProject)) {
+    throw new Error('This project is not assigned to your account. You can only evaluate projects assigned to you by the Administrator.');
+  }
+
   const evaluations = getEvaluations();
   const existingIndex = evaluations.findIndex(
     (e) => e.projectId === evaluation.projectId && e.judgeEmail.toLowerCase() === evaluation.judgeEmail.toLowerCase()
@@ -1349,16 +1382,139 @@ export const deleteEvaluation = (id: string, actor?: { email: string; name: stri
   }
 };
 
+// --- JUDGE ASSIGNMENT SERVICES ---
+
+export const getJudgeAssignments = (): JudgeAssignment[] => {
+  initializeStorage();
+  const raw = localStorage.getItem(ASSIGNMENTS_KEY);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+};
+
+export const getJudgeAssignmentsByJudge = (judgeEmail: string): JudgeAssignment[] => {
+  const all = getJudgeAssignments();
+  const clean = normalizeEmail(judgeEmail);
+  return all.filter(a => normalizeEmail(a.judgeEmail) === clean);
+};
+
+export const isProjectAssignedToJudge = (judgeEmail: string, project: Project): boolean => {
+  if (!judgeEmail || !project) return false;
+  const assignments = getJudgeAssignmentsByJudge(judgeEmail);
+  if (assignments.length === 0) return false;
+
+  return assignments.some(asgn => {
+    // 1. Application Type matching
+    if (!matchesAppType(project.applicationType, asgn.applicationType)) {
+      return false;
+    }
+
+    // 2. Head category matching (only for application types with head categories)
+    const canon = canonicalAppType(project.applicationType);
+    const isNoHeadCat = canon === 'Student-Secondary' || canon === 'Individual or Group';
+    if (!isNoHeadCat && asgn.headCategory && asgn.headCategory !== 'All Head Category' && asgn.headCategory !== 'N/A') {
+      if (!matchesCategory(project.headCategory, asgn.headCategory, project.applicationType)) {
+        return false;
+      }
+    }
+
+    // 3. Project IDs check if explicitly specified
+    if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
+      return asgn.projectIds.includes(project.id);
+    }
+
+    return true;
+  });
+};
+
+export const saveJudgeAssignment = (assignment: JudgeAssignment, actor?: { email: string; name: string }): void => {
+  const current = getJudgeAssignments();
+  const cleanEmail = normalizeEmail(assignment.judgeEmail);
+  const safe: JudgeAssignment = {
+    ...assignment,
+    id: assignment.id || `asgn-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    judgeEmail: cleanEmail,
+    createdAt: assignment.createdAt || new Date().toISOString()
+  };
+
+  const idx = current.findIndex(a => a.id === safe.id);
+  if (idx >= 0) {
+    current[idx] = safe;
+  } else {
+    current.push(safe);
+  }
+
+  localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(current));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('biin_assignments_updated'));
+    window.dispatchEvent(new Event('biin_projects_updated'));
+  }
+
+  api.saveAssignment(safe, actor).catch(() => {});
+
+  if (actor) {
+    logAuditAction(
+      actor.email,
+      actor.name,
+      'ASSIGN_PROJECTS',
+      'judge',
+      `Assigned ${safe.applicationType}${safe.headCategory ? ` (${safe.headCategory})` : ''} to Judge ${safe.judgeName} (${safe.judgeEmail}).`
+    );
+  }
+};
+
+export const deleteJudgeAssignment = (id: string, actor?: { email: string; name: string }): void => {
+  const current = getJudgeAssignments();
+  const target = current.find(a => a.id === id);
+  const remaining = current.filter(a => a.id !== id);
+  localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(remaining));
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('biin_assignments_updated'));
+    window.dispatchEvent(new Event('biin_projects_updated'));
+  }
+
+  api.deleteAssignment(id, actor).catch(() => {});
+
+  if (target && actor) {
+    logAuditAction(
+      actor.email,
+      actor.name,
+      'DELETE_ASSIGNMENT',
+      'judge',
+      `Removed project assignment for Judge ${target.judgeName} (${target.applicationType}).`
+    );
+  }
+};
+
 // --- SCOPED RBAC ACCESS FOR JUDGE PANEL ---
 
 /**
- * Returns active projects accessible to Judges, optionally filtered by applicationType and headCategory.
+ * Returns active projects accessible to Judges, restricted strictly to assigned projects.
  */
-export const getProjectsForJudge = (applicationType?: string, headCategory?: string): Project[] => {
+export const getProjectsForJudge = (judgeEmail?: string, applicationType?: string, headCategory?: string): Project[] => {
   const allProjects = getProjects();
+
+  // If judge email is provided, restrict strictly to assigned projects
+  if (judgeEmail) {
+    const assignments = getJudgeAssignmentsByJudge(judgeEmail);
+    if (assignments.length === 0) {
+      return []; // Unassigned judge sees no projects
+    }
+  }
+
   return allProjects.filter(p => {
     const isActive = !p.status || p.status === 'active';
     if (!isActive) return false;
+
+    // Assignment filter
+    if (judgeEmail && !isProjectAssignedToJudge(judgeEmail, p)) {
+      return false;
+    }
+
     if (applicationType && !matchesAppType(p.applicationType, applicationType)) return false;
     if (headCategory && !matchesCategory(p.headCategory, headCategory, p.applicationType)) return false;
     return true;
@@ -1366,13 +1522,13 @@ export const getProjectsForJudge = (applicationType?: string, headCategory?: str
 };
 
 /**
- * Returns stats for the Judge across all active projects and their own submissions.
+ * Returns stats for the Judge across their assigned projects and submissions.
  */
 export const getDashboardStatsForJudge = (judgeEmail: string): DashboardStats => {
-  const allActiveProjects = getProjects().filter(p => !p.status || p.status === 'active');
+  const assignedProjects = getProjectsForJudge(judgeEmail);
   const judgeEvaluations = getEvaluationsByJudge(judgeEmail);
 
-  const totalProjects = allActiveProjects.length;
+  const totalProjects = assignedProjects.length;
   const evaluatedProjectsCount = judgeEvaluations.length;
   const remainingProjectsCount = Math.max(0, totalProjects - evaluatedProjectsCount);
 

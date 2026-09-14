@@ -1,0 +1,474 @@
+import React, { useState, useMemo } from 'react';
+import {
+  X, Check, Trash2, Sliders, AlertCircle, CheckSquare, Square,
+  GraduationCap, Building2, Users, University, FolderGit2
+} from 'lucide-react';
+import type { User, JudgeAssignment, ApplicationType, HeadCategoryCode, Project } from '../../types';
+import {
+  getJudgeAssignmentsByJudge,
+  saveJudgeAssignment,
+  deleteJudgeAssignment,
+  getProjects
+} from '../../services/storage';
+import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { HEAD_CATEGORIES } from '../../data/mockData';
+import { canonicalAppType, matchesAppType, matchesCategory } from '../../utils/evaluation';
+
+interface JudgeAssignmentModalProps {
+  judge: User;
+  onClose: () => void;
+  onUpdated?: () => void;
+}
+
+const APPLICATION_TYPES: ApplicationType[] = [
+  'Student-Secondary',
+  'Individual/Group',
+  'Organization',
+  'Student -Tertiary (University Level)'
+];
+
+export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
+  judge,
+  onClose,
+  onUpdated
+}) => {
+  const { currentUser } = useAuth();
+  const actor = currentUser ? { email: currentUser.email, name: currentUser.fullName } : undefined;
+
+  const [assignments, setAssignments] = useState<JudgeAssignment[]>(() =>
+    getJudgeAssignmentsByJudge(judge.email)
+  );
+  const [allProjects] = useState<Project[]>(() => getProjects());
+
+  // Form State
+  const [selectedAppType, setSelectedAppType] = useState<ApplicationType>('Student-Secondary');
+  const [selectedHeadCategory, setSelectedHeadCategory] = useState<string>('All Head Category');
+  const [assignMode, setAssignMode] = useState<'scope' | 'specific'>('scope');
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const isNoHeadCategory = useMemo(() => {
+    const canon = canonicalAppType(selectedAppType);
+    return canon === 'Student-Secondary' || canon === 'Individual or Group';
+  }, [selectedAppType]);
+
+  // Matching projects based on selected scope
+  const matchingProjects = useMemo(() => {
+    return allProjects.filter(p => {
+      if (p.status && p.status !== 'active') return false;
+      if (!matchesAppType(p.applicationType, selectedAppType)) return false;
+      if (!isNoHeadCategory && selectedHeadCategory && selectedHeadCategory !== 'All Head Category') {
+        if (!matchesCategory(p.headCategory, selectedHeadCategory, p.applicationType)) return false;
+      }
+      return true;
+    });
+  }, [allProjects, selectedAppType, selectedHeadCategory, isNoHeadCategory]);
+
+  const handleAppTypeChange = (type: ApplicationType) => {
+    setSelectedAppType(type);
+    setSelectedProjectIds([]);
+    const canon = canonicalAppType(type);
+    if (canon === 'Student-Secondary' || canon === 'Individual or Group') {
+      setSelectedHeadCategory('N/A');
+    } else {
+      setSelectedHeadCategory('All Head Category');
+    }
+  };
+
+  const handleToggleProject = (projectId: string) => {
+    setSelectedProjectIds(prev =>
+      prev.includes(projectId) ? prev.filter(id => id !== projectId) : [...prev, projectId]
+    );
+  };
+
+  const handleSelectAllProjects = () => {
+    setSelectedProjectIds(matchingProjects.map(p => p.id));
+  };
+
+  const handleDeselectAllProjects = () => {
+    setSelectedProjectIds([]);
+  };
+
+  const handleSaveAssignment = async () => {
+    setFeedback(null);
+
+    if (assignMode === 'specific' && selectedProjectIds.length === 0) {
+      setFeedback({
+        type: 'error',
+        message: 'Please select at least one project for this assignment.'
+      });
+      return;
+    }
+
+    const finalCategory: HeadCategoryCode | null = isNoHeadCategory
+      ? 'N/A'
+      : (selectedHeadCategory === 'All Head Category' ? null : selectedHeadCategory);
+
+    const newAsgn: JudgeAssignment = {
+      id: `asgn-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      judgeId: judge.id,
+      judgeEmail: judge.email,
+      judgeName: judge.fullName,
+      applicationType: selectedAppType,
+      headCategory: finalCategory,
+      projectIds: assignMode === 'specific' ? selectedProjectIds : undefined,
+      createdAt: new Date().toISOString()
+    };
+
+    saveJudgeAssignment(newAsgn, actor);
+    try {
+      await api.saveAssignment(newAsgn, actor);
+    } catch {
+      // Offline fallback already stored locally
+    }
+
+    const updated = getJudgeAssignmentsByJudge(judge.email);
+    setAssignments(updated);
+    setSelectedProjectIds([]);
+    setFeedback({
+      type: 'success',
+      message: `Successfully assigned ${selectedAppType} projects to ${judge.fullName}.`
+    });
+    onUpdated?.();
+
+    setTimeout(() => {
+      setFeedback(null);
+    }, 4000);
+  };
+
+  const handleDeleteAssignment = async (id: string) => {
+    deleteJudgeAssignment(id, actor);
+    try {
+      await api.deleteAssignment(id, actor);
+    } catch {
+      // Offline fallback
+    }
+    const updated = getJudgeAssignmentsByJudge(judge.email);
+    setAssignments(updated);
+    onUpdated?.();
+    setFeedback({
+      type: 'success',
+      message: 'Assignment removed.'
+    });
+    setTimeout(() => {
+      setFeedback(null);
+    }, 3000);
+  };
+
+  const getAppTypeIcon = (type: string) => {
+    const canonical = canonicalAppType(type);
+    switch (canonical) {
+      case 'Student-Secondary':
+      case 'Student': return GraduationCap;
+      case 'Organization':
+      case 'Organisation': return Building2;
+      case 'Student-Tertiary':
+      case 'Student -Tertiary (University Level)': return University;
+      default: return Users;
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400">
+              <Sliders className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-heading text-lg font-bold text-slate-900 dark:text-white leading-snug">
+                Project Assignments for {judge.fullName}
+              </h2>
+              <p className="text-xs text-slate-500 font-mono">
+                {judge.email}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="rounded-xl p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Feedback Alert */}
+        {feedback && (
+          <div className={`mx-5 sm:mx-6 mt-4 p-3 rounded-2xl text-xs font-semibold flex items-center space-x-2 border ${
+            feedback.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+              : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+          }`}>
+            {feedback.type === 'success' ? <Check className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
+            <span>{feedback.message}</span>
+          </div>
+        )}
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+          
+          {/* Section 1: Active Assignments */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-heading text-sm font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+                <span>Active Assignments</span>
+                <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 px-2 py-0.5 text-[11px] font-bold text-violet-700 dark:text-violet-300">
+                  {assignments.length}
+                </span>
+              </h3>
+            </div>
+
+            {assignments.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-6 text-center bg-slate-50/50 dark:bg-slate-950/30">
+                <FolderGit2 className="mx-auto h-8 w-8 text-slate-400 mb-2" />
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">No Projects Assigned Yet</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  This judge will see an empty project list until you assign an Application Type or specific projects below.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {assignments.map(asgn => {
+                  const Icon = getAppTypeIcon(asgn.applicationType);
+                  const isSpecific = Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0;
+                  const asgnCanon = canonicalAppType(asgn.applicationType);
+                  const isNoCat = asgnCanon === 'Student-Secondary' || asgnCanon === 'Individual or Group';
+
+                  return (
+                    <div
+                      key={asgn.id}
+                      className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                    >
+                      <div className="flex items-center space-x-3 min-w-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center space-x-2 flex-wrap">
+                            <span className="font-bold text-xs text-slate-900 dark:text-white">
+                              {asgn.applicationType}
+                            </span>
+                            {!isNoCat && asgn.headCategory && asgn.headCategory !== 'N/A' && (
+                              <span className="inline-block rounded-md bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                {asgn.headCategory}
+                              </span>
+                            )}
+                            {isNoCat && (
+                              <span className="inline-block rounded-md bg-slate-200 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-400">
+                                No Head Category
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            {isSpecific
+                              ? `${asgn.projectIds?.length} specific project(s) assigned`
+                              : 'All projects in this scope'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleDeleteAssignment(asgn.id)}
+                        title="Remove assignment"
+                        className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors shrink-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <hr className="border-slate-200 dark:border-slate-800" />
+
+          {/* Section 2: Assign New Projects / Scopes */}
+          <div className="space-y-4">
+            <h3 className="font-heading text-sm font-bold text-slate-900 dark:text-white">
+              Assign New Scope or Projects
+            </h3>
+
+            {/* Application Type */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                1. Application Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedAppType}
+                onChange={e => handleAppTypeChange(e.target.value as ApplicationType)}
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-violet-500 font-semibold"
+              >
+                {APPLICATION_TYPES.map(type => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Head Category */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                2. Head Category
+              </label>
+              {isNoHeadCategory ? (
+                <div className="rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 text-xs text-slate-600 dark:text-slate-400">
+                  <span className="font-semibold">N/A — Not Applicable</span>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {selectedAppType} has no head category. Assignment automatically covers all projects in this category.
+                  </p>
+                </div>
+              ) : (
+                <select
+                  value={selectedHeadCategory}
+                  onChange={e => setSelectedHeadCategory(e.target.value)}
+                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-violet-500 font-semibold"
+                >
+                  <option value="All Head Category">All Head Categories in this Type</option>
+                  {HEAD_CATEGORIES.map(hc => (
+                    <option key={hc.code} value={hc.code}>
+                      {hc.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Assignment Mode: Scope vs Specific */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                3. Assignment Target
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAssignMode('scope')}
+                  className={`p-3 rounded-2xl border text-left transition-all ${
+                    assignMode === 'scope'
+                      ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-400 dark:border-violet-600 ring-2 ring-violet-400/20'
+                      : 'bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">All Matching Projects</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {matchingProjects.length} projects currently in scope
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAssignMode('specific')}
+                  className={`p-3 rounded-2xl border text-left transition-all ${
+                    assignMode === 'specific'
+                      ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-400 dark:border-violet-600 ring-2 ring-violet-400/20'
+                      : 'bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">Select Specific Projects</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Choose individual projects manually
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {/* If Specific: Checkbox list of projects */}
+            {assignMode === 'specific' && (
+              <div className="space-y-2 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-950/40">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Select Projects ({selectedProjectIds.length} of {matchingProjects.length} selected):
+                  </span>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllProjects}
+                      className="text-[11px] font-bold text-violet-600 dark:text-violet-400 hover:underline"
+                    >
+                      Select All
+                    </button>
+                    <span className="text-slate-400">·</span>
+                    <button
+                      type="button"
+                      onClick={handleDeselectAllProjects}
+                      className="text-[11px] font-bold text-slate-500 hover:underline"
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+                </div>
+
+                {matchingProjects.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic py-2">
+                    No active projects found for this Application Type / Category.
+                  </p>
+                ) : (
+                  <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
+                    {matchingProjects.map(proj => {
+                      const isChecked = selectedProjectIds.includes(proj.id);
+                      return (
+                        <div
+                          key={proj.id}
+                          onClick={() => handleToggleProject(proj.id)}
+                          className={`flex items-start space-x-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                            isChecked
+                              ? 'bg-violet-100/70 dark:bg-violet-950/60 border-violet-300 dark:border-violet-700'
+                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-100/60 dark:hover:bg-slate-850'
+                          }`}
+                        >
+                          <div className="mt-0.5 shrink-0 text-violet-600 dark:text-violet-400">
+                            {isChecked ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-slate-400" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight truncate">
+                              {proj.title}
+                            </p>
+                            <div className="flex items-center space-x-2 text-[10px] text-slate-500 font-mono mt-0.5">
+                              <span>{proj.applicationId}</span>
+                              {proj.teamLeadName && (
+                                <>
+                                  <span>·</span>
+                                  <span className="font-sans">Lead: {proj.teamLeadName}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="flex items-center justify-end space-x-3 p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors min-h-[38px]"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={handleSaveAssignment}
+            className="flex items-center space-x-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-violet-600/30 transition-colors min-h-[38px]"
+          >
+            <Check className="h-4 w-4" />
+            <span>Save Assignment</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+};

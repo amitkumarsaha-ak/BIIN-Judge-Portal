@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { evaluationDb, settingsDb, auditDb } from '../db/index.js';
+import { evaluationDb, settingsDb, auditDb, userDb, projectDb, assignmentDb } from '../db/index.js';
 
 const router = Router();
 
@@ -64,7 +64,49 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // 1. Verify scores are 1-10
+    // 1. Verify judge user approval
+    const judgeUser = await userDb.findByEmail(evaluation.judgeEmail);
+    if (judgeUser && judgeUser.status && judgeUser.status !== 'approved') {
+      res.status(403).json({ error: 'Judge account is not approved by Administrator.' });
+      return;
+    }
+
+    // 2. Verify project assignment
+    const targetProject = await projectDb.findById(evaluation.projectId);
+    if (targetProject) {
+      const judgeAssignments = await assignmentDb.getByJudge(evaluation.judgeEmail);
+      if (judgeAssignments.length === 0) {
+        res.status(403).json({ error: 'No projects have been assigned to your account. You can only evaluate projects assigned to you by the Administrator.' });
+        return;
+      }
+
+      const isAssigned = judgeAssignments.some(asgn => {
+        const typeMatch = asgn.applicationType === 'All Application Types' || 
+                          asgn.applicationType.toLowerCase() === targetProject.applicationType.toLowerCase() ||
+                          asgn.applicationType.replace(/[^a-z]/gi, '') === targetProject.applicationType.replace(/[^a-z]/gi, '');
+        if (!typeMatch) return false;
+
+        const isNoCategory = targetProject.applicationType.includes('Secondary') || 
+                             targetProject.applicationType.includes('Individual') || 
+                             targetProject.applicationType.includes('Group');
+        if (!isNoCategory && asgn.headCategory && asgn.headCategory !== 'All Head Category' && asgn.headCategory !== 'N/A') {
+          const catMatch = asgn.headCategory.toLowerCase() === (targetProject.headCategory || '').toLowerCase();
+          if (!catMatch) return false;
+        }
+
+        if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
+          return asgn.projectIds.includes(targetProject.id);
+        }
+        return true;
+      });
+
+      if (!isAssigned) {
+        res.status(403).json({ error: 'This project is not assigned to your account. You can only evaluate projects assigned to you by the Administrator.' });
+        return;
+      }
+    }
+
+    // 3. Verify scores are 1-10
     for (const [criterion, score] of Object.entries(evaluation.scores)) {
       const numScore = Number(score);
       if (isNaN(numScore) || numScore < 1 || numScore > 10) {
@@ -75,7 +117,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    // 2. Verify global and project lock state
+    // 4. Verify global and project lock state
     const settings = await settingsDb.get();
     if (settings.evaluationsLocked) {
       res.status(423).json({ error: 'All project evaluations are currently locked by the Administrator.' });

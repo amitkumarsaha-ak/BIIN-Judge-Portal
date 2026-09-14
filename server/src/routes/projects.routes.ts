@@ -61,6 +61,9 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const isNoHeadCategory = appTypeVal === 'Student-Secondary' || appTypeVal === 'Individual/Group' || appTypeVal === 'Individual or Group';
+    const finalHeadCat = isNoHeadCategory ? 'N/A' : headCatVal;
+
     const newProject = {
       id: p.id || `proj-${Date.now()}`,
       title: titleVal,
@@ -68,9 +71,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       applicationId: appIdVal,
       projectCode: p.projectCode || appIdVal,
       applicationType: appTypeVal,
-      headCategory: headCatVal,
+      headCategory: finalHeadCat,
       teamOrOrgName: p.teamOrOrgName || titleVal || 'Independent',
       representativeName: p.representativeName || 'Lead Contact',
+      teamLeadName: p.teamLeadName || '',
       members: Array.isArray(p.members) ? p.members : [],
       email: p.email || 'contact@biin.org',
       contactNumber: p.contactNumber || 'N/A',

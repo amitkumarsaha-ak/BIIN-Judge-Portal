@@ -30,6 +30,7 @@ export interface SeedProject {
   headCategory: string;
   teamOrOrgName: string;
   representativeName: string;
+  teamLeadName?: string;
   members?: string[];
   email: string;
   contactNumber: string;
@@ -40,6 +41,17 @@ export interface SeedProject {
   tags: string[];
   roomNumber?: string;
   status: 'active' | 'inactive';
+}
+
+export interface SeedAssignment {
+  id: string;
+  judgeId: string;
+  judgeEmail: string;
+  judgeName: string;
+  applicationType: string;
+  headCategory?: string | null;
+  projectIds?: string[];
+  createdAt: string;
 }
 
 export interface SeedEvaluation {

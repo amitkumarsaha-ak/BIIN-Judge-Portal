@@ -23,7 +23,9 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
   onSelectProjectForEvaluation
 }) => {
   const { currentUser } = useAuth();
-  const [assignedProjects, setAssignedProjects] = useState<Project[]>(() => getProjectsForJudge());
+  const [assignedProjects, setAssignedProjects] = useState<Project[]>(() =>
+    getProjectsForJudge(currentUser?.email)
+  );
   const [myEvaluations, setMyEvaluations] = useState(() =>
     currentUser ? getEvaluationsByJudge(currentUser.email) : []
   );
@@ -39,7 +41,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
 
   useEffect(() => {
     const refresh = () => {
-      setAssignedProjects(getProjectsForJudge());
+      setAssignedProjects(getProjectsForJudge(currentUser?.email));
       setSettings(getSystemSettings());
       if (currentUser) {
         setMyEvaluations(getEvaluationsByJudge(currentUser.email));
@@ -47,10 +49,13 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
       }
     };
 
+    refresh();
     window.addEventListener('biin_projects_updated', refresh);
+    window.addEventListener('biin_assignments_updated', refresh);
     window.addEventListener('storage', refresh);
     return () => {
       window.removeEventListener('biin_projects_updated', refresh);
+      window.removeEventListener('biin_assignments_updated', refresh);
       window.removeEventListener('storage', refresh);
     };
   }, [currentUser]);
