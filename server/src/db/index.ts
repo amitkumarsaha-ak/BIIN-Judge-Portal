@@ -174,10 +174,10 @@ export async function initDatabase(): Promise<DbStatus> {
       // Ensure Admin user exists in PostgreSQL
       for (const u of SEED_USERS) {
         await client.query(
-          `INSERT INTO users (id, full_name, email, password, role, status, room_number, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `INSERT INTO users (id, full_name, email, password, role, status, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name, password = EXCLUDED.password, role = 'admin', status = 'approved'`,
-          [u.id, u.fullName, u.email.toLowerCase(), u.password, u.role, u.status, u.roomNumber || null, u.createdAt]
+          [u.id, u.fullName, u.email.toLowerCase(), u.password, u.role, u.status, u.createdAt]
         );
       }
 
@@ -188,18 +188,20 @@ export async function initDatabase(): Promise<DbStatus> {
         for (const p of SEED_PROJECTS) {
           await client.query(`
             INSERT INTO projects (
-              id, title, application_id, project_code, application_type, head_category,
-              team_or_org_name, representative_name, team_lead_name, members, email, contact_number,
-              institution_or_org, description, problem_statement, solution_summary,
-              tags, room_number, status
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-            ON CONFLICT (application_id) DO NOTHING
+              id, solution_name, title, project_overview, description,
+              problem_statement, solution_summary, team_lead_name,
+              application_type, head_category, application_id, project_code,
+              team_or_org_name, representative_name, members, email,
+              contact_number, institution_or_org, tags, status
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+            ON CONFLICT (id) DO NOTHING
           `, [
-            p.id, p.title, p.applicationId, p.projectCode, p.applicationType, p.headCategory || null,
-            p.teamOrOrgName, p.representativeName, p.teamLeadName || null, JSON.stringify(p.members || []),
-            p.email, p.contactNumber, p.institutionOrOrg || null, p.description,
-            p.problemStatement || null, p.solutionSummary || null, JSON.stringify(p.tags || []),
-            p.roomNumber || null, p.status || 'active'
+            p.id, p.title, p.title, p.description, p.description,
+            p.problemStatement || null, p.solutionSummary || null, p.teamLeadName || null,
+            p.applicationType, p.headCategory || null, p.applicationId, p.projectCode,
+            p.teamOrOrgName, p.representativeName, JSON.stringify(p.members || []), p.email,
+            p.contactNumber, p.institutionOrOrg || null, JSON.stringify(p.tags || []),
+            p.status || 'active'
           ]);
         }
         console.log('[Database] Starter projects seeded successfully.');
@@ -260,8 +262,7 @@ export const userDb = {
   async getAll(): Promise<SeedUser[]> {
     if (isPostgresConnected) {
       const res = await pool.query(`
-        SELECT id, full_name as "fullName", email, password, role, status,
-               room_number as "roomNumber", created_at as "createdAt"
+        SELECT id, full_name as "fullName", email, password, role, status, created_at as "createdAt"
         FROM users ORDER BY created_at ASC
       `);
       return res.rows;
@@ -274,8 +275,7 @@ export const userDb = {
     if (isPostgresConnected) {
       try {
         const res = await pool.query(`
-          SELECT id, full_name as "fullName", email, password, role, status,
-                 room_number as "roomNumber", created_at as "createdAt"
+          SELECT id, full_name as "fullName", email, password, role, status, created_at as "createdAt"
           FROM users WHERE LOWER(TRIM(email)) = $1 LIMIT 1
         `, [cleanEmail]);
         if (res.rows[0]) return res.rows[0];
@@ -289,8 +289,7 @@ export const userDb = {
   async findById(id: string): Promise<SeedUser | undefined> {
     if (isPostgresConnected) {
       const res = await pool.query(`
-        SELECT id, full_name as "fullName", email, password, role, status,
-               room_number as "roomNumber", created_at as "createdAt"
+        SELECT id, full_name as "fullName", email, password, role, status, created_at as "createdAt"
         FROM users WHERE id = $1 LIMIT 1
       `, [id]);
       return res.rows[0];
@@ -302,16 +301,15 @@ export const userDb = {
     const cleanEmail = user.email.toLowerCase().trim();
     if (isPostgresConnected) {
       await pool.query(`
-        INSERT INTO users (id, full_name, email, password, role, status, room_number, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO users (id, full_name, email, password, role, status, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT (email) DO UPDATE SET
           full_name = EXCLUDED.full_name,
           password = COALESCE(EXCLUDED.password, users.password),
-          status = CASE WHEN users.status = 'approved' THEN 'approved' ELSE EXCLUDED.status END,
-          room_number = COALESCE(EXCLUDED.room_number, users.room_number)
+          status = CASE WHEN users.status = 'approved' THEN 'approved' ELSE EXCLUDED.status END
       `, [
         user.id, user.fullName, cleanEmail, user.password,
-        user.role, user.status, user.roomNumber || null, user.createdAt
+        user.role, user.status, user.createdAt
       ]);
       return user;
     }
@@ -338,9 +336,9 @@ export const userDb = {
       const updated = { ...existing, ...user };
       await pool.query(`
         UPDATE users
-        SET full_name = $2, role = $3, status = $4, room_number = $5, password = COALESCE($6, password)
-        WHERE id = $1 OR LOWER(TRIM(email)) = LOWER(TRIM($7))
-      `, [existing.id, updated.fullName, updated.role, updated.status, updated.roomNumber || null, user.password || null, existing.email]);
+        SET full_name = $2, role = $3, status = $4, password = COALESCE($5, password)
+        WHERE id = $1 OR LOWER(TRIM(email)) = LOWER(TRIM($6))
+      `, [existing.id, updated.fullName, updated.role, updated.status, user.password || null, existing.email]);
       return updated;
     }
     const idx = memoryStore.users.findIndex(u => u.id === user.id || (user.email && u.email.trim().toLowerCase() === user.email.trim().toLowerCase()));
@@ -464,14 +462,19 @@ export const projectDb = {
   async getAll(): Promise<SeedProject[]> {
     if (isPostgresConnected) {
       const res = await pool.query(`
-        SELECT id, title, application_id as "applicationId", project_code as "projectCode",
+        SELECT id,
+               COALESCE(solution_name, title) as "solutionName",
+               COALESCE(title, solution_name) as title,
+               application_id as "applicationId", project_code as "projectCode",
                application_type as "applicationType", head_category as "headCategory",
                team_or_org_name as "teamOrOrgName", representative_name as "representativeName",
                team_lead_name as "teamLeadName",
                members, email, contact_number as "contactNumber", institution_or_org as "institutionOrOrg",
-               description, problem_statement as "problemStatement", solution_summary as "solutionSummary",
-               tags, room_number as "roomNumber", status
-        FROM projects ORDER BY application_id ASC
+               COALESCE(project_overview, description) as "projectOverview",
+               COALESCE(description, project_overview) as description,
+               problem_statement as "problemStatement", solution_summary as "solutionSummary",
+               tags, status
+        FROM projects ORDER BY created_at DESC
       `);
       return res.rows.map(row => ({
         ...row,
@@ -485,13 +488,18 @@ export const projectDb = {
   async findById(id: string): Promise<SeedProject | undefined> {
     if (isPostgresConnected) {
       const res = await pool.query(`
-        SELECT id, title, application_id as "applicationId", project_code as "projectCode",
+        SELECT id,
+               COALESCE(solution_name, title) as "solutionName",
+               COALESCE(title, solution_name) as title,
+               application_id as "applicationId", project_code as "projectCode",
                application_type as "applicationType", head_category as "headCategory",
                team_or_org_name as "teamOrOrgName", representative_name as "representativeName",
                team_lead_name as "teamLeadName",
                members, email, contact_number as "contactNumber", institution_or_org as "institutionOrOrg",
-               description, problem_statement as "problemStatement", solution_summary as "solutionSummary",
-               tags, room_number as "roomNumber", status
+               COALESCE(project_overview, description) as "projectOverview",
+               COALESCE(description, project_overview) as description,
+               problem_statement as "problemStatement", solution_summary as "solutionSummary",
+               tags, status
         FROM projects WHERE id = $1 LIMIT 1
       `, [id]);
       if (!res.rows[0]) return undefined;
@@ -506,16 +514,19 @@ export const projectDb = {
   },
 
   async create(project: SeedProject): Promise<SeedProject> {
-    const title = (project.title || (project as any).solutionName || 'Untitled Project').trim();
-    const appId = (project.applicationId || `BIIN-2026-${Date.now().toString().slice(-4)}`).trim();
-    const projCode = (project.projectCode || appId).trim();
-    const appType = project.applicationType || 'Student-Secondary';
-    const headCat = project.headCategory || null;
-    const team = (project.teamOrOrgName || title || 'Independent').trim();
-    const rep = (project.representativeName || 'Lead Contact').trim();
-    const desc = (project.description || (project as any).projectOverview || (project as any).solutionSummary || 'No project description provided.').trim();
+    const solName = ((project as any).solutionName || project.title || 'Untitled Project').trim();
+    const title = solName;
+    const overview = ((project as any).projectOverview || project.description || '').trim();
+    const desc = overview || 'No project description provided.';
     const prob = project.problemStatement || null;
     const sol = project.solutionSummary || null;
+    const lead = project.teamLeadName || null;
+    const appId = (project.applicationId || `BIIN-${Date.now().toString().slice(-4)}`).trim();
+    const projCode = (project.projectCode || appId).trim();
+    const appType = project.applicationType || 'Student';
+    const headCat = project.headCategory || null;
+    const team = (project.teamOrOrgName || solName || 'Independent').trim();
+    const rep = (project.representativeName || lead || 'Lead Contact').trim();
     const email = project.email || 'contact@biin.org';
     const contact = project.contactNumber || 'N/A';
     const inst = project.institutionOrOrg || null;
@@ -528,6 +539,9 @@ export const projectDb = {
       ...project,
       id,
       title,
+      solutionName: solName,
+      projectOverview: overview,
+      teamLeadName: lead,
       applicationId: appId,
       projectCode: projCode,
       applicationType: appType,
@@ -535,43 +549,39 @@ export const projectDb = {
       teamOrOrgName: team,
       representativeName: rep,
       description: desc,
+      problemStatement: prob || undefined,
+      solutionSummary: sol || undefined,
       email,
       contactNumber: contact,
       status
-    };
+    } as any;
 
     if (isPostgresConnected) {
       await pool.query(`
         INSERT INTO projects (
-          id, title, application_id, project_code, application_type, head_category,
-          team_or_org_name, representative_name, team_lead_name, members, email, contact_number,
-          institution_or_org, description, problem_statement, solution_summary,
-          tags, room_number, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-        ON CONFLICT (application_id) DO UPDATE SET
+          id, solution_name, title, project_overview, description,
+          problem_statement, solution_summary, team_lead_name,
+          application_type, head_category, application_id, project_code,
+          team_or_org_name, representative_name, members, email, contact_number,
+          institution_or_org, tags, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+        ON CONFLICT (id) DO UPDATE SET
+          solution_name = EXCLUDED.solution_name,
           title = EXCLUDED.title,
-          project_code = EXCLUDED.project_code,
-          application_type = EXCLUDED.application_type,
-          head_category = EXCLUDED.head_category,
-          team_or_org_name = EXCLUDED.team_or_org_name,
-          representative_name = EXCLUDED.representative_name,
-          team_lead_name = EXCLUDED.team_lead_name,
-          members = EXCLUDED.members,
-          email = EXCLUDED.email,
-          contact_number = EXCLUDED.contact_number,
-          institution_or_org = EXCLUDED.institution_or_org,
+          project_overview = EXCLUDED.project_overview,
           description = EXCLUDED.description,
           problem_statement = EXCLUDED.problem_statement,
           solution_summary = EXCLUDED.solution_summary,
-          tags = EXCLUDED.tags,
-          room_number = EXCLUDED.room_number,
+          team_lead_name = EXCLUDED.team_lead_name,
+          application_type = EXCLUDED.application_type,
+          head_category = EXCLUDED.head_category,
           status = EXCLUDED.status
       `, [
-        id, title, appId, projCode, appType, headCat,
-        team, rep, project.teamLeadName || null, JSON.stringify(members),
-        email, contact, inst, desc,
-        prob, sol, JSON.stringify(tags),
-        project.roomNumber || null, status
+        id, solName, title, overview, desc,
+        prob, sol, lead,
+        appType, headCat, appId, projCode,
+        team, rep, JSON.stringify(members), email, contact,
+        inst, JSON.stringify(tags), status
       ]);
       return sanitized;
     }
@@ -677,7 +687,7 @@ export const evaluationDb = {
       const res = await pool.query(`
         SELECT id, project_id as "projectId", judge_email as "judgeEmail", judge_name as "judgeName",
                scores, feedback, raw_total_score as "rawTotalScore", max_raw_score as "maxRawScore",
-               converted_score as "convertedScore", room_number as "roomNumber",
+               converted_score as "convertedScore",
                total_score as "totalScore", percentage, submitted_at as "submittedAt"
         FROM evaluations ORDER BY submitted_at DESC
       `);
@@ -728,16 +738,15 @@ export const evaluationDb = {
       await pool.query(`
         INSERT INTO evaluations (
           id, project_id, judge_email, judge_name, scores, feedback,
-          raw_total_score, max_raw_score, converted_score, room_number,
+          raw_total_score, max_raw_score, converted_score,
           total_score, percentage, submitted_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
         ON CONFLICT (project_id, judge_email) DO UPDATE SET
           scores = EXCLUDED.scores,
           feedback = EXCLUDED.feedback,
           raw_total_score = EXCLUDED.raw_total_score,
           max_raw_score = EXCLUDED.max_raw_score,
           converted_score = EXCLUDED.converted_score,
-          room_number = EXCLUDED.room_number,
           total_score = EXCLUDED.total_score,
           percentage = EXCLUDED.percentage,
           updated_at = NOW()
@@ -745,7 +754,7 @@ export const evaluationDb = {
         normalizedEval.id, normalizedEval.projectId, normalizedEval.judgeEmail.toLowerCase(), normalizedEval.judgeName,
         JSON.stringify(normalizedEval.scores), normalizedEval.feedback || null,
         normalizedEval.rawTotalScore, normalizedEval.maxRawScore, normalizedEval.convertedScore,
-        normalizedEval.roomNumber || null, normalizedEval.totalScore, normalizedEval.percentage,
+        normalizedEval.totalScore, normalizedEval.percentage,
         normalizedEval.submittedAt
       ]);
       return normalizedEval;

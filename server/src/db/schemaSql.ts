@@ -1,7 +1,7 @@
 export const SCHEMA_SQL = `
--- BIIN Judge Portal PostgreSQL Schema
+-- BIIN Judge Portal PostgreSQL Schema (Simplified)
 
--- 1. Users Table (Judges and Admin)
+-- 1. Users Table (No room_number)
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(64) PRIMARY KEY,
     full_name VARCHAR(255) NOT NULL,
@@ -9,39 +9,39 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     role VARCHAR(32) NOT NULL DEFAULT 'judge',
     status VARCHAR(32) NOT NULL DEFAULT 'pending',
-    room_number VARCHAR(64),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Projects Table
+-- 2. Projects Table (Focused on Solution Name, Overview, Problem Statement, Solution Summary, Team Lead)
 CREATE TABLE IF NOT EXISTS projects (
     id VARCHAR(64) PRIMARY KEY,
-    title VARCHAR(500) NOT NULL,
-    application_id VARCHAR(100) UNIQUE NOT NULL,
-    project_code VARCHAR(100),
-    application_type VARCHAR(100) NOT NULL,
-    head_category VARCHAR(50),
-    team_or_org_name VARCHAR(255) NOT NULL,
-    representative_name VARCHAR(255) NOT NULL,
-    team_lead_name VARCHAR(255),
-    members JSONB DEFAULT '[]'::jsonb,
-    email VARCHAR(255) NOT NULL,
-    contact_number VARCHAR(100) NOT NULL,
-    institution_or_org VARCHAR(255),
-    description TEXT NOT NULL,
+    solution_name VARCHAR(500),
+    project_overview TEXT,
     problem_statement TEXT,
     solution_summary TEXT,
+    team_lead_name VARCHAR(255),
+    title VARCHAR(500),
+    description TEXT,
+    application_type VARCHAR(100) DEFAULT 'Student',
+    head_category VARCHAR(50),
+    application_id VARCHAR(100),
+    project_code VARCHAR(100),
+    team_or_org_name VARCHAR(255),
+    representative_name VARCHAR(255),
+    members JSONB DEFAULT '[]'::jsonb,
+    email VARCHAR(255),
+    contact_number VARCHAR(100),
+    institution_or_org VARCHAR(255),
     tags JSONB DEFAULT '[]'::jsonb,
-    room_number VARCHAR(64),
     status VARCHAR(32) NOT NULL DEFAULT 'active',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Evaluations Table
+-- 3. Evaluations Table (No room_number, unconstrained project_id)
 CREATE TABLE IF NOT EXISTS evaluations (
     id VARCHAR(64) PRIMARY KEY,
-    project_id VARCHAR(64) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_id VARCHAR(64) NOT NULL,
     judge_email VARCHAR(255) NOT NULL,
     judge_name VARCHAR(255) NOT NULL,
     scores JSONB NOT NULL,
@@ -49,7 +49,6 @@ CREATE TABLE IF NOT EXISTS evaluations (
     raw_total_score NUMERIC(6, 2) NOT NULL,
     max_raw_score NUMERIC(6, 2) NOT NULL,
     converted_score NUMERIC(6, 2) NOT NULL,
-    room_number VARCHAR(64),
     total_score NUMERIC(6, 2) NOT NULL,
     percentage NUMERIC(6, 2) NOT NULL,
     submitted_at TIMESTAMPTZ DEFAULT NOW(),
@@ -57,7 +56,7 @@ CREATE TABLE IF NOT EXISTS evaluations (
     CONSTRAINT unique_project_judge UNIQUE (project_id, judge_email)
 );
 
--- 5. System Settings Table
+-- 4. System Settings Table
 CREATE TABLE IF NOT EXISTS system_settings (
     id VARCHAR(32) PRIMARY KEY DEFAULT 'global',
     evaluations_locked BOOLEAN DEFAULT FALSE,
@@ -67,7 +66,7 @@ CREATE TABLE IF NOT EXISTS system_settings (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. Audit Logs Table
+-- 5. Audit Logs Table
 CREATE TABLE IF NOT EXISTS audit_logs (
     id VARCHAR(64) PRIMARY KEY,
     actor_email VARCHAR(255) NOT NULL,
@@ -78,7 +77,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     timestamp TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. Judge Assignments Table
+-- 6. Judge Assignments Table
 CREATE TABLE IF NOT EXISTS judge_assignments (
     id VARCHAR(64) PRIMARY KEY,
     judge_id VARCHAR(64) NOT NULL,
@@ -93,8 +92,6 @@ CREATE TABLE IF NOT EXISTS judge_assignments (
 -- Indexes for optimal querying
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
-CREATE INDEX IF NOT EXISTS idx_projects_app_type ON projects(application_type);
-CREATE INDEX IF NOT EXISTS idx_projects_head_cat ON projects(head_category);
 CREATE INDEX IF NOT EXISTS idx_evaluations_project ON evaluations(project_id);
 CREATE INDEX IF NOT EXISTS idx_evaluations_judge ON evaluations(judge_email);
 CREATE INDEX IF NOT EXISTS idx_assignments_judge_email ON judge_assignments(judge_email);
