@@ -41,7 +41,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project, evaluation, o
       <div>
         {/* Category & Application Type Badges */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          {project.headCategory && project.headCategory !== 'N/A' && canon !== 'Student-Secondary' && (
+          {project.headCategory && project.headCategory !== 'N/A' && canon !== 'Student-Secondary' && canon !== 'Individual or Group' && (
             <span className="inline-flex items-center space-x-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20">
               <span>{project.headCategory}</span>
             </span>

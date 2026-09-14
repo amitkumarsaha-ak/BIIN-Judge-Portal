@@ -41,7 +41,11 @@ export const AdminResultsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<ApplicationType | 'All'>('All');
   const [filterCategory, setFilterCategory] = useState<HeadCategoryCode | 'All'>('All');
-  const isStudentSecondary = filterType === 'Student-Secondary';
+  const isNoHeadCategory =
+    filterType === 'Student-Secondary' ||
+    canonicalAppType(filterType) === 'Student-Secondary' ||
+    filterType === 'Individual or Group' ||
+    canonicalAppType(filterType) === 'Individual or Group';
   const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
   const [selectedProjectId, setSelectedProjectId] = useState<string>(allProjects[0]?.id || '');
   const [activePrintResult, setActivePrintResult] = useState<CombinedProjectResult | null>(null);
@@ -68,7 +72,7 @@ export const AdminResultsView: React.FC = () => {
       const pHeadCat = canonicalHeadCategory(res.project.headCategory);
 
       if (filterType !== 'All' && pAppType !== filterType) return false;
-      if (pAppType !== 'Student-Secondary' && filterCategory !== 'All' && pHeadCat !== filterCategory) return false;
+      if (pAppType !== 'Student-Secondary' && pAppType !== 'Individual or Group' && filterCategory !== 'All' && pHeadCat !== filterCategory) return false;
       if (q) {
         const hay = [
           res.project.title,
@@ -168,7 +172,7 @@ export const AdminResultsView: React.FC = () => {
 
     return categoryGroups.filter(grp => {
       if (filterType !== 'All' && grp.appType !== filterType) return false;
-      if (grp.appType !== 'Student-Secondary' && filterCategory !== 'All' && grp.headCategoryCode !== filterCategory) return false;
+      if (grp.appType !== 'Student-Secondary' && grp.appType !== 'Individual or Group' && filterCategory !== 'All' && grp.headCategoryCode !== filterCategory) return false;
       return true;
     }).map(grp => {
       if (!q) return grp;
@@ -388,7 +392,8 @@ export const AdminResultsView: React.FC = () => {
           onChange={e => {
             const val = e.target.value as ApplicationType | 'All';
             setFilterType(val);
-            if (val === 'Student-Secondary' || canonicalAppType(val) === 'Student-Secondary') {
+            const canon = canonicalAppType(val);
+            if (val === 'Student-Secondary' || canon === 'Student-Secondary' || val === 'Individual or Group' || canon === 'Individual or Group') {
               setFilterCategory('All');
             }
           }}
@@ -404,18 +409,18 @@ export const AdminResultsView: React.FC = () => {
 
         {/* Head Category Filter (Rule 2 & 14) */}
         <select
-          value={isStudentSecondary ? 'All' : filterCategory}
+          value={isNoHeadCategory ? 'All' : filterCategory}
           onChange={e => setFilterCategory(e.target.value as HeadCategoryCode | 'All')}
-          disabled={isStudentSecondary}
+          disabled={isNoHeadCategory}
           className={`w-full md:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-500 font-semibold ${
-            isStudentSecondary ? 'opacity-50 cursor-not-allowed' : ''
+            isNoHeadCategory ? 'opacity-50 cursor-not-allowed' : ''
           }`}
-          title={isStudentSecondary ? 'Head Category cannot be selected for Student-Secondary' : undefined}
+          title={isNoHeadCategory ? 'Head Category cannot be selected for this Application Type' : undefined}
         >
           <option value="All">
-            {isStudentSecondary ? 'No Head Category for Student-Secondary' : 'All Head Categories (5 Categories)'}
+            {isNoHeadCategory ? `No Head Category for ${filterType}` : 'All Head Categories (5 Categories)'}
           </option>
-          {!isStudentSecondary &&
+          {!isNoHeadCategory &&
             RESULT_HEAD_CATEGORIES.map(hc => (
               <option key={hc.code} value={hc.code}>
                 {hc.code} — {hc.name}
@@ -443,14 +448,14 @@ export const AdminResultsView: React.FC = () => {
       </div>
 
       {/* Active Filter Indicators */}
-      {(filterType !== 'All' || filterCategory !== 'All' || searchQuery) && (
+      {(filterType !== 'All' || (!isNoHeadCategory && filterCategory !== 'All') || searchQuery) && (
         <div className="no-print flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-400 bg-amber-50/50 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-200 dark:border-amber-800">
           <Filter className="h-4 w-4 text-amber-600" />
           <span>Active Scope:</span>
           <span className="font-bold text-slate-900 dark:text-white">
             {filterType !== 'All' ? (RESULT_APPLICATION_TYPES.find(a => a.id === filterType)?.title || filterType) : 'All Application Types'}
           </span>
-          {!isStudentSecondary && (
+          {!isNoHeadCategory && (
             <>
               <span>×</span>
               <span className="font-bold text-slate-900 dark:text-white">
@@ -509,7 +514,9 @@ export const AdminResultsView: React.FC = () => {
                             {typeGroup.appType.title}
                           </h2>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            {typeGroup.categories.length} Head Categories · {typeGroup.totalInApp} Applicant{typeGroup.totalInApp !== 1 ? 's' : ''}
+                            {typeGroup.appType.id === 'Student-Secondary' || typeGroup.appType.id === 'Individual or Group'
+                              ? `General Category (No Head Category) · ${typeGroup.totalInApp} Applicant${typeGroup.totalInApp !== 1 ? 's' : ''}`
+                              : `${typeGroup.categories.length} Head Categories · ${typeGroup.totalInApp} Applicant${typeGroup.totalInApp !== 1 ? 's' : ''}`}
                           </p>
                         </div>
                       </div>
@@ -553,9 +560,11 @@ export const AdminResultsView: React.FC = () => {
                                       <span className="font-heading font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wider">
                                         {cat.headCategoryName}
                                       </span>
-                                      <span className="ml-2 font-mono text-[10px] font-bold text-slate-400">
-                                        ({cat.headCategoryCode})
-                                      </span>
+                                      {cat.headCategoryCode !== 'N/A' && (
+                                        <span className="ml-2 font-mono text-[10px] font-bold text-slate-400">
+                                          ({cat.headCategoryCode})
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
 
@@ -801,8 +810,14 @@ export const AdminResultsView: React.FC = () => {
                             </p>
                             <div className="flex items-center space-x-1.5 mt-1 text-[10px] font-semibold text-slate-500">
                               <span className="rounded bg-slate-200 dark:bg-slate-800 px-1.5 py-0.2">{res.project.applicationType}</span>
-                              <span>•</span>
-                              <span className="rounded bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.2">{res.project.headCategory}</span>
+                              {canonicalAppType(res.project.applicationType) !== 'Student-Secondary' &&
+                               canonicalAppType(res.project.applicationType) !== 'Individual or Group' &&
+                               res.project.headCategory && res.project.headCategory !== 'N/A' && (
+                                <>
+                                  <span>•</span>
+                                  <span className="rounded bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.2">{res.project.headCategory}</span>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -853,8 +868,14 @@ export const AdminResultsView: React.FC = () => {
                   </p>
                   <div className="flex items-center space-x-2 text-xs font-semibold text-slate-600 dark:text-slate-400 pt-0.5">
                     <span>Type: <strong>{selectedResult.applicationType}</strong></span>
-                    <span>•</span>
-                    <span>Category: <strong>{selectedResult.project.headCategory}</strong></span>
+                    {canonicalAppType(selectedResult.project.applicationType) !== 'Student-Secondary' &&
+                     canonicalAppType(selectedResult.project.applicationType) !== 'Individual or Group' &&
+                     selectedResult.project.headCategory && selectedResult.project.headCategory !== 'N/A' && (
+                      <>
+                        <span>•</span>
+                        <span>Category: <strong>{selectedResult.project.headCategory}</strong></span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

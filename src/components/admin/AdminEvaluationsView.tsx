@@ -16,7 +16,8 @@ import {
   formatScoreNumber,
   calculateConvertedScore,
   matchesAppType,
-  matchesCategory
+  matchesCategory,
+  canonicalAppType
 } from '../../utils/evaluation';
 import { HEAD_CATEGORIES } from '../../data/mockData';
 
@@ -164,6 +165,12 @@ export const AdminEvaluationsView: React.FC = () => {
   const [filterType, setFilterType] = useState<ApplicationType | 'All'>('All');
   const [filterCategory, setFilterCategory] = useState<HeadCategoryCode | 'All'>('All');
   const [filterJudge, setFilterJudge] = useState('All');
+
+  const isNoHeadCategory =
+    filterType === 'Student-Secondary' ||
+    canonicalAppType(filterType) === 'Student-Secondary' ||
+    filterType === 'Individual or Group' ||
+    canonicalAppType(filterType) === 'Individual or Group';
 
   const [editTarget, setEditTarget] = useState<Evaluation | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Evaluation | null>(null);
@@ -357,7 +364,8 @@ export const AdminEvaluationsView: React.FC = () => {
           onChange={e => {
             const val = e.target.value as ApplicationType | 'All';
             setFilterType(val);
-            if (val === 'Student-Secondary') {
+            const canon = canonicalAppType(val);
+            if (val === 'Student-Secondary' || canon === 'Student-Secondary' || val === 'Individual or Group' || canon === 'Individual or Group') {
               setFilterCategory('All');
             }
           }}
@@ -372,13 +380,13 @@ export const AdminEvaluationsView: React.FC = () => {
 
         {/* Filter by Head Category */}
         <select
-          value={filterCategory}
+          value={isNoHeadCategory ? 'All' : filterCategory}
           onChange={e => setFilterCategory(e.target.value as HeadCategoryCode | 'All')}
-          disabled={filterType === 'Student-Secondary'}
-          className={`w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold min-h-[38px] ${filterType === 'Student-Secondary' ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={isNoHeadCategory}
+          className={`w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold min-h-[38px] ${isNoHeadCategory ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          <option value="All">{filterType === 'Student-Secondary' ? 'No Head Category for Student-Secondary' : 'All Head Categories'}</option>
-          {filterType !== 'Student-Secondary' && HEAD_CATEGORIES.map(hc => (
+          <option value="All">{isNoHeadCategory ? `No Head Category for ${filterType}` : 'All Head Categories'}</option>
+          {!isNoHeadCategory && HEAD_CATEGORIES.map(hc => (
             <option key={hc.code} value={hc.code}>
               {hc.code} — {hc.name}
             </option>
@@ -399,17 +407,21 @@ export const AdminEvaluationsView: React.FC = () => {
       </div>
 
       {/* Active Filter Indicators */}
-      {(filterType !== 'All' || filterCategory !== 'All') && (
+      {(filterType !== 'All' || (!isNoHeadCategory && filterCategory !== 'All')) && (
         <div className="no-print flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-400 bg-emerald-50/50 dark:bg-emerald-950/20 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800">
           <Filter className="h-4 w-4 text-emerald-600" />
           <span>Active View:</span>
           <span className="font-bold text-slate-900 dark:text-white">
             {filterType !== 'All' ? filterType : 'All Types'}
           </span>
-          <span>→</span>
-          <span className="font-bold text-slate-900 dark:text-white">
-            {filterCategory !== 'All' ? (HEAD_CATEGORIES.find(c => c.code === filterCategory)?.name || filterCategory) : 'All Categories'}
-          </span>
+          {!isNoHeadCategory && (
+            <>
+              <span>→</span>
+              <span className="font-bold text-slate-900 dark:text-white">
+                {filterCategory !== 'All' ? (HEAD_CATEGORIES.find(c => c.code === filterCategory)?.name || filterCategory) : 'All Categories'}
+              </span>
+            </>
+          )}
           <span className="text-slate-400">({filteredProjects.length} project{filteredProjects.length !== 1 ? 's' : ''} matching)</span>
         </div>
       )}
@@ -441,9 +453,13 @@ export const AdminEvaluationsView: React.FC = () => {
                       <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
                         {project.applicationType}
                       </span>
-                      <span className="rounded-md bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 px-2.5 py-0.5 text-xs font-semibold">
-                        {project.headCategory}
-                      </span>
+                      {canonicalAppType(project.applicationType) !== 'Student-Secondary' &&
+                       canonicalAppType(project.applicationType) !== 'Individual or Group' &&
+                       project.headCategory && project.headCategory !== 'N/A' && (
+                        <span className="rounded-md bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 px-2.5 py-0.5 text-xs font-semibold">
+                          {project.headCategory}
+                        </span>
+                      )}
                     </div>
 
                     <h3 className="font-heading text-lg font-bold text-slate-900 dark:text-white leading-snug">

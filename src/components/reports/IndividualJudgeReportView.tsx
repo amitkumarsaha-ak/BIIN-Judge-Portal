@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserCheck, Calendar, FileText, CheckCircle2 } from 'lucide-react';
 import { getProjects, getEvaluations } from '../../services/storage';
-import { getCriteriaForApplicationType, getMaxRawScoreForApplicationType, formatScoreNumber } from '../../utils/evaluation';
+import { getCriteriaForApplicationType, getMaxRawScoreForApplicationType, formatScoreNumber, canonicalAppType } from '../../utils/evaluation';
 
 interface IndividualJudgeReportViewProps {
   initialProjectId?: string;
@@ -82,11 +82,14 @@ export const IndividualJudgeReportView: React.FC<IndividualJudgeReportViewProps>
             }}
             className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 p-3 text-xs font-semibold text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 focus:border-indigo-500 focus:outline-none"
           >
-            {allProjects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.title} ({p.applicationType} • {p.headCategory})
-              </option>
-            ))}
+            {allProjects.map((p) => {
+              const isNoCat = canonicalAppType(p.applicationType) === 'Student-Secondary' || canonicalAppType(p.applicationType) === 'Individual or Group';
+              return (
+                <option key={p.id} value={p.id}>
+                  {p.title} ({p.applicationType}{!isNoCat && p.headCategory && p.headCategory !== 'N/A' ? ` • ${p.headCategory}` : ''})
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -130,7 +133,9 @@ export const IndividualJudgeReportView: React.FC<IndividualJudgeReportViewProps>
             <div>
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Category</span>
               <span className="font-heading font-extrabold text-indigo-600 dark:text-indigo-400 text-lg">
-                {currentProject.headCategory || 'General'}
+                {canonicalAppType(currentProject.applicationType) === 'Student-Secondary' || canonicalAppType(currentProject.applicationType) === 'Individual or Group'
+                  ? 'General'
+                  : currentProject.headCategory || 'General'}
               </span>
             </div>
 

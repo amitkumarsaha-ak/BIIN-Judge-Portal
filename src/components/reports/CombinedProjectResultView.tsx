@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Award, Printer, Users, CheckCircle2, Trophy, Medal, Sparkles } from 'lucide-react';
 import type { CombinedProjectResult } from '../../types';
 import { getProjects, getEvaluations } from '../../services/storage';
-import { getProjectCombinedResult, formatScoreNumber } from '../../utils/evaluation';
+import { getProjectCombinedResult, formatScoreNumber, canonicalAppType } from '../../utils/evaluation';
 
 interface CombinedProjectResultViewProps {
   initialProjectId?: string;
@@ -108,11 +108,14 @@ export const CombinedProjectResultView: React.FC<CombinedProjectResultViewProps>
           onChange={(e) => setSelectedProjectId(e.target.value)}
           className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 p-3 text-xs font-semibold text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 focus:border-indigo-500 focus:outline-none"
         >
-          {allProjects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.title} ({p.applicationType} • {p.headCategory})
-            </option>
-          ))}
+          {allProjects.map((p) => {
+            const isNoCat = canonicalAppType(p.applicationType) === 'Student-Secondary' || canonicalAppType(p.applicationType) === 'Individual or Group';
+            return (
+              <option key={p.id} value={p.id}>
+                {p.title} ({p.applicationType}{!isNoCat && p.headCategory && p.headCategory !== 'N/A' ? ` • ${p.headCategory}` : ''})
+              </option>
+            );
+          })}
         </select>
       </div>
 
@@ -129,9 +132,13 @@ export const CombinedProjectResultView: React.FC<CombinedProjectResultViewProps>
           <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6 gap-4">
             <div className="space-y-1">
               <div className="flex items-center space-x-2">
-                <span className="rounded-lg bg-indigo-50 dark:bg-indigo-500/20 px-3 py-1 text-xs font-mono font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
-                  {combinedResult.project.headCategory}
-                </span>
+                {canonicalAppType(combinedResult.applicationType) !== 'Student-Secondary' &&
+                 canonicalAppType(combinedResult.applicationType) !== 'Individual or Group' &&
+                 combinedResult.project.headCategory && combinedResult.project.headCategory !== 'N/A' && (
+                  <span className="rounded-lg bg-indigo-50 dark:bg-indigo-500/20 px-3 py-1 text-xs font-mono font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
+                    {combinedResult.project.headCategory}
+                  </span>
+                )}
                 <span className="rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                   {combinedResult.applicationType}
                 </span>
@@ -252,7 +259,12 @@ export const CombinedProjectResultView: React.FC<CombinedProjectResultViewProps>
 
               {combinedResult.isHighestInCategory && combinedResult.award === 'Champion' && (
                 <p className="text-xs text-amber-300 font-semibold tracking-wide mt-1">
-                  ★ Highest Score in Category ({combinedResult.applicationType} • {combinedResult.project.headCategory})
+                  ★ Highest Score in Category ({combinedResult.applicationType}
+                  {canonicalAppType(combinedResult.applicationType) !== 'Student-Secondary' &&
+                   canonicalAppType(combinedResult.applicationType) !== 'Individual or Group' &&
+                   combinedResult.project.headCategory && combinedResult.project.headCategory !== 'N/A'
+                    ? ` • ${combinedResult.project.headCategory}`
+                    : ''})
                 </p>
               )}
             </div>

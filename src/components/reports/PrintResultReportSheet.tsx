@@ -1,7 +1,7 @@
 import React from 'react';
 import { Printer, X } from 'lucide-react';
 import type { CombinedProjectResult } from '../../types';
-import { getCriteriaForApplicationType, formatScoreNumber } from '../../utils/evaluation';
+import { getCriteriaForApplicationType, formatScoreNumber, canonicalAppType } from '../../utils/evaluation';
 
 interface PrintResultReportSheetProps {
   result: CombinedProjectResult;
@@ -130,7 +130,11 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
             <div className="text-right shrink-0">
               <div className="inline-block border-2 border-slate-900 rounded-xl px-4 py-2 bg-slate-50 text-center">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block">Category</span>
-                <span className="font-mono text-base font-black text-slate-900">{project.headCategory || 'General'}</span>
+                <span className="font-mono text-base font-black text-slate-900">
+                  {canonicalAppType(applicationType) === 'Student-Secondary' || canonicalAppType(applicationType) === 'Individual or Group'
+                    ? 'General'
+                    : project.headCategory || 'General'}
+                </span>
               </div>
             </div>
           </div>
@@ -149,7 +153,11 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
 
             <div>
               <span className="font-bold text-slate-500 uppercase tracking-wider block text-[10px]">Head Category</span>
-              <span className="font-semibold text-slate-900 block mt-0.5">{project.headCategory}</span>
+              <span className="font-semibold text-slate-900 block mt-0.5">
+                {canonicalAppType(applicationType) === 'Student-Secondary' || canonicalAppType(applicationType) === 'Individual or Group'
+                  ? 'N/A'
+                  : project.headCategory}
+              </span>
             </div>
 
             <div>
