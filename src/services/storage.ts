@@ -1,5 +1,4 @@
 import type { User, Project, Evaluation, DashboardStats, Room, SystemSettings, AuditLog, JudgeAssignment } from '../types';
-import { PRESEEDED_JUDGES, SAMPLE_PROJECTS } from '../data/mockData';
 import { ADMIN_CONFIG } from '../config/authConfig';
 import { matchesAppType, matchesCategory, canonicalAppType, canonicalHeadCategory } from '../utils/evaluation';
 import { api } from './api';
@@ -198,97 +197,38 @@ export const DEFAULT_AUDIT_LOGS: AuditLog[] = [
 export const initializeStorage = () => {
   if (typeof window === 'undefined' && typeof localStorage === 'undefined') return;
 
-  const existingUsersData = localStorage.getItem(USERS_KEY);
-  const removedJudgeEmails = getRemovedJudgeEmails();
-  const normalizedPreseeded: User[] = PRESEEDED_JUDGES
-    .filter(j => j.role === 'admin' || !removedJudgeEmails.includes(normalizeEmail(j.email)))
-    .map(j => {
-      if (j.role === 'admin') {
-        return {
-          ...j,
-          email: ADMIN_CONFIG.EMAIL,
-          fullName: ADMIN_CONFIG.NAME,
-          password: ADMIN_CONFIG.PASSWORD,
-          status: 'approved'
-        };
-      }
-      return {
-        ...j,
-        email: normalizeEmail(j.email),
-        status: j.status || 'approved'
-      };
-    });
+  const adminUser: User = {
+    id: 'admin-fixed-1',
+    fullName: ADMIN_CONFIG.NAME,
+    email: ADMIN_CONFIG.EMAIL,
+    password: ADMIN_CONFIG.PASSWORD,
+    role: 'admin',
+    status: 'approved',
+    createdAt: '2026-07-01T08:00:00Z'
+  };
 
+  const existingUsersData = localStorage.getItem(USERS_KEY);
   if (!existingUsersData) {
-    const deduped = normalizeAndDeduplicateUsers(normalizedPreseeded);
-    localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
+    localStorage.setItem(USERS_KEY, JSON.stringify([adminUser]));
   } else {
     try {
       let users: User[] = JSON.parse(existingUsersData);
       if (!Array.isArray(users) || users.length === 0) {
-        users = normalizedPreseeded;
+        users = [adminUser];
       }
-
-      // Migrate from any legacy user keys seamlessly
-      const legacyKeys = ['biin_judge_portal_users', 'biin_users'];
-      for (const lk of legacyKeys) {
-        const raw = localStorage.getItem(lk);
-        if (raw) {
-          try {
-            const legacyList = JSON.parse(raw);
-            if (Array.isArray(legacyList) && legacyList.length > 0) {
-              users.push(...legacyList);
-            }
-          } catch {}
-          localStorage.removeItem(lk);
-        }
-      }
-
       const deduped = normalizeAndDeduplicateUsers(users);
       localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
     } catch {
-      const deduped = normalizeAndDeduplicateUsers(normalizedPreseeded);
-      localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
+      localStorage.setItem(USERS_KEY, JSON.stringify([adminUser]));
     }
   }
 
-  // Initialize Projects
+  // Initialize Projects (empty by default)
   if (!localStorage.getItem(PROJECTS_KEY)) {
-    localStorage.setItem(PROJECTS_KEY, JSON.stringify(SAMPLE_PROJECTS));
-  } else {
-    // Safely migrate stored projects: 'Student' to 'Student-Secondary', and 'Individual/Group' to have headCategory: 'N/A'
-    try {
-      const rawProjects = localStorage.getItem(PROJECTS_KEY);
-      if (rawProjects) {
-        const parsed: Project[] = JSON.parse(rawProjects);
-        let hasChanges = false;
-        const migrated = parsed.map(p => {
-          if (p.applicationType === 'Student') {
-            hasChanges = true;
-            return {
-              ...p,
-              applicationType: 'Student-Secondary' as const,
-              headCategory: 'N/A'
-            };
-          }
-          const canon = canonicalAppType(p.applicationType);
-          if ((canon === 'Individual or Group' || p.applicationType === 'Individual/Group') && p.headCategory !== 'N/A') {
-            hasChanges = true;
-            return {
-              ...p,
-              headCategory: 'N/A'
-            };
-          }
-          return p;
-        });
-        if (hasChanges) {
-          localStorage.setItem(PROJECTS_KEY, JSON.stringify(migrated));
-        }
-      }
-    } catch {}
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify([]));
   }
 
-  // Initialize Assignments
+  // Initialize Assignments (empty by default)
   if (!localStorage.getItem(ASSIGNMENTS_KEY)) {
     localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify([]));
   }
@@ -308,101 +248,9 @@ export const initializeStorage = () => {
     localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(DEFAULT_AUDIT_LOGS));
   }
 
-  // Initialize Evaluations
+  // Initialize Evaluations (empty by default)
   if (!localStorage.getItem(EVALUATIONS_KEY)) {
-    const initialEvaluations: Evaluation[] = [
-      {
-        id: 'eval-org-1',
-        projectId: 'proj-org-hcc-1',
-        judgeEmail: 'judge@biin.org',
-        judgeName: 'Dr. Sarah Jenkins (Judge 1)',
-        roomNumber: 'Room 01',
-        scores: { uniqueness: 8, publicOrGovValue: 9, features: 8, qualityTech: 7 },
-        feedback: 'Strong healthcare product with broad public value.',
-        rawTotalScore: 32,
-        maxRawScore: 40,
-        convertedScore: 80,
-        totalScore: 32,
-        percentage: 80,
-        submittedAt: new Date(Date.now() - 86400000 * 2).toISOString()
-      },
-      {
-        id: 'eval-org-2',
-        projectId: 'proj-org-hcc-1',
-        judgeEmail: 'alex.mercer@biin.org',
-        judgeName: 'Prof. Alex Mercer (Judge 2)',
-        roomNumber: 'Room 01',
-        scores: { uniqueness: 9, publicOrGovValue: 8, features: 9, qualityTech: 8 },
-        feedback: 'Very solid hardware & sensor integration.',
-        rawTotalScore: 34,
-        maxRawScore: 40,
-        convertedScore: 85,
-        totalScore: 34,
-        percentage: 85,
-        submittedAt: new Date(Date.now() - 86400000 * 2).toISOString()
-      },
-      {
-        id: 'eval-org-3',
-        projectId: 'proj-org-hcc-1',
-        judgeEmail: 'farhan.ahmed@biin.org',
-        judgeName: 'Eng. Farhan Ahmed (Judge 3)',
-        roomNumber: 'Room 01',
-        scores: { uniqueness: 7, publicOrGovValue: 8, features: 9, qualityTech: 8 },
-        feedback: 'Great execution, ready for clinical trial phase.',
-        rawTotalScore: 32,
-        maxRawScore: 40,
-        convertedScore: 80,
-        totalScore: 32,
-        percentage: 80,
-        submittedAt: new Date(Date.now() - 86400000 * 2).toISOString()
-      },
-      {
-        id: 'eval-stu-1',
-        projectId: 'proj-stu-hcc-1',
-        judgeEmail: 'judge@biin.org',
-        judgeName: 'Dr. Sarah Jenkins (Judge 1)',
-        roomNumber: 'Room 01',
-        scores: { uniqueness: 8, proofOfConcept: 9, features: 8, quality: 9, presentation: 8 },
-        feedback: 'Excellent prototype execution with clear real-world agricultural impact potential.',
-        rawTotalScore: 42,
-        maxRawScore: 50,
-        convertedScore: 84,
-        totalScore: 42,
-        percentage: 84,
-        submittedAt: new Date(Date.now() - 86400000 * 1).toISOString()
-      },
-      {
-        id: 'eval-stu-2',
-        projectId: 'proj-stu-hcc-1',
-        judgeEmail: 'alex.mercer@biin.org',
-        judgeName: 'Prof. Alex Mercer (Judge 2)',
-        roomNumber: 'Room 01',
-        scores: { uniqueness: 9, proofOfConcept: 9, features: 9, quality: 9, presentation: 9 },
-        feedback: 'Outstanding presentation and well-documented soil scanning algorithms.',
-        rawTotalScore: 45,
-        maxRawScore: 50,
-        convertedScore: 90,
-        totalScore: 45,
-        percentage: 90,
-        submittedAt: new Date(Date.now() - 86400000 * 1).toISOString()
-      },
-      {
-        id: 'eval-stu-3',
-        projectId: 'proj-stu-hcc-1',
-        judgeEmail: 'farhan.ahmed@biin.org',
-        judgeName: 'Eng. Farhan Ahmed (Judge 3)',
-        roomNumber: 'Room 01',
-        scores: { uniqueness: 8, proofOfConcept: 9, features: 9, quality: 8, presentation: 9 },
-        feedback: 'Impressive BLE hardware connection and mobile UI responsiveness.',
-        rawTotalScore: 43,
-        maxRawScore: 50,
-        convertedScore: 86,
-        totalScore: 43,
-        percentage: 86,
-        submittedAt: new Date(Date.now() - 86400000 * 1).toISOString()
-      }
-    ];
-    localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(initialEvaluations));
+    localStorage.setItem(EVALUATIONS_KEY, JSON.stringify([]));
   }
 };
 
@@ -425,210 +273,54 @@ export const syncWithBackend = async (): Promise<boolean> => {
     ]);
 
     if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value)) {
-      const remoteProjects = projectsRes.value;
-      const localProjects = getProjects();
-
-      // Index remote projects by id and normalized applicationId
-      const remoteMap = new Map<string, Project>();
-      for (const rp of remoteProjects) {
-        remoteMap.set(rp.id, rp);
-        if (rp.applicationId) {
-          remoteMap.set(`app_${rp.applicationId.trim().toLowerCase()}`, rp);
-        }
-      }
-
-      // Track local-only projects that need to be pushed to remote backend
-      const localOnlyProjects: Project[] = [];
-      const mergedProjects: Project[] = [...remoteProjects];
-
-      for (const lp of localProjects) {
-        const foundInRemote = remoteMap.has(lp.id) || (lp.applicationId && remoteMap.has(`app_${lp.applicationId.trim().toLowerCase()}`));
-        if (!foundInRemote) {
-          // CRITICAL: Keep locally added project so it is never lost!
-          mergedProjects.push(lp);
-          localOnlyProjects.push(lp);
-        }
-      }
-
-      localStorage.setItem(PROJECTS_KEY, JSON.stringify(mergedProjects));
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projectsRes.value));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_projects_updated'));
-      }
-
-      // Asynchronously sync local-only projects to the backend
-      if (localOnlyProjects.length > 0) {
-        Promise.allSettled(localOnlyProjects.map(p => api.createProject(p))).catch(() => {});
       }
     }
 
     if (evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value)) {
-      const remoteEvals = evalsRes.value;
-      const localEvals = getEvaluations();
-
-      const evalKey = (e: Evaluation) => `${e.projectId}___${(e.judgeEmail || '').toLowerCase().trim()}`;
-      const mergedMap = new Map<string, Evaluation>();
-
-      // 1. Add remote evaluations
-      for (const re of remoteEvals) {
-        mergedMap.set(evalKey(re), re);
-      }
-
-      // 2. Merge local evaluations: preserve local submissions not yet on server
-      const localOnlyEvals: Evaluation[] = [];
-      for (const le of localEvals) {
-        const key = evalKey(le);
-        if (!mergedMap.has(key)) {
-          // CRITICAL: Keep local evaluation submission so it is never lost!
-          mergedMap.set(key, le);
-          localOnlyEvals.push(le);
-        } else {
-          // If present on both, keep the newer submission
-          const remoteEval = mergedMap.get(key)!;
-          const localTime = new Date(le.updatedAt || le.submittedAt || 0).getTime();
-          const remoteTime = new Date(remoteEval.updatedAt || remoteEval.submittedAt || 0).getTime();
-          if (localTime > remoteTime) {
-            mergedMap.set(key, le);
-            localOnlyEvals.push(le);
-          }
-        }
-      }
-
-      const mergedEvaluations = Array.from(mergedMap.values());
-      localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(mergedEvaluations));
+      localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evalsRes.value));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_projects_updated'));
       }
-
-      // Asynchronously sync local-only evaluations to the backend
-      if (localOnlyEvals.length > 0) {
-        Promise.allSettled(localOnlyEvals.map(e => api.saveEvaluation(e))).catch(() => {});
-      }
     }
+
     if (judgesRes.status === 'fulfilled' && Array.isArray(judgesRes.value)) {
       const existingUsers = getUsers();
-      const removedEmails = getRemovedJudgeEmails();
-      const validRemoteJudges = judgesRes.value.filter(r => !removedEmails.includes(normalizeEmail(r.email)));
-
-      const remoteMap = new Map<string, User>();
-      for (const rj of validRemoteJudges) {
-        remoteMap.set(normalizeEmail(rj.email), rj);
-      }
-
-      const mergedJudges: User[] = [];
-      const localOnlyJudges: User[] = [];
-
-      for (const local of existingUsers) {
-        if (local.role === 'admin') continue;
-        const clean = normalizeEmail(local.email);
-        if (removedEmails.includes(clean)) continue;
-
-        const remoteMatch = remoteMap.get(clean);
-        if (remoteMatch) {
-          // Both exist: reconcile
-          // Status precedence: If either is approved, it is approved!
-          const isApproved = local.status === 'approved' || remoteMatch.status === 'approved';
-          const isRejected = !isApproved && (local.status === 'rejected' || remoteMatch.status === 'rejected');
-          const canonicalStatus: 'pending' | 'approved' | 'rejected' = isApproved ? 'approved' : (isRejected ? 'rejected' : 'pending');
-
-          // If local was approved but remote is pending, sync approval to backend
-          if (local.status === 'approved' && remoteMatch.status !== 'approved') {
-            api.approveJudge(remoteMatch.id, undefined, clean).catch(() => {});
-          }
-
-          mergedJudges.push({
-            ...remoteMatch,
-            id: remoteMatch.id || local.id,
-            fullName: local.fullName || remoteMatch.fullName,
-            email: clean,
-            status: canonicalStatus,
-            password: local.password || remoteMatch.password,
-            roomNumber: local.roomNumber || remoteMatch.roomNumber
-          });
-          remoteMap.delete(clean);
-        } else {
-          localOnlyJudges.push(local);
-        }
-      }
-
-      // Add remaining remote judges not found locally
-      for (const [clean, rj] of remoteMap.entries()) {
-        mergedJudges.push({
-          ...rj,
-          email: clean,
-          status: rj.status || 'pending'
-        });
-      }
-
-      const deduped = normalizeAndDeduplicateUsers([...getUsers().filter(u => u.role === 'admin'), ...mergedJudges, ...localOnlyJudges]);
+      const adminUser = existingUsers.find(u => u.role === 'admin') || {
+        id: 'admin-fixed-1',
+        fullName: ADMIN_CONFIG.NAME,
+        email: ADMIN_CONFIG.EMAIL,
+        password: ADMIN_CONFIG.PASSWORD,
+        role: 'admin',
+        status: 'approved',
+        createdAt: '2026-07-01T08:00:00Z'
+      };
+      const deduped = normalizeAndDeduplicateUsers([adminUser, ...judgesRes.value]);
       localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_users_updated'));
       }
-
-      // Push local-only judges to backend cleanly
-      if (localOnlyJudges.length > 0) {
-        Promise.allSettled(
-          localOnlyJudges.map(async (j) => {
-            try {
-              const reg = await api.register(j.fullName, j.email, j.password || 'password123');
-              const judgeId = reg?.user?.id || j.id;
-              if (j.status === 'approved') {
-                await api.approveJudge(judgeId, undefined, j.email);
-              } else if (j.status === 'rejected') {
-                await api.rejectJudge(judgeId, undefined, j.email);
-              }
-            } catch {}
-          })
-        ).catch(() => {});
-      }
     }
+
     if (roomsRes.status === 'fulfilled' && Array.isArray(roomsRes.value) && roomsRes.value.length > 0) {
       localStorage.setItem(ROOMS_KEY, JSON.stringify(roomsRes.value));
     }
+
     if (settingsRes.status === 'fulfilled' && settingsRes.value) {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsRes.value));
     }
+
     if (auditRes.status === 'fulfilled' && Array.isArray(auditRes.value) && auditRes.value.length > 0) {
       localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(auditRes.value));
     }
+
     if (assignmentsRes.status === 'fulfilled' && Array.isArray(assignmentsRes.value)) {
-      const remoteAssignments = assignmentsRes.value;
-      const localAssignments = getJudgeAssignments();
-
-      const mergedMap = new Map<string, JudgeAssignment>();
-      for (const ra of remoteAssignments) {
-        if (ra && ra.id) {
-          mergedMap.set(ra.id, ra);
-        }
-      }
-
-      const localOnlyAssignments: JudgeAssignment[] = [];
-      for (const la of localAssignments) {
-        if (!la || !la.id) continue;
-        if (!mergedMap.has(la.id)) {
-          // Check if identical assignment exists remotely
-          const isDupe = Array.from(mergedMap.values()).some(ra =>
-            normalizeEmail(ra.judgeEmail) === normalizeEmail(la.judgeEmail) &&
-            ra.applicationType === la.applicationType &&
-            (ra.headCategory || null) === (la.headCategory || null) &&
-            JSON.stringify(ra.projectIds || []) === JSON.stringify(la.projectIds || [])
-          );
-          if (!isDupe) {
-            mergedMap.set(la.id, la);
-            localOnlyAssignments.push(la);
-          }
-        }
-      }
-
-      const mergedAssignments = Array.from(mergedMap.values());
-      localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(mergedAssignments));
+      localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignmentsRes.value));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_assignments_updated'));
         window.dispatchEvent(new Event('biin_projects_updated'));
-      }
-
-      if (localOnlyAssignments.length > 0) {
-        Promise.allSettled(localOnlyAssignments.map(a => api.saveAssignment(a))).catch(() => {});
       }
     }
 
@@ -870,25 +562,6 @@ export const findUserByEmail = (email: string): User | undefined => {
     return found;
   }
 
-  // If email was removed, DO NOT resurrect from PRESEEDED_JUDGES!
-  if (isJudgeEmailRemoved(cleanEmail)) {
-    return undefined;
-  }
-
-  // Fallback check against PRESEEDED_JUDGES
-  const preseeded = PRESEEDED_JUDGES.find((u) => normalizeEmail(u.email) === cleanEmail);
-  if (preseeded && preseeded.role !== 'admin') {
-    const judgeUser: User = {
-      ...preseeded,
-      email: cleanEmail,
-      status: preseeded.status || 'approved'
-    };
-    users.push(judgeUser);
-    const deduped = normalizeAndDeduplicateUsers(users);
-    localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
-    return judgeUser;
-  }
-
   return undefined;
 };
 
@@ -1000,24 +673,7 @@ export const resetJudgePassword = (email: string, newPassword: string): boolean 
   const users = getUsers();
   let idx = users.findIndex(u => normalizeEmail(u.email) === cleanEmail);
   if (idx < 0) {
-    // If not in users array, check preseeded judges ONLY if not removed
-    if (!isJudgeEmailRemoved(cleanEmail)) {
-      const preseeded = PRESEEDED_JUDGES.find(u => normalizeEmail(u.email) === cleanEmail);
-      if (preseeded && preseeded.role !== 'admin' && (preseeded.status || 'approved').toLowerCase() === 'approved') {
-        const judgeUser: User = {
-          ...preseeded,
-          email: cleanEmail,
-          password: newPassword,
-          status: 'approved'
-        };
-        users.push(judgeUser);
-        idx = users.length - 1;
-      } else {
-        return false;
-      }
-    } else {
-      return false;
-    }
+    return false;
   }
 
   // Strictly only approved judges can reset password! Pending or rejected cannot reset!
@@ -1257,6 +913,13 @@ export const deleteProject = (id: string, actor?: { email: string; name: string 
   // Also remove all evaluations linked to this project
   const evaluations = getEvaluations().filter((e) => e.projectId !== id);
   localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evaluations));
+
+  // Also remove this project from all judge assignments
+  const assignments = getJudgeAssignments().map((a: JudgeAssignment) => ({
+    ...a,
+    projectIds: (a.projectIds || []).filter((pid: string) => pid !== id)
+  }));
+  localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignments));
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('biin_projects_updated'));

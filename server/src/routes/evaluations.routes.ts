@@ -156,6 +156,55 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 });
 
 /**
+ * PUT /api/evaluations/:id
+ */
+router.put('/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const evalId = req.params.id;
+    let evaluation = { ...req.body, id: evalId };
+
+    // Find existing if some fields are omitted
+    const all = await evaluationDb.getAll();
+    const existing = all.find(e => e.id === evalId);
+    if (existing) {
+      evaluation = {
+        ...existing,
+        ...evaluation,
+        id: evalId
+      };
+    }
+
+    if (!evaluation.projectId || !evaluation.judgeEmail || !evaluation.scores) {
+      res.status(400).json({ error: 'projectId, judgeEmail, and scores are required.' });
+      return;
+    }
+
+    // Verify scores are 1-10
+    for (const [criterion, score] of Object.entries(evaluation.scores)) {
+      const numScore = Number(score);
+      if (isNaN(numScore) || numScore < 1 || numScore > 10) {
+        res.status(400).json({
+          error: `Invalid score for criterion "${criterion}": ${score}. Must be between 1 and 10.`
+        });
+        return;
+      }
+    }
+
+    // Check lock state
+    const settings = await settingsDb.get();
+    if (settings.evaluationsLocked) {
+      res.status(423).json({ error: 'All project evaluations are currently locked by the Administrator.' });
+      return;
+    }
+
+    const saved = await evaluationDb.save(evaluation);
+    res.json(saved);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to update evaluation.' });
+  }
+});
+
+/**
  * DELETE /api/evaluations/:id
  */
 router.delete('/:id', async (req: Request, res: Response): Promise<void> => {

@@ -17,10 +17,15 @@ import {
   SeedAssignment
 } from './seedData.js';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Load server/.env reliably regardless of working directory
+const serverEnvPath = path.resolve(__dirname, '../../.env');
+if (fs.existsSync(serverEnvPath)) {
+  dotenv.config({ path: serverEnvPath });
+}
+dotenv.config();
 
 const { Pool } = pg;
 
@@ -163,75 +168,32 @@ export async function initDatabase(): Promise<DbStatus> {
         console.warn('[Database] Migration notice:', migErr);
       }
 
-      // Check if data is already seeded
-      const countRes = await client.query('SELECT COUNT(*) FROM users');
-      const userCount = parseInt(countRes.rows[0].count, 10);
-
-      if (userCount === 0) {
-        console.log('[Database] Seeding initial data into PostgreSQL...');
-        // Seed users
-        for (const u of SEED_USERS) {
-          await client.query(
-            `INSERT INTO users (id, full_name, email, password, role, status, room_number, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-             ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name, password = EXCLUDED.password`,
-            [u.id, u.fullName, u.email.toLowerCase(), u.password, u.role, u.status, u.roomNumber || null, u.createdAt]
-          );
-        }
-
-        // Seed rooms
-        for (const r of SEED_ROOMS) {
-          await client.query(
-            `INSERT INTO rooms (id, room_number, name, location, capacity, description, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (room_number) DO NOTHING`,
-            [r.id, r.roomNumber, r.name, r.location || null, r.capacity || 10, r.description || null, r.createdAt]
-          );
-        }
-
-        // Seed projects
-        for (const p of SEED_PROJECTS) {
-          await client.query(
-            `INSERT INTO projects (
-               id, title, application_id, project_code, application_type, head_category,
-               team_or_org_name, representative_name, members, email, contact_number,
-               institution_or_org, description, problem_statement, solution_summary,
-               tags, room_number, status
-             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-             ON CONFLICT (application_id) DO NOTHING`,
-            [
-              p.id, p.title, p.applicationId, p.projectCode, p.applicationType, p.headCategory,
-              p.teamOrOrgName, p.representativeName, JSON.stringify(p.members || []),
-              p.email, p.contactNumber, p.institutionOrOrg || null, p.description,
-              p.problemStatement || null, p.solutionSummary || null, JSON.stringify(p.tags || []),
-              p.roomNumber || null, p.status
-            ]
-          );
-        }
-
-        // Seed evaluations
-        for (const e of SEED_EVALUATIONS) {
-          await client.query(
-            `INSERT INTO evaluations (
-               id, project_id, judge_email, judge_name, scores, feedback,
-               raw_total_score, max_raw_score, converted_score, room_number,
-               total_score, percentage, submitted_at
-             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-             ON CONFLICT (project_id, judge_email) DO NOTHING`,
-            [
-              e.id, e.projectId, e.judgeEmail.toLowerCase(), e.judgeName, JSON.stringify(e.scores),
-              e.feedback || null, e.rawTotalScore, e.maxRawScore, e.convertedScore,
-              e.roomNumber || null, e.totalScore, e.percentage, e.submittedAt
-            ]
-          );
-        }
-
-        // Seed settings
+      // Ensure Admin user exists in PostgreSQL
+      for (const u of SEED_USERS) {
         await client.query(
-          `INSERT INTO system_settings (id, evaluations_locked, final_results_locked, locked_projects, auto_ranking_enabled)
-           VALUES ('global', false, false, '[]'::jsonb, true)
-           ON CONFLICT (id) DO NOTHING`
+          `INSERT INTO users (id, full_name, email, password, role, status, room_number, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name, password = EXCLUDED.password, role = 'admin', status = 'approved'`,
+          [u.id, u.fullName, u.email.toLowerCase(), u.password, u.role, u.status, u.roomNumber || null, u.createdAt]
         );
+      }
+
+      // Ensure default rooms exist
+      for (const r of SEED_ROOMS) {
+        await client.query(
+          `INSERT INTO rooms (id, room_number, name, location, capacity, description, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           ON CONFLICT (room_number) DO NOTHING`,
+          [r.id, r.roomNumber, r.name, r.location || null, r.capacity || 10, r.description || null, r.createdAt]
+        );
+      }
+
+      // Ensure global settings record exists
+      await client.query(
+        `INSERT INTO system_settings (id, evaluations_locked, final_results_locked, locked_projects, auto_ranking_enabled)
+         VALUES ('global', false, false, '[]'::jsonb, true)
+         ON CONFLICT (id) DO NOTHING`
+      );
 
         // Seed audit log
         for (const a of SEED_AUDIT_LOGS) {
@@ -242,8 +204,7 @@ export async function initDatabase(): Promise<DbStatus> {
             [a.id, a.actorEmail, a.actorName, a.action, a.targetType, a.details, a.timestamp]
           );
         }
-        console.log('[Database] PostgreSQL seeded successfully.');
-      }
+        console.log('[Database] PostgreSQL initialized successfully.');
 
       console.log('✅ [Database] PostgreSQL connected and ready!');
       return {
@@ -592,11 +553,31 @@ export const projectDb = {
   async delete(id: string): Promise<boolean> {
     if (isPostgresConnected) {
       const res = await pool.query('DELETE FROM projects WHERE id = $1', [id]);
+      try {
+        // Clean up assignment references to this project
+        const asgns = await pool.query('SELECT id, project_ids FROM judge_assignments');
+        for (const row of asgns.rows) {
+          const pIds = typeof row.project_ids === 'string' ? JSON.parse(row.project_ids) : row.project_ids || [];
+          if (Array.isArray(pIds) && pIds.includes(id)) {
+            const updated = pIds.filter((pId: string) => pId !== id);
+            await pool.query('UPDATE judge_assignments SET project_ids = $1 WHERE id = $2', [JSON.stringify(updated), row.id]);
+          }
+        }
+      } catch (err) {
+        console.warn('[projectDb.delete] Assignment cleanup notice:', err);
+      }
       return (res.rowCount ?? 0) > 0;
     }
     const initial = memoryStore.projects.length;
     memoryStore.projects = memoryStore.projects.filter(p => p.id !== id);
     memoryStore.evaluations = memoryStore.evaluations.filter(e => e.projectId !== id);
+    if (Array.isArray(memoryStore.assignments)) {
+      for (const a of memoryStore.assignments) {
+        if (Array.isArray(a.projectIds)) {
+          a.projectIds = a.projectIds.filter(pId => pId !== id);
+        }
+      }
+    }
     if (memoryStore.projects.length < initial) {
       saveMemoryFallback();
       return true;
@@ -652,6 +633,25 @@ export const evaluationDb = {
   },
 
   async save(evaluation: SeedEvaluation): Promise<SeedEvaluation> {
+    const rawScores = evaluation.scores || {};
+    const scoreVals = Object.values(rawScores).map(v => Number(v) || 0);
+    const calculatedRaw = scoreVals.length > 0 ? scoreVals.reduce((a, b) => a + b, 0) : 0;
+    const maxRaw = Number(evaluation.maxRawScore || (scoreVals.length * 10 || 100));
+    const rawTotal = Number(evaluation.rawTotalScore ?? (evaluation.totalScore ?? calculatedRaw));
+    const converted = Number(evaluation.convertedScore ?? (maxRaw > 0 ? (rawTotal / maxRaw) * 100 : rawTotal));
+    const total = Number(evaluation.totalScore ?? converted);
+    const percentage = Number(evaluation.percentage ?? (maxRaw > 0 ? (rawTotal / maxRaw) * 100 : total));
+
+    const normalizedEval: SeedEvaluation = {
+      ...evaluation,
+      rawTotalScore: rawTotal,
+      maxRawScore: maxRaw,
+      convertedScore: converted,
+      totalScore: total,
+      percentage: percentage,
+      submittedAt: evaluation.submittedAt || new Date().toISOString()
+    };
+
     if (isPostgresConnected) {
       await pool.query(`
         INSERT INTO evaluations (
@@ -670,24 +670,24 @@ export const evaluationDb = {
           percentage = EXCLUDED.percentage,
           updated_at = NOW()
       `, [
-        evaluation.id, evaluation.projectId, evaluation.judgeEmail.toLowerCase(), evaluation.judgeName,
-        JSON.stringify(evaluation.scores), evaluation.feedback || null,
-        evaluation.rawTotalScore, evaluation.maxRawScore, evaluation.convertedScore,
-        evaluation.roomNumber || null, evaluation.totalScore, evaluation.percentage,
-        evaluation.submittedAt || new Date().toISOString()
+        normalizedEval.id, normalizedEval.projectId, normalizedEval.judgeEmail.toLowerCase(), normalizedEval.judgeName,
+        JSON.stringify(normalizedEval.scores), normalizedEval.feedback || null,
+        normalizedEval.rawTotalScore, normalizedEval.maxRawScore, normalizedEval.convertedScore,
+        normalizedEval.roomNumber || null, normalizedEval.totalScore, normalizedEval.percentage,
+        normalizedEval.submittedAt
       ]);
-      return evaluation;
+      return normalizedEval;
     }
     const idx = memoryStore.evaluations.findIndex(
-      e => e.projectId === evaluation.projectId && e.judgeEmail.toLowerCase() === evaluation.judgeEmail.toLowerCase()
+      e => e.projectId === normalizedEval.projectId && e.judgeEmail.toLowerCase() === normalizedEval.judgeEmail.toLowerCase()
     );
     if (idx >= 0) {
-      memoryStore.evaluations[idx] = evaluation;
+      memoryStore.evaluations[idx] = normalizedEval;
     } else {
-      memoryStore.evaluations.push(evaluation);
+      memoryStore.evaluations.push(normalizedEval);
     }
     saveMemoryFallback();
-    return evaluation;
+    return normalizedEval;
   },
 
   async delete(id: string): Promise<boolean> {

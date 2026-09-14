@@ -99,6 +99,46 @@ router.patch('/:id/reject', async (req: Request, res: Response): Promise<void> =
 });
 
 /**
+ * PATCH /api/judges/:id/status
+ */
+router.patch('/:id/status', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rawTarget = req.params.id;
+    const { status, actor } = req.body;
+    const bodyEmail = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : undefined;
+    const user = (await userDb.findById(rawTarget)) ||
+                 (await userDb.findByEmail(rawTarget)) ||
+                 (bodyEmail ? await userDb.findByEmail(bodyEmail) : undefined);
+
+    if (!user) {
+      res.status(404).json({ error: 'Judge not found.' });
+      return;
+    }
+
+    const newStatus = status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'pending';
+    const updated = await userDb.update({ id: user.id, status: newStatus });
+
+    if (actor && updated) {
+      await auditDb.create({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        actorEmail: actor.email,
+        actorName: actor.name,
+        action: newStatus === 'approved' ? 'APPROVE_JUDGE' : 'UPDATE_JUDGE_STATUS',
+        targetType: 'judge',
+        details: `Set judge status to ${newStatus} for ${updated.fullName} (${updated.email}).`,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const { password: _, ...safeJudge } = updated!;
+    res.json({ success: true, user: safeJudge, judge: safeJudge });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errMsg || 'Failed to update judge status.' });
+  }
+});
+
+/**
  * PATCH /api/judges/:id/room
  */
 router.patch('/:id/room', async (req: Request, res: Response): Promise<void> => {

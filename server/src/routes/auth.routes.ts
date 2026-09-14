@@ -1,5 +1,28 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import { userDb, auditDb } from '../db/index.js';
+
+export function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `scrypt:${salt}:${hash}`;
+}
+
+export function verifyPassword(password: string, stored: string): boolean {
+  if (!stored) return false;
+  if (stored.startsWith('scrypt:')) {
+    const parts = stored.split(':');
+    if (parts.length !== 3) return false;
+    const [, salt, hash] = parts;
+    try {
+      const verifyHash = crypto.scryptSync(password, salt, 64).toString('hex');
+      return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(verifyHash, 'hex'));
+    } catch {
+      return false;
+    }
+  }
+  return stored === password || stored === password.trim();
+}
 
 const router = Router();
 
@@ -60,7 +83,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (user.password !== password && user.password !== password.trim()) {
+    if (!verifyPassword(password, user.password)) {
       res.status(401).json({ error: 'Invalid password. Please verify your credentials.' });
       return;
     }
@@ -132,7 +155,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       id: `judge-${Date.now()}`,
       fullName: fullName.trim(),
       email: cleanEmail,
-      password,
+      password: hashPassword(password),
       role: 'judge' as const,
       status: 'pending' as const,
       createdAt: new Date().toISOString()
@@ -255,7 +278,7 @@ router.post('/reset-password', async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const updated = await userDb.updatePassword(cleanEmail, newPassword);
+    const updated = await userDb.updatePassword(cleanEmail, hashPassword(newPassword));
     if (!updated) {
       res.status(500).json({ error: 'Failed to update password in database.' });
       return;
