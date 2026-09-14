@@ -337,11 +337,17 @@ export const userDb = {
 
   async delete(id: string): Promise<boolean> {
     if (isPostgresConnected) {
+      try {
+        await pool.query('DELETE FROM judge_assignments WHERE judge_id = $1 OR LOWER(TRIM(judge_email)) = LOWER(TRIM($1))', [id]);
+      } catch {}
       const res = await pool.query('DELETE FROM users WHERE id = $1 OR LOWER(TRIM(email)) = LOWER(TRIM($1))', [id]);
       return (res.rowCount ?? 0) > 0;
     }
     const initial = memoryStore.users.length;
     memoryStore.users = memoryStore.users.filter(u => u.id !== id && u.email.trim().toLowerCase() !== id.trim().toLowerCase());
+    if (memoryStore.assignments) {
+      memoryStore.assignments = memoryStore.assignments.filter(a => a.judgeId !== id && a.judgeEmail.trim().toLowerCase() !== id.trim().toLowerCase());
+    }
     if (memoryStore.users.length < initial) {
       saveMemoryFallback();
       return true;

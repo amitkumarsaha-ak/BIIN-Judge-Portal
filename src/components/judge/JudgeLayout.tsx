@@ -6,6 +6,7 @@ import {
 import { BiinLogo } from '../common/BiinLogo';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { syncWithBackend } from '../../services/storage';
 
 export type JudgeTab = 'dashboard' | 'projects' | 'submissions' | 'report';
 
@@ -22,6 +23,10 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
 }) => {
   const { currentUser, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    syncWithBackend().catch(() => {});
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

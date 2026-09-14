@@ -81,6 +81,14 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       }
 
       const isAssigned = judgeAssignments.some(asgn => {
+        // Specific project assignment takes precedence
+        if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
+          const matchId = asgn.projectIds.includes(targetProject.id);
+          const matchAppId = Boolean(targetProject.applicationId) && asgn.projectIds.includes(targetProject.applicationId);
+          const matchCode = Boolean(targetProject.projectCode) && asgn.projectIds.includes(targetProject.projectCode);
+          return matchId || matchAppId || matchCode;
+        }
+
         const typeMatch = asgn.applicationType === 'All Application Types' || 
                           asgn.applicationType.toLowerCase() === targetProject.applicationType.toLowerCase() ||
                           asgn.applicationType.replace(/[^a-z]/gi, '') === targetProject.applicationType.replace(/[^a-z]/gi, '');
@@ -94,12 +102,6 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
           if (!catMatch) return false;
         }
 
-        if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
-          const matchId = asgn.projectIds.includes(targetProject.id);
-          const matchAppId = Boolean(targetProject.applicationId) && asgn.projectIds.includes(targetProject.applicationId);
-          const matchCode = Boolean(targetProject.projectCode) && asgn.projectIds.includes(targetProject.projectCode);
-          return matchId || matchAppId || matchCode;
-        }
         return true;
       });
 

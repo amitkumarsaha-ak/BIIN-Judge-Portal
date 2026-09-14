@@ -7,8 +7,9 @@ import { useAuth } from '../../context/AuthContext';
 import {
   getProjectsForJudge, getEvaluationsByJudge, getSystemSettings,
   isCategoryEvaluationLocked,
-  getDashboardStatsForJudge
+  getDashboardStatsForJudge, PROJECTS_KEY, ASSIGNMENTS_KEY
 } from '../../services/storage';
+import { api } from '../../services/api';
 import { StatsCard } from '../dashboard/StatsCard';
 import type { Project } from '../../types';
 import type { JudgeTab } from './JudgeLayout';
@@ -40,12 +41,39 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
   );
 
   useEffect(() => {
-    const refresh = () => {
-      setAssignedProjects(getProjectsForJudge(currentUser?.email));
-      setSettings(getSystemSettings());
-      if (currentUser) {
-        setMyEvaluations(getEvaluationsByJudge(currentUser.email));
-        setStats(getDashboardStatsForJudge(currentUser.email));
+    let mounted = true;
+    const refresh = async () => {
+      if (currentUser?.email) {
+        try {
+          const [projectsRes, assignmentsRes, evalsRes] = await Promise.allSettled([
+            api.getProjects(),
+            api.getAssignments(),
+            api.getEvaluationsByJudge(currentUser.email)
+          ]);
+
+          if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value)) {
+            localStorage.setItem(PROJECTS_KEY, JSON.stringify(projectsRes.value));
+          }
+          if (assignmentsRes.status === 'fulfilled' && Array.isArray(assignmentsRes.value)) {
+            localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignmentsRes.value));
+          }
+          if (evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value)) {
+            if (mounted) {
+              setMyEvaluations(evalsRes.value);
+            }
+          }
+        } catch {
+          // Offline fallback
+        }
+      }
+
+      if (mounted) {
+        setAssignedProjects(getProjectsForJudge(currentUser?.email));
+        setSettings(getSystemSettings());
+        if (currentUser) {
+          setMyEvaluations(getEvaluationsByJudge(currentUser.email));
+          setStats(getDashboardStatsForJudge(currentUser.email));
+        }
       }
     };
 
@@ -53,10 +81,13 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
     window.addEventListener('biin_projects_updated', refresh);
     window.addEventListener('biin_assignments_updated', refresh);
     window.addEventListener('storage', refresh);
+    const interval = setInterval(refresh, 6000);
     return () => {
+      mounted = false;
       window.removeEventListener('biin_projects_updated', refresh);
       window.removeEventListener('biin_assignments_updated', refresh);
       window.removeEventListener('storage', refresh);
+      clearInterval(interval);
     };
   }, [currentUser]);
 

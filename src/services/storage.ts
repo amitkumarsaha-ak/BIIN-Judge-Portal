@@ -1119,26 +1119,26 @@ export const isProjectAssignedToJudge = (judgeIdentifier: string, project: Proje
   if (assignments.length === 0) return false;
 
   return assignments.some(asgn => {
-    // 1. Application Type matching
+    // 1. Specific project assignment takes precedence
+    if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
+      const matchId = asgn.projectIds.includes(project.id);
+      const matchAppId = Boolean(project.applicationId) && asgn.projectIds.includes(project.applicationId);
+      const matchCode = Boolean(project.projectCode) && asgn.projectIds.includes(project.projectCode);
+      return matchId || matchAppId || matchCode;
+    }
+
+    // 2. Scope-wide assignment: Application Type matching
     if (!matchesAppType(project.applicationType, asgn.applicationType)) {
       return false;
     }
 
-    // 2. Head category matching (only for application types with head categories)
+    // 3. Head category matching (only for application types with head categories)
     const canon = canonicalAppType(project.applicationType);
     const isNoHeadCat = canon === 'Student-Secondary' || canon === 'Individual or Group';
     if (!isNoHeadCat && asgn.headCategory && asgn.headCategory !== 'All Head Category' && asgn.headCategory !== 'N/A') {
       if (!matchesCategory(project.headCategory, asgn.headCategory, project.applicationType)) {
         return false;
       }
-    }
-
-    // 3. Project IDs check if explicitly specified
-    if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
-      const matchId = asgn.projectIds.includes(project.id);
-      const matchAppId = Boolean(project.applicationId) && asgn.projectIds.includes(project.applicationId);
-      const matchCode = Boolean(project.projectCode) && asgn.projectIds.includes(project.projectCode);
-      return matchId || matchAppId || matchCode;
     }
 
     return true;
