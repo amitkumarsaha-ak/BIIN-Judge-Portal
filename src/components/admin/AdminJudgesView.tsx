@@ -12,6 +12,7 @@ import {
 } from '../../services/storage';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { ADMIN_CONFIG } from '../../config/authConfig';
 import { JudgeAssignmentModal } from './JudgeAssignmentModal';
 
 export const AdminJudgesView: React.FC = () => {
@@ -33,55 +34,24 @@ export const AdminJudgesView: React.FC = () => {
     setIsRefreshing(true);
     try {
       const backendJudges = await api.getJudges();
-      if (Array.isArray(backendJudges) && backendJudges.length > 0) {
+      if (Array.isArray(backendJudges)) {
         const removedEmails = getRemovedJudgeEmails();
         const activeBackendJudges = backendJudges.filter(bj => !bj.email || !removedEmails.includes(normalizeEmail(bj.email)));
         
         const existingUsers = getUsers();
-        const remoteMap = new Map<string, User>();
-        for (const r of activeBackendJudges) {
-          remoteMap.set(normalizeEmail(r.email), r);
-        }
+        const adminUser = existingUsers.find(u => u.role === 'admin') || {
+          id: 'admin-fixed-1',
+          fullName: ADMIN_CONFIG.NAME,
+          email: ADMIN_CONFIG.EMAIL,
+          password: ADMIN_CONFIG.PASSWORD,
+          role: 'admin',
+          status: 'approved',
+          createdAt: '2026-07-01T08:00:00Z'
+        };
 
-        const reconciled = existingUsers.map(local => {
-          if (local.role === 'admin') return local;
-          const clean = normalizeEmail(local.email);
-          const remote = remoteMap.get(clean);
-          if (!remote) return local;
-
-          const isApproved = local.status === 'approved' || remote.status === 'approved';
-          const isRejected = !isApproved && (local.status === 'rejected' || remote.status === 'rejected');
-          const status: JudgeStatus = isApproved ? 'approved' : (isRejected ? 'rejected' : 'pending');
-
-          // If approved locally but remote is pending, sync approval to backend
-          if (local.status === 'approved' && remote.status !== 'approved') {
-            api.approveJudge(remote.id, undefined, clean).catch(() => {});
-          }
-
-          remoteMap.delete(clean);
-          return {
-            ...remote,
-            id: remote.id || local.id,
-            fullName: local.fullName || remote.fullName,
-            email: clean,
-            status,
-            password: local.password || remote.password,
-            roomNumber: local.roomNumber || remote.roomNumber
-          };
-        });
-
-        // Add any remaining remote judges
-        for (const [clean, r] of remoteMap.entries()) {
-          reconciled.push({
-            ...r,
-            email: clean,
-            status: r.status || 'pending'
-          });
-        }
-
-        const dedupedAll = normalizeAndDeduplicateUsers(reconciled);
+        const dedupedAll = normalizeAndDeduplicateUsers([adminUser, ...activeBackendJudges]);
         localStorage.setItem(USERS_KEY, JSON.stringify(dedupedAll));
-        setJudges(dedupedAll.filter(u => u.role === 'judge'));
+        setJudges(activeBackendJudges);
         setAssignments(getJudgeAssignments());
         setIsRefreshing(false);
         return;

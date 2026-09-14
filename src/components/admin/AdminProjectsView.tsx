@@ -9,12 +9,13 @@ import {
 import type { Project, ApplicationType, ProjectStatus, HeadCategoryCode } from '../../types';
 import {
   getProjects, addProject, addProjects, updateProject, deleteProject,
-  toggleProjectStatus, getEvaluations
+  toggleProjectStatus, getEvaluations, PROJECTS_KEY
 } from '../../services/storage';
 import { HEAD_CATEGORIES } from '../../data/mockData';
 import { matchesAppType, matchesCategory, canonicalAppType } from '../../utils/evaluation';
 import { ExcelImportModal } from './ExcelImportModal';
 import { useAuth } from '../../context/AuthContext';
+import { api } from '../../services/api';
 
 const getAppTypeIcon = (type: ApplicationType) => {
   const canon = canonicalAppType(type);
@@ -488,11 +489,22 @@ export const AdminProjectsView: React.FC = () => {
   const [detailTarget, setDetailTarget] = useState<Project | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
-  const refresh = useCallback(() => setProjects(getProjects()), []);
+  const refresh = useCallback(async () => {
+    try {
+      const backend = await api.getProjects();
+      if (Array.isArray(backend)) {
+        localStorage.setItem(PROJECTS_KEY, JSON.stringify(backend));
+        setProjects(backend);
+        return;
+      }
+    } catch {}
+    setProjects(getProjects());
+  }, []);
   const allEvaluations = getEvaluations();
 
   // Reactive listener for storage updates (Excel imports, additions, deletions)
   React.useEffect(() => {
+    refresh();
     const handleStorageUpdate = () => {
       refresh();
     };
