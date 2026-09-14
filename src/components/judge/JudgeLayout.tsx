@@ -24,7 +24,7 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
-    const handleKeyDeterrence = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       // Prevent simple Ctrl+P / Cmd+P print shortcut outside of inputs
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
         const target = document.activeElement as HTMLElement | null;
@@ -34,8 +34,21 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
         }
       }
     };
-    window.addEventListener('keydown', handleKeyDeterrence);
-    return () => window.removeEventListener('keydown', handleKeyDeterrence);
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'PrintScreen') {
+        try {
+          navigator.clipboard?.writeText('');
+        } catch {}
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, []);
 
   const navItems: { id: JudgeTab; label: string; shortLabel: string; icon: React.FC<{ className?: string }> }[] = [
@@ -54,8 +67,22 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
           e.preventDefault();
         }
       }}
-      className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-200"
+      className="relative min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-200"
     >
+      {/* Subdued Security Evaluator Watermark */}
+      {currentUser && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-0 select-none overflow-hidden opacity-[0.025] dark:opacity-[0.035] flex flex-wrap items-center justify-around gap-20 p-8"
+        >
+          {Array.from({ length: 12 }).map((_, i) => (
+            <span key={i} className="transform -rotate-12 font-mono text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">
+              BIIN Confidential · {currentUser.fullName} ({currentUser.email})
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Top Judge Navigation Header */}
       <header className="fixed top-0 left-0 right-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md transition-colors shadow-sm">
         <div className="w-full max-w-[1700px] mx-auto flex items-center justify-between gap-2 sm:gap-4 px-2.5 sm:px-6 lg:px-8 py-2 sm:py-3.5">

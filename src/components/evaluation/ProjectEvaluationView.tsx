@@ -57,7 +57,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [submittedEvaluation, setSubmittedEvaluation] = useState<Evaluation | null>(null);
 
-  // Safe web-level deterrence: prevent accidental print shortcut in judge evaluation without blocking inputs
+  // Safe web-level deterrence: prevent accidental print shortcut and clear clipboard on PrintScreen in judge evaluation without blocking inputs
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
@@ -67,8 +67,21 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
         }
       }
     };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'PrintScreen') {
+        try {
+          navigator.clipboard?.writeText('');
+        } catch {}
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, []);
 
   // Re-read on every render so lock changes from admin are always reflected
