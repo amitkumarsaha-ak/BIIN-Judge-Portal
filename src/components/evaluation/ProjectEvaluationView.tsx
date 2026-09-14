@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Send, AlertCircle, Info, ShieldCheck, Lock } from 'lucide-react';
 import type { Project, EvaluationScores, Evaluation } from '../../types';
 import {
@@ -42,12 +42,12 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
   const activeCriteria = getCriteriaForApplicationType(project.applicationType);
   const maxRawScore = getMaxRawScoreForApplicationType(project.applicationType);
 
-  // Initialize scores state dynamically per criteria
+  // Initialize scores state dynamically per criteria: empty by default
   const [scores, setScores] = useState<EvaluationScores>(() => {
     const initial: EvaluationScores = {};
     activeCriteria.forEach((c) => {
       const existingVal = existingEvaluation?.scores?.[c.key];
-      initial[c.key] = existingVal !== undefined && existingVal > 0 ? existingVal : 1;
+      initial[c.key] = existingVal !== undefined ? existingVal : undefined;
     });
     return initial;
   });
@@ -56,6 +56,20 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [submittedEvaluation, setSubmittedEvaluation] = useState<Evaluation | null>(null);
+
+  // Safe web-level deterrence: prevent accidental print shortcut in judge evaluation without blocking inputs
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        const tag = (document.activeElement as HTMLElement)?.tagName?.toLowerCase();
+        if (tag !== 'input' && tag !== 'textarea') {
+          e.preventDefault();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Re-read on every render so lock changes from admin are always reflected
   const settings = getSystemSettings();
@@ -66,7 +80,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
   const rawTotalScore = calculateRawTotal(scores, activeCriteria);
   const convertedScore = calculateConvertedScore(rawTotalScore, maxRawScore);
 
-  const handleScoreChange = (criteriaKey: string, value: number) => {
+  const handleScoreChange = (criteriaKey: string, value: number | undefined) => {
     setValidationError(null);
     setScores((prev) => ({
       ...prev,
@@ -82,9 +96,26 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
       return;
     }
 
+    const missingCriteria = activeCriteria.filter((crit) => {
+      const val = scores[crit.key];
+      return val === undefined || val === null || isNaN(val);
+    });
+
+    if (missingCriteria.length > 0) {
+      if (missingCriteria.length === 1) {
+        setValidationError(`Please provide a mark for "${missingCriteria[0].label}" before submitting.`);
+      } else {
+        const missingLabels = missingCriteria.map((c) => `"${c.label}"`).join(', ');
+        setValidationError(`Please provide marks for all evaluation criteria before submitting. Missing: ${missingLabels}.`);
+      }
+      const el = document.getElementById('evaluation-criteria-section');
+      el?.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+
     for (const crit of activeCriteria) {
       const val = scores[crit.key];
-      if (val === undefined || val < 1 || val > 10 || isNaN(val)) {
+      if (val !== undefined && (val < 1 || val > 10)) {
         setValidationError(`Score for "${crit.label}" must be between 1 and 10. Zero scores are not permitted.`);
         return;
       }
@@ -233,7 +264,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
             <CriteriaScorer
               key={crit.key}
               criteria={crit}
-              score={scores[crit.key] ?? 1}
+              score={scores[crit.key]}
               onChangeScore={(val) => handleScoreChange(crit.key, val)}
               index={index}
             />
@@ -265,8 +296,15 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
           </div>
         )}
 
+        {/* Score Board / Final Score positioned directly above Submit button */}
+        <ScoreSummaryBar
+          totalScore={rawTotalScore}
+          maxRawScore={maxRawScore}
+          convertedScore={convertedScore}
+        />
+
         {/* Submit Action Button */}
-        <div className="pt-4 flex justify-end">
+        <div className="pt-2 flex justify-end">
           <button
             type="button"
             onClick={handleOpenSubmissionModal}
@@ -289,13 +327,6 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Floating Real-time Score Summary & Progress Bar */}
-      <ScoreSummaryBar
-        totalScore={rawTotalScore}
-        maxRawScore={maxRawScore}
-        convertedScore={convertedScore}
-      />
 
       {/* Confirmation Modal */}
       {currentUser && (

@@ -4,8 +4,8 @@ import type { CriteriaInfo } from '../../types';
 
 interface CriteriaScorerProps {
   criteria: CriteriaInfo;
-  score: number;
-  onChangeScore: (score: number) => void;
+  score?: number;
+  onChangeScore: (score: number | undefined) => void;
   index: number;
 }
 
@@ -16,13 +16,19 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
   index
 }) => {
   // Local string state to handle typing without automatic clamping or auto-filling to 10
-  const [inputValue, setInputValue] = useState<string>(score ? score.toString() : '1');
+  const [inputValue, setInputValue] = useState<string>(score !== undefined ? score.toString() : '');
 
   // Keep local input in sync if score changes externally (e.g. preset clicked or reset)
   useEffect(() => {
-    const parsedCurrent = parseFloat(inputValue);
-    if (isNaN(parsedCurrent) || parsedCurrent !== score) {
-      setInputValue(score.toString());
+    if (score !== undefined) {
+      const parsedCurrent = parseFloat(inputValue);
+      if (isNaN(parsedCurrent) || parsedCurrent !== score) {
+        setInputValue(score.toString());
+      }
+    } else {
+      if (inputValue !== '') {
+        setInputValue('');
+      }
     }
   }, [score]);
 
@@ -54,6 +60,7 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
     // 1. Allow clearing the input box temporarily while typing
     if (newStr === '') {
       setInputValue('');
+      onChangeScore(undefined);
       return;
     }
 
@@ -102,8 +109,8 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
 
   const handleBlur = () => {
     if (inputValue.trim() === '' || isNaN(numVal)) {
-      setInputValue('1');
-      onChangeScore(1);
+      setInputValue('');
+      onChangeScore(undefined);
       return;
     }
 

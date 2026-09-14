@@ -87,7 +87,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           </h4>
           <div className="divide-y divide-slate-200 dark:divide-slate-800/80 rounded-xl bg-slate-50 dark:bg-slate-950/60 p-3 border border-slate-200 dark:border-slate-800 text-xs">
             {activeCriteria.map((crit) => {
-              const val = scores[crit.key] ?? 1;
+              const val = scores[crit.key] ?? 0;
               return (
                 <div key={crit.key} className="flex items-center justify-between py-1.5">
                   <span className="text-slate-700 dark:text-slate-300 font-medium">{crit.label}</span>

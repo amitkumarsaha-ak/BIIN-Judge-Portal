@@ -88,7 +88,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-violet-500 selection:text-white transition-colors duration-200">
       {/* Top Admin Navigation Header - Original Height, Single Bar on Desktop & Laptops */}
-      <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md transition-colors shadow-sm">
+      <header className="fixed top-0 left-0 right-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md transition-colors shadow-sm">
         <div className="w-full max-w-[1700px] mx-auto flex items-center justify-between gap-2 sm:gap-4 px-2.5 sm:px-6 lg:px-8 py-2.5 sm:py-3.5">
           
           {/* Left Brand */}
@@ -242,7 +242,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <main className="flex-1 mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 pt-32 lg:pt-20 pb-4 sm:pb-8">
         {children}
       </main>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  FileText, Printer, Calendar
+  FileText, Calendar
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -21,10 +21,6 @@ export const JudgeOwnReportView: React.FC = () => {
     const sum = myEvaluations.reduce((a, c) => a + (c.convertedScore ?? c.percentage ?? 0), 0);
     avgScore = Number((sum / myEvaluations.length).toFixed(1));
   }
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   return (
     <div className="space-y-6 pb-12 print:p-0">
@@ -65,14 +61,6 @@ export const JudgeOwnReportView: React.FC = () => {
             Personal evaluation summary report showing your criterion scores, raw totals, converted scores, and feedback.
           </p>
         </div>
-
-        <button
-          onClick={handlePrint}
-          className="btn-primary inline-flex items-center justify-center space-x-2 rounded-2xl px-5 py-3 text-xs font-bold text-white shadow-xl hover:scale-105 transition-transform shrink-0 min-h-[40px] w-full sm:w-auto"
-        >
-          <Printer className="h-4 w-4" />
-          <span>Print / Save PDF Report</span>
-        </button>
       </div>
 
       {/* Overview Statistics */}

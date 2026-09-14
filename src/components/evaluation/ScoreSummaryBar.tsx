@@ -24,8 +24,8 @@ export const ScoreSummaryBar: React.FC<ScoreSummaryBarProps> = ({
   };
 
   return (
-    <div className="sticky bottom-2 sm:bottom-4 z-30 mx-auto max-w-4xl w-full px-2 sm:px-4 pb-safe">
-      <div className="glass-panel rounded-2xl sm:rounded-3xl p-3 sm:p-5 border border-indigo-300 dark:border-indigo-500/40 shadow-2xl backdrop-blur-xl bg-white/95 dark:bg-slate-900/95 glow-indigo">
+    <div className="w-full my-4">
+      <div className="glass-panel select-none rounded-2xl sm:rounded-3xl p-3 sm:p-5 border border-indigo-300 dark:border-indigo-500/40 shadow-xl backdrop-blur-xl bg-white/95 dark:bg-slate-900/95 glow-indigo">
         
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2.5 sm:gap-4">
           
