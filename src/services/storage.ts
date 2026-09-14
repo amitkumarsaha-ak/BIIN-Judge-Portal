@@ -281,11 +281,13 @@ export const syncWithBackend = async (): Promise<boolean> => {
         const merged = [...projectsRes.value, ...nonDuplicateLocal];
         localStorage.setItem(PROJECTS_KEY, JSON.stringify(merged));
         if (nonDuplicateLocal.length > 0) {
-          api.bulkCreateProjects(nonDuplicateLocal).catch(() => {});
+          const syncActor = { email: 'admin@biin.org', name: 'Administrator' };
+          await api.bulkCreateProjects(nonDuplicateLocal, syncActor).catch(() => {});
         }
       } else if (localProjects.length > 0) {
         // Backend is empty but local storage has projects: seed them to backend
-        api.bulkCreateProjects(localProjects).catch(() => {});
+        const syncActor = { email: 'admin@biin.org', name: 'Administrator' };
+        await api.bulkCreateProjects(localProjects, syncActor).catch(() => {});
       }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_projects_updated'));
@@ -333,16 +335,17 @@ export const syncWithBackend = async (): Promise<boolean> => {
 
     if (assignmentsRes.status === 'fulfilled' && Array.isArray(assignmentsRes.value)) {
       const localAssignments = getJudgeAssignments();
+      const syncActor = { email: 'admin@biin.org', name: 'Administrator' };
       if (assignmentsRes.value.length > 0) {
         const remoteIds = new Set(assignmentsRes.value.map(a => a.id));
         const nonDupLocal = localAssignments.filter(la => !remoteIds.has(la.id));
         const mergedAssignments = [...assignmentsRes.value, ...nonDupLocal];
         localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(mergedAssignments));
         if (nonDupLocal.length > 0) {
-          nonDupLocal.forEach(la => api.saveAssignment(la).catch(() => {}));
+          await Promise.allSettled(nonDupLocal.map(la => api.saveAssignment(la, syncActor)));
         }
       } else if (localAssignments.length > 0) {
-        localAssignments.forEach(la => api.saveAssignment(la).catch(() => {}));
+        await Promise.allSettled(localAssignments.map(la => api.saveAssignment(la, syncActor)));
       }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_assignments_updated'));
@@ -1191,7 +1194,7 @@ export const isProjectAssignedToJudge = (judgeIdentifier: string, project: Proje
   });
 };
 
-export const saveJudgeAssignment = (assignment: JudgeAssignment, actor?: { email: string; name: string }): void => {
+export const saveJudgeAssignment = async (assignment: JudgeAssignment, actor?: { email: string; name: string }): Promise<JudgeAssignment> => {
   const current = getJudgeAssignments();
   const cleanEmail = normalizeEmail(assignment.judgeEmail);
   const safe: JudgeAssignment = {
@@ -1215,7 +1218,14 @@ export const saveJudgeAssignment = (assignment: JudgeAssignment, actor?: { email
   }
 
   const safeActor = actor || { email: 'admin@biin.org', name: 'Administrator' };
-  api.saveAssignment(safe, safeActor).catch(() => {});
+  try {
+    const remote = await api.saveAssignment(safe, safeActor);
+    if (remote && remote.id) {
+      safe.id = remote.id;
+    }
+  } catch (err) {
+    console.warn('[Storage] Remote assignment save deferred, saved locally:', err);
+  }
 
   if (safeActor) {
     logAuditAction(
@@ -1226,9 +1236,11 @@ export const saveJudgeAssignment = (assignment: JudgeAssignment, actor?: { email
       `Assigned ${safe.applicationType}${safe.headCategory ? ` (${safe.headCategory})` : ''} to Judge ${safe.judgeName} (${safe.judgeEmail}).`
     );
   }
+
+  return safe;
 };
 
-export const deleteJudgeAssignment = (id: string, actor?: { email: string; name: string }): void => {
+export const deleteJudgeAssignment = async (id: string, actor?: { email: string; name: string }): Promise<void> => {
   const current = getJudgeAssignments();
   const target = current.find(a => a.id === id);
   const remaining = current.filter(a => a.id !== id);
@@ -1240,7 +1252,11 @@ export const deleteJudgeAssignment = (id: string, actor?: { email: string; name:
   }
 
   const safeActor = actor || { email: 'admin@biin.org', name: 'Administrator' };
-  api.deleteAssignment(id, safeActor).catch(() => {});
+  try {
+    await api.deleteAssignment(id, safeActor);
+  } catch (err) {
+    console.warn('[Storage] Remote assignment delete deferred, deleted locally:', err);
+  }
 
   if (target && safeActor) {
     logAuditAction(

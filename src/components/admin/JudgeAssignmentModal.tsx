@@ -10,7 +10,6 @@ import {
   deleteJudgeAssignment,
   getProjects
 } from '../../services/storage';
-import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { HEAD_CATEGORIES } from '../../data/mockData';
 import { canonicalAppType, matchesAppType, matchesCategory } from '../../utils/evaluation';
@@ -120,12 +119,7 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
       createdAt: new Date().toISOString()
     };
 
-    saveJudgeAssignment(newAsgn, safeActor);
-    try {
-      await api.saveAssignment(newAsgn, safeActor);
-    } catch {
-      // Offline fallback already stored locally
-    }
+    await saveJudgeAssignment(newAsgn, safeActor);
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('biin_assignments_updated'));
@@ -147,12 +141,7 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
   };
 
   const handleDeleteAssignment = async (id: string) => {
-    deleteJudgeAssignment(id, safeActor);
-    try {
-      await api.deleteAssignment(id, safeActor);
-    } catch {
-      // Offline fallback
-    }
+    await deleteJudgeAssignment(id, safeActor);
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('biin_assignments_updated'));

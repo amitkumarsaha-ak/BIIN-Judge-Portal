@@ -1,12 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Award, LayoutDashboard, FolderGit2, CheckCircle2,
-  FileText, Sun, Moon, LogOut
+  FileText, Sun, Moon, LogOut, WifiOff
 } from 'lucide-react';
 import { BiinLogo } from '../common/BiinLogo';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { syncWithBackend } from '../../services/storage';
+import { api } from '../../services/api';
 
 export type JudgeTab = 'dashboard' | 'projects' | 'submissions' | 'report';
 
@@ -23,9 +24,18 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
 }) => {
   const { currentUser, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [backendStatus, setBackendStatus] = useState<{ connected: boolean; type: string } | null>(null);
 
   useEffect(() => {
     syncWithBackend().catch(() => {});
+    const checkStatus = () => {
+      api.health()
+        .then(res => setBackendStatus({ connected: res.database?.connected ?? true, type: res.database?.type || 'postgres' }))
+        .catch(() => setBackendStatus({ connected: false, type: 'offline' }));
+    };
+    checkStatus();
+    const interval = setInterval(checkStatus, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -134,6 +144,21 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
 
           {/* Right Controls - Guaranteed 100% inside screen on all phones */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Live Database Badge */}
+            {backendStatus && (
+              <div
+                title={backendStatus.connected ? `Database Online (${backendStatus.type})` : 'Database Offline - Local Storage Only'}
+                className={`hidden lg:inline-flex items-center space-x-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold border ${
+                  backendStatus.connected
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20'
+                    : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20'
+                }`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${backendStatus.connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                <span>{backendStatus.connected ? 'Cloud Synced' : 'Offline'}</span>
+              </div>
+            )}
+
             {/* Dark / Light Toggle */}
             <button
               onClick={toggleTheme}
@@ -189,8 +214,16 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
         </div>
       </header>
 
+      {/* Offline Alert Banner if backend is not reachable */}
+      {backendStatus && !backendStatus.connected && (
+        <div className="fixed top-[92px] md:top-[68px] left-0 right-0 z-30 bg-amber-500 text-slate-950 px-4 py-2 text-xs font-bold text-center shadow-md flex items-center justify-center space-x-2">
+          <WifiOff className="h-4 w-4 shrink-0" />
+          <span>Cannot connect to database server. If connecting from another device, ensure both devices are on the same Wi-Fi.</span>
+        </div>
+      )}
+
       {/* Main Content Area */}
-      <main className="flex-1 mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 pt-28 md:pt-20 pb-4 sm:pb-8">
+      <main className={`flex-1 mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 ${backendStatus && !backendStatus.connected ? 'pt-36 md:pt-28' : 'pt-28 md:pt-20'} pb-4 sm:pb-8`}>
         {children}
       </main>
 

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   FolderGit2, Search, CheckCircle2, Clock,
-  Eye, Building2, GraduationCap, Users, University, Filter, Lock
+  Eye, Building2, GraduationCap, Users, University, Lock
 } from 'lucide-react';
 import type { Project } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -29,6 +29,10 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
   const [assignedProjects, setAssignedProjects] = useState<Project[]>(() =>
     getProjectsForJudge(currentUser?.email)
   );
+  const [isLoading, setIsLoading] = useState(() => {
+    const initial = getProjectsForJudge(currentUser?.email);
+    return initial.length === 0;
+  });
   const [myEvaluations, setMyEvaluations] = useState(() =>
     currentUser ? getEvaluationsByJudge(currentUser.email) : []
   );
@@ -83,6 +87,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
         if (currentUser) {
           setMyEvaluations(getEvaluationsByJudge(currentUser.email));
         }
+        setIsLoading(false);
       }
     };
 
@@ -134,7 +139,8 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
           p.description,
           p.projectOverview,
           p.problemStatement,
-          p.solutionSummary
+          p.solutionSummary,
+          (p.tags || []).join(' ')
         ].filter(Boolean).join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
@@ -147,8 +153,8 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
     switch (canonical) {
       case 'Student-Secondary':
       case 'Student': return GraduationCap;
-      case 'Organization':
-      case 'Organisation': return Building2;
+      case 'Organisation':
+      case 'Organization': return Building2;
       case 'Student-Tertiary':
       case 'Student -Tertiary (University Level)': return University;
       default: return Users;
@@ -160,8 +166,8 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
     switch (canonical) {
       case 'Student-Secondary':
       case 'Student': return 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20';
-      case 'Organization':
-      case 'Organisation': return 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
+      case 'Organisation':
+      case 'Organization': return 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
       case 'Student-Tertiary':
       case 'Student -Tertiary (University Level)': return 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20';
       default: return 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20';
@@ -174,74 +180,85 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
       <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="inline-flex items-center space-x-2 rounded-full bg-indigo-50 dark:bg-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 mb-2">
-            <Filter className="h-3.5 w-3.5" />
-            <span>Category-Based Evaluation</span>
+            <FolderGit2 className="h-3.5 w-3.5" />
+            <span>Assigned Projects Workspace</span>
           </div>
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
             Projects for Evaluation
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Browse nominated projects across Application Types and Head Categories. Select any project to enter or update your scoring.
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
+            Select an assigned project below to review nomination details, documentation, and submit criteria marks.
           </p>
         </div>
 
-        <div className="rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 p-4 text-center shrink-0">
-          <p className="text-[10px] uppercase font-bold text-indigo-700 dark:text-indigo-300">Matching Projects</p>
-          <p className="font-heading text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">{filteredProjects.length}</p>
+        <div className="flex items-center space-x-3 shrink-0">
+          <div className="rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 p-4 text-center">
+            <p className="text-[10px] uppercase font-bold text-indigo-700 dark:text-indigo-300">Assigned</p>
+            <p className="font-heading text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">{assignedProjects.length}</p>
+          </div>
+          <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 p-4 text-center">
+            <p className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-300">Completed</p>
+            <p className="font-heading text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">{myEvaluations.length}</p>
+          </div>
         </div>
       </div>
 
-      {/* Search & Category Filter Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="relative flex-1 sm:col-span-2 lg:col-span-1">
-          <Search className="pointer-events-none absolute inset-y-0 left-0 pl-3.5 h-full w-4 text-slate-400" />
+      {/* Filter / Search Bar */}
+      <div className="glass-panel rounded-2xl p-3 sm:p-4 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
+            placeholder="Search projects by title, code, participant..."
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search projects by title, code, participant, representative..."
-            className="w-full rounded-xl bg-slate-50 dark:bg-slate-950/60 pl-10 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-indigo-500 min-h-[38px]"
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
 
         <select
-          id="judge-select-app-type"
           value={filterType}
-          onChange={e => {
-            const val = e.target.value;
-            setFilterType(val);
-            const canon = canonicalAppType(val);
-            if (canon === 'Student-Secondary' || canon === 'Individual or Group') {
-              setFilterCategory('');
-            }
-          }}
-          className="w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 min-h-[38px] font-semibold"
+          onChange={(e) => setFilterType(e.target.value)}
+          className="text-xs rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <option value="">All Application Types</option>
           <option value="Student-Secondary">Student-Secondary</option>
-          <option value="Student -Tertiary (University Level)">Student -Tertiary (University Level)</option>
+          <option value="Student -Tertiary (University Level)">Student -Tertiary</option>
           <option value="Organization">Organization</option>
-          <option value="Individual/Group">Individual/Group</option>
+          <option value="Individual or Group">Individual or Group</option>
         </select>
 
         <select
-          id="judge-select-head-category"
           value={filterCategory}
-          onChange={e => setFilterCategory(e.target.value)}
+          onChange={(e) => setFilterCategory(e.target.value)}
           disabled={isNoCategory}
-          className={`w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 min-h-[38px] font-semibold ${isNoCategory ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className="text-xs rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-40"
         >
-          <option value="">{isNoCategory ? 'No Head Category for this type' : 'All Head Categories'}</option>
-          {!isNoCategory && HEAD_CATEGORIES.map(hc => (
-            <option key={hc.code} value={hc.code}>
-              {hc.name}
-            </option>
+          <option value="">All Categories</option>
+          {HEAD_CATEGORIES.map(c => (
+            <option key={c.code} value={c.code}>{c.name}</option>
           ))}
         </select>
       </div>
 
       {/* Projects Grid */}
-      {assignedProjects.length === 0 ? (
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="glass-panel rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-md animate-pulse space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="h-6 w-28 bg-slate-200 dark:bg-slate-800 rounded-full" />
+                <div className="h-5 w-16 bg-slate-200 dark:bg-slate-800 rounded-full" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-5 w-3/4 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+                <div className="h-3 w-1/2 bg-slate-200 dark:bg-slate-800 rounded" />
+              </div>
+              <div className="h-12 bg-slate-100 dark:bg-slate-800/60 rounded-xl" />
+            </div>
+          ))}
+        </div>
+      ) : assignedProjects.length === 0 ? (
         <div className="glass-panel rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 mb-4">
             <FolderGit2 className="h-8 w-8" />
