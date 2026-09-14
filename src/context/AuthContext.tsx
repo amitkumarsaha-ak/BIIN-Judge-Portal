@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from '../types';
-import { getCurrentUser, setCurrentUserSession, findUserByEmail, saveUser, getUsers, USERS_KEY, resetJudgePassword, isJudgeEmailRemoved } from '../services/storage';
+import {
+  getCurrentUser, setCurrentUserSession, findUserByEmail,
+  saveUser, getUsers, USERS_KEY, resetJudgePassword,
+  isJudgeEmailRemoved, normalizeEmail, normalizeAndDeduplicateUsers
+} from '../services/storage';
 import { ADMIN_CONFIG } from '../config/authConfig';
 import { api } from '../services/api';
 
@@ -25,7 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const user = getCurrentUser();
     if (user) {
       // Validate session: If session claims to be admin, verify email
-      if (user.role === 'admin' && user.email?.trim().toLowerCase() !== ADMIN_CONFIG.EMAIL.trim().toLowerCase()) {
+      if (user.role === 'admin' && normalizeEmail(user.email) !== normalizeEmail(ADMIN_CONFIG.EMAIL)) {
         setCurrentUser(null);
         setCurrentUserSession(null);
         return;
@@ -53,14 +57,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
-    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedEmail = normalizeEmail(email);
     const cleanPass = pass.trim();
     if (!trimmedEmail || !cleanPass) {
       return { success: false, error: 'Please enter both email and password.' };
     }
 
     // 1. Single Fixed Admin Authentication
-    if (trimmedEmail === ADMIN_CONFIG.EMAIL.trim().toLowerCase()) {
+    if (trimmedEmail === normalizeEmail(ADMIN_CONFIG.EMAIL)) {
       if (cleanPass !== ADMIN_CONFIG.PASSWORD && pass !== ADMIN_CONFIG.PASSWORD) {
         return { success: false, error: 'Invalid admin email or password.' };
       }
@@ -97,18 +101,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const loggedJudge: User = {
           ...response.user,
+          email: trimmedEmail,
           password: cleanPass // cache password locally for seamless offline capability
         };
 
         // Update local storage so cache is synced
         const users = getUsers();
-        const idx = users.findIndex(u => u.email?.toLowerCase() === trimmedEmail || u.id === loggedJudge.id);
+        const idx = users.findIndex(u => normalizeEmail(u.email) === trimmedEmail || u.id === loggedJudge.id);
         if (idx >= 0) {
           users[idx] = { ...users[idx], ...loggedJudge, status: 'approved' };
         } else {
           users.push({ ...loggedJudge, status: 'approved' });
         }
-        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+        const deduped = normalizeAndDeduplicateUsers(users);
+        localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('biin_users_updated'));
         }
@@ -255,7 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const resetPassword = async (email: string, newPass: string, confirmPass: string): Promise<{ success: boolean; error?: string }> => {
-    const emailTrimmed = email.trim().toLowerCase();
+    const emailTrimmed = normalizeEmail(email);
     const passTrimmed = newPass.trim();
     const confirmTrimmed = confirmPass.trim();
 
@@ -263,7 +269,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'Email address is required.' };
     }
 
-    if (emailTrimmed === ADMIN_CONFIG.EMAIL.trim().toLowerCase()) {
+    if (emailTrimmed === normalizeEmail(ADMIN_CONFIG.EMAIL)) {
       return {
         success: false,
         error: 'Administrator credentials are configured via system environment settings and cannot be reset through this form.'

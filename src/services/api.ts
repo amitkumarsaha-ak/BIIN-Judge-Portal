@@ -156,31 +156,31 @@ export const api = {
     return request('/judges');
   },
 
-  async approveJudge(id: string, actor?: { email: string; name: string }): Promise<{ success: boolean; judge: User }> {
-    return request(`/judges/${id}/approve`, {
+  async approveJudge(id: string, actor?: { email: string; name: string }, email?: string): Promise<{ success: boolean; judge: User }> {
+    return request(`/judges/${encodeURIComponent(id)}/approve`, {
       method: 'PATCH',
-      body: JSON.stringify({ actor })
+      body: JSON.stringify({ actor, email: email ? email.trim().toLowerCase() : undefined })
     });
   },
 
-  async rejectJudge(id: string, actor?: { email: string; name: string }): Promise<{ success: boolean; judge: User }> {
-    return request(`/judges/${id}/reject`, {
+  async rejectJudge(id: string, actor?: { email: string; name: string }, email?: string): Promise<{ success: boolean; judge: User }> {
+    return request(`/judges/${encodeURIComponent(id)}/reject`, {
       method: 'PATCH',
-      body: JSON.stringify({ actor })
+      body: JSON.stringify({ actor, email: email ? email.trim().toLowerCase() : undefined })
     });
   },
 
-  async assignJudgeRoom(id: string, roomNumber: string, actor?: { email: string; name: string }): Promise<{ success: boolean; judge: User }> {
-    return request(`/judges/${id}/room`, {
+  async assignJudgeRoom(id: string, roomNumber: string, actor?: { email: string; name: string }, email?: string): Promise<{ success: boolean; judge: User }> {
+    return request(`/judges/${encodeURIComponent(id)}/room`, {
       method: 'PATCH',
-      body: JSON.stringify({ roomNumber, actor })
+      body: JSON.stringify({ roomNumber, actor, email: email ? email.trim().toLowerCase() : undefined })
     });
   },
 
-  async deleteJudge(id: string, actor?: { email: string; name: string }): Promise<{ success: boolean }> {
-    return request(`/judges/${id}`, {
+  async deleteJudge(id: string, actor?: { email: string; name: string }, email?: string): Promise<{ success: boolean }> {
+    return request(`/judges/${encodeURIComponent(id)}`, {
       method: 'DELETE',
-      body: JSON.stringify({ actor })
+      body: JSON.stringify({ actor, email: email ? email.trim().toLowerCase() : undefined })
     });
   },
 

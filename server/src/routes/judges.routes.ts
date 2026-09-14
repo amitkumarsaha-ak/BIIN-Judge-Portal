@@ -25,7 +25,12 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
  */
 router.patch('/:id/approve', async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = (await userDb.findById(req.params.id)) || (await userDb.findByEmail(req.params.id));
+    const rawTarget = req.params.id;
+    const bodyEmail = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : undefined;
+    const user = (await userDb.findById(rawTarget)) ||
+                 (await userDb.findByEmail(rawTarget)) ||
+                 (bodyEmail ? await userDb.findByEmail(bodyEmail) : undefined);
+
     if (!user) {
       res.status(404).json({ error: 'Judge not found.' });
       return;
@@ -59,7 +64,12 @@ router.patch('/:id/approve', async (req: Request, res: Response): Promise<void> 
  */
 router.patch('/:id/reject', async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = (await userDb.findById(req.params.id)) || (await userDb.findByEmail(req.params.id));
+    const rawTarget = req.params.id;
+    const bodyEmail = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : undefined;
+    const user = (await userDb.findById(rawTarget)) ||
+                 (await userDb.findByEmail(rawTarget)) ||
+                 (bodyEmail ? await userDb.findByEmail(bodyEmail) : undefined);
+
     if (!user) {
       res.status(404).json({ error: 'Judge not found.' });
       return;
@@ -94,7 +104,12 @@ router.patch('/:id/reject', async (req: Request, res: Response): Promise<void> =
 router.patch('/:id/room', async (req: Request, res: Response): Promise<void> => {
   try {
     const { roomNumber, actor } = req.body;
-    const user = (await userDb.findById(req.params.id)) || (await userDb.findByEmail(req.params.id));
+    const rawTarget = req.params.id;
+    const bodyEmail = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : undefined;
+    const user = (await userDb.findById(rawTarget)) ||
+                 (await userDb.findByEmail(rawTarget)) ||
+                 (bodyEmail ? await userDb.findByEmail(bodyEmail) : undefined);
+
     if (!user) {
       res.status(404).json({ error: 'Judge not found.' });
       return;
@@ -127,7 +142,12 @@ router.patch('/:id/room', async (req: Request, res: Response): Promise<void> => 
  */
 router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = (await userDb.findById(req.params.id)) || (await userDb.findByEmail(req.params.id));
+    const rawTarget = req.params.id;
+    const bodyEmail = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : undefined;
+    const user = (await userDb.findById(rawTarget)) ||
+                 (await userDb.findByEmail(rawTarget)) ||
+                 (bodyEmail ? await userDb.findByEmail(bodyEmail) : undefined);
+
     if (!user) {
       res.status(404).json({ error: 'Judge not found.' });
       return;

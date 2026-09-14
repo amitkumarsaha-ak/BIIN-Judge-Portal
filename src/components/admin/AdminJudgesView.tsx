@@ -4,7 +4,11 @@ import {
   ShieldCheck, Mail, Calendar, UserX, Trash2, RefreshCw
 } from 'lucide-react';
 import type { User, JudgeStatus } from '../../types';
-import { getJudges, approveJudge, rejectJudge, deleteUser, getUsers, USERS_KEY, isJudgeEmailRemoved } from '../../services/storage';
+import {
+  getJudges, approveJudge, rejectJudge, deleteUser,
+  getUsers, USERS_KEY,
+  normalizeEmail, normalizeAndDeduplicateUsers, getRemovedJudgeEmails
+} from '../../services/storage';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -26,21 +30,54 @@ export const AdminJudgesView: React.FC = () => {
     try {
       const backendJudges = await api.getJudges();
       if (Array.isArray(backendJudges) && backendJudges.length > 0) {
-        const activeBackendJudges = backendJudges.filter(bj => !bj.email || !isJudgeEmailRemoved(bj.email));
-        setJudges(activeBackendJudges);
-        // Also keep USERS_KEY in sync safely preserving passwords
+        const removedEmails = getRemovedJudgeEmails();
+        const activeBackendJudges = backendJudges.filter(bj => !bj.email || !removedEmails.includes(normalizeEmail(bj.email)));
+        
         const existingUsers = getUsers();
-        const currentAdmins = existingUsers.filter(u => u.role === 'admin');
-        const mergedJudges = activeBackendJudges.map(bj => {
-          const localMatch = existingUsers.find(u => u.id === bj.id || u.email?.toLowerCase() === bj.email?.toLowerCase());
+        const remoteMap = new Map<string, User>();
+        for (const r of activeBackendJudges) {
+          remoteMap.set(normalizeEmail(r.email), r);
+        }
+
+        const reconciled = existingUsers.map(local => {
+          if (local.role === 'admin') return local;
+          const clean = normalizeEmail(local.email);
+          const remote = remoteMap.get(clean);
+          if (!remote) return local;
+
+          const isApproved = local.status === 'approved' || remote.status === 'approved';
+          const isRejected = !isApproved && (local.status === 'rejected' || remote.status === 'rejected');
+          const status: JudgeStatus = isApproved ? 'approved' : (isRejected ? 'rejected' : 'pending');
+
+          // If approved locally but remote is pending, sync approval to backend
+          if (local.status === 'approved' && remote.status !== 'approved') {
+            api.approveJudge(remote.id, undefined, clean).catch(() => {});
+          }
+
+          remoteMap.delete(clean);
           return {
-            ...bj,
-            status: bj.status || localMatch?.status || 'pending',
-            password: localMatch?.password || bj.password
+            ...remote,
+            id: remote.id || local.id,
+            fullName: local.fullName || remote.fullName,
+            email: clean,
+            status,
+            password: local.password || remote.password,
+            roomNumber: local.roomNumber || remote.roomNumber
           };
         });
-        const localOnly = existingUsers.filter(u => u.role === 'judge' && (!u.email || !isJudgeEmailRemoved(u.email)) && !activeBackendJudges.some(bj => bj.id === u.id || bj.email?.toLowerCase() === u.email?.toLowerCase()));
-        localStorage.setItem(USERS_KEY, JSON.stringify([...currentAdmins, ...mergedJudges, ...localOnly]));
+
+        // Add any remaining remote judges
+        for (const [clean, r] of remoteMap.entries()) {
+          reconciled.push({
+            ...r,
+            email: clean,
+            status: r.status || 'pending'
+          });
+        }
+
+        const dedupedAll = normalizeAndDeduplicateUsers(reconciled);
+        localStorage.setItem(USERS_KEY, JSON.stringify(dedupedAll));
+        setJudges(dedupedAll.filter(u => u.role === 'judge'));
         setIsRefreshing(false);
         return;
       }
@@ -100,7 +137,7 @@ export const AdminJudgesView: React.FC = () => {
     const actor = currentUser ? { email: currentUser.email, name: currentUser.fullName } : undefined;
     approveJudge(judge.id, actor);
     try {
-      await api.approveJudge(judge.id, actor);
+      await api.approveJudge(judge.id, actor, judge.email);
     } catch {}
     await refresh();
     setActionFeedback(`Approved access for judge "${judge.fullName}". They can now log in.`);
@@ -111,7 +148,7 @@ export const AdminJudgesView: React.FC = () => {
     const actor = currentUser ? { email: currentUser.email, name: currentUser.fullName } : undefined;
     rejectJudge(judge.id, actor);
     try {
-      await api.rejectJudge(judge.id, actor);
+      await api.rejectJudge(judge.id, actor, judge.email);
     } catch {}
     await refresh();
     setActionFeedback(`Declined access for judge "${judge.fullName}". Login access is denied.`);
@@ -124,7 +161,7 @@ export const AdminJudgesView: React.FC = () => {
     const target = deleteTarget;
     deleteUser(target.id, actor);
     try {
-      await api.deleteJudge(target.id, actor);
+      await api.deleteJudge(target.id, actor, target.email);
     } catch {}
     setDeleteTarget(null);
     await refresh();

@@ -309,6 +309,7 @@ export const userDb = {
   },
 
   async create(user: SeedUser): Promise<SeedUser> {
+    const cleanEmail = user.email.toLowerCase().trim();
     if (isPostgresConnected) {
       await pool.query(`
         INSERT INTO users (id, full_name, email, password, role, status, room_number, created_at)
@@ -316,19 +317,25 @@ export const userDb = {
         ON CONFLICT (email) DO UPDATE SET
           full_name = EXCLUDED.full_name,
           password = COALESCE(EXCLUDED.password, users.password),
-          status = EXCLUDED.status,
+          status = CASE WHEN users.status = 'approved' THEN 'approved' ELSE EXCLUDED.status END,
           room_number = COALESCE(EXCLUDED.room_number, users.room_number)
       `, [
-        user.id, user.fullName, user.email.toLowerCase().trim(), user.password,
+        user.id, user.fullName, cleanEmail, user.password,
         user.role, user.status, user.roomNumber || null, user.createdAt
       ]);
       return user;
     }
-    const idx = memoryStore.users.findIndex(u => u.email.trim().toLowerCase() === user.email.trim().toLowerCase() || u.id === user.id);
+    const idx = memoryStore.users.findIndex(u => u.email.trim().toLowerCase() === cleanEmail || u.id === user.id);
     if (idx >= 0) {
-      memoryStore.users[idx] = { ...memoryStore.users[idx], ...user };
+      const existingStatus = memoryStore.users[idx].status;
+      memoryStore.users[idx] = {
+        ...memoryStore.users[idx],
+        ...user,
+        email: cleanEmail,
+        status: existingStatus === 'approved' ? 'approved' : (user.status || existingStatus || 'pending')
+      };
     } else {
-      memoryStore.users.push(user);
+      memoryStore.users.push({ ...user, email: cleanEmail });
     }
     saveMemoryFallback();
     return user;

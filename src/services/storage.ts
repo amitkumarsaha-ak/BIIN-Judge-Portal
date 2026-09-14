@@ -46,6 +46,85 @@ export const clearRemovedJudgeEmail = (email: string): void => {
   localStorage.setItem(REMOVED_JUDGE_EMAILS_KEY, JSON.stringify(current));
 };
 
+export const normalizeEmail = (email?: string): string => {
+  return (email || '').trim().toLowerCase();
+};
+
+/**
+ * Normalizes and deduplicates an array of users by clean email.
+ * Ensures exactly ONE fixed Admin matching ADMIN_CONFIG.EMAIL,
+ * and exactly ONE canonical record per Judge email.
+ * Preserves approved status over pending status, preserves passwords,
+ * room numbers, and IDs.
+ */
+export const normalizeAndDeduplicateUsers = (rawUsers: User[]): User[] => {
+  const cleanAdminEmail = normalizeEmail(ADMIN_CONFIG.EMAIL);
+  const removedEmails = getRemovedJudgeEmails();
+
+  const adminUser: User = {
+    id: 'admin-fixed-1',
+    fullName: ADMIN_CONFIG.NAME,
+    email: ADMIN_CONFIG.EMAIL,
+    password: ADMIN_CONFIG.PASSWORD,
+    role: 'admin',
+    status: 'approved',
+    createdAt: '2026-07-01T08:00:00Z'
+  };
+
+  const judgeMap = new Map<string, User>();
+
+  for (const u of rawUsers) {
+    if (!u.email) continue;
+    const clean = normalizeEmail(u.email);
+    if (clean === cleanAdminEmail) continue;
+
+    // Filter out removed judge emails
+    if (removedEmails.includes(clean)) {
+      continue;
+    }
+
+    const existing = judgeMap.get(clean);
+    if (!existing) {
+      judgeMap.set(clean, {
+        ...u,
+        email: clean,
+        fullName: (u.fullName || '').trim() || 'Judge',
+        role: 'judge',
+        status: ((u.status || 'pending').toLowerCase() === 'approved'
+          ? 'approved'
+          : (u.status || 'pending').toLowerCase() === 'rejected'
+          ? 'rejected'
+          : 'pending')
+      });
+    } else {
+      // Reconcile duplicates: approved takes precedence over rejected and pending
+      let canonicalStatus: 'pending' | 'approved' | 'rejected' = 'pending';
+      const s1 = (existing.status || 'pending').toLowerCase();
+      const s2 = (u.status || 'pending').toLowerCase();
+      if (s1 === 'approved' || s2 === 'approved') {
+        canonicalStatus = 'approved';
+      } else if (s1 === 'rejected' || s2 === 'rejected') {
+        canonicalStatus = 'rejected';
+      }
+
+      judgeMap.set(clean, {
+        ...existing,
+        ...u,
+        id: (existing.id && !existing.id.startsWith('judge-')) ? existing.id : (u.id || existing.id),
+        fullName: (u.fullName || '').trim() || existing.fullName || 'Judge',
+        email: clean,
+        password: u.password || existing.password,
+        role: 'judge',
+        status: canonicalStatus,
+        roomNumber: u.roomNumber || existing.roomNumber,
+        createdAt: existing.createdAt || u.createdAt || new Date().toISOString()
+      });
+    }
+  }
+
+  return [adminUser, ...Array.from(judgeMap.values())];
+};
+
 export const DEFAULT_ROOMS: Room[] = [
   {
     id: 'room-1',
@@ -118,11 +197,10 @@ export const DEFAULT_AUDIT_LOGS: AuditLog[] = [
 export const initializeStorage = () => {
   if (typeof window === 'undefined' && typeof localStorage === 'undefined') return;
 
-  // Initialize & Sync Users (Ensure admin matches ADMIN_CONFIG and all default judges are approved)
   const existingUsersData = localStorage.getItem(USERS_KEY);
   const removedJudgeEmails = getRemovedJudgeEmails();
   const normalizedPreseeded: User[] = PRESEEDED_JUDGES
-    .filter(j => j.role === 'admin' || !removedJudgeEmails.includes(j.email?.trim().toLowerCase()))
+    .filter(j => j.role === 'admin' || !removedJudgeEmails.includes(normalizeEmail(j.email)))
     .map(j => {
       if (j.role === 'admin') {
         return {
@@ -135,59 +213,19 @@ export const initializeStorage = () => {
       }
       return {
         ...j,
+        email: normalizeEmail(j.email),
         status: j.status || 'approved'
       };
     });
 
   if (!existingUsersData) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(normalizedPreseeded));
+    const deduped = normalizeAndDeduplicateUsers(normalizedPreseeded);
+    localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
   } else {
     try {
       let users: User[] = JSON.parse(existingUsersData);
-      let modified = false;
-
-      // 1. Enforce ONLY ONE Admin matching ADMIN_CONFIG.EMAIL
-      const cleanAdminEmail = ADMIN_CONFIG.EMAIL.trim().toLowerCase();
-      users = users.map(u => {
-        if (u.email?.trim().toLowerCase() === cleanAdminEmail) {
-          if (u.role !== 'admin' || u.password !== ADMIN_CONFIG.PASSWORD || u.fullName !== ADMIN_CONFIG.NAME) {
-            modified = true;
-            return { ...u, role: 'admin', fullName: ADMIN_CONFIG.NAME, password: ADMIN_CONFIG.PASSWORD, status: 'approved' };
-          }
-          return u;
-        } else if (u.role === 'admin') {
-          // Any other user with admin role is demoted to judge to guarantee only ONE fixed Admin
-          modified = true;
-          return { ...u, role: 'judge', status: u.status || 'approved' };
-        }
-        return u;
-      });
-
-      // Ensure Admin exists
-      if (!users.some(u => u.email?.trim().toLowerCase() === cleanAdminEmail)) {
-        users.unshift({
-          id: 'admin-fixed-1',
-          fullName: ADMIN_CONFIG.NAME,
-          email: ADMIN_CONFIG.EMAIL,
-          password: ADMIN_CONFIG.PASSWORD,
-          role: 'admin',
-          status: 'approved',
-          createdAt: '2026-07-01T08:00:00Z'
-        });
-        modified = true;
-      }
-
-      // Ensure default mock judges have a status (default to approved)
-      users = users.map(u => {
-        if (u.role === 'judge' && !u.status) {
-          modified = true;
-          return { ...u, status: 'approved' };
-        }
-        return u;
-      });
-
-      if (modified) {
-        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+      if (!Array.isArray(users) || users.length === 0) {
+        users = normalizedPreseeded;
       }
 
       // Migrate from any legacy user keys seamlessly
@@ -198,29 +236,18 @@ export const initializeStorage = () => {
           try {
             const legacyList = JSON.parse(raw);
             if (Array.isArray(legacyList) && legacyList.length > 0) {
-              for (const lu of legacyList) {
-                if (lu.email) {
-                  const existingIdx = users.findIndex(u => u.email?.toLowerCase() === lu.email.toLowerCase());
-                  if (existingIdx >= 0) {
-                    users[existingIdx] = {
-                      ...lu,
-                      ...users[existingIdx],
-                      password: users[existingIdx].password || lu.password,
-                      status: (lu.status === 'approved' || users[existingIdx].status === 'approved') ? 'approved' : (users[existingIdx].status || lu.status || 'pending')
-                    };
-                  } else {
-                    users.push(lu);
-                  }
-                }
-              }
-              localStorage.setItem(USERS_KEY, JSON.stringify(users));
+              users.push(...legacyList);
             }
           } catch {}
           localStorage.removeItem(lk);
         }
       }
+
+      const deduped = normalizeAndDeduplicateUsers(users);
+      localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
     } catch {
-      localStorage.setItem(USERS_KEY, JSON.stringify(normalizedPreseeded));
+      const deduped = normalizeAndDeduplicateUsers(normalizedPreseeded);
+      localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
     }
   }
 
@@ -464,37 +491,79 @@ export const syncWithBackend = async (): Promise<boolean> => {
     }
     if (judgesRes.status === 'fulfilled' && Array.isArray(judgesRes.value)) {
       const existingUsers = getUsers();
-      const existingAdmins = existingUsers.filter(u => u.role === 'admin');
       const removedEmails = getRemovedJudgeEmails();
-      const validRemoteJudges = judgesRes.value.filter(r => !removedEmails.includes(r.email?.trim().toLowerCase()));
-      
-      // Merge remote judges while keeping existing passwords if known locally
-      const mergedJudges = validRemoteJudges.map(remoteJudge => {
-        const localJudge = existingUsers.find(
-          u => u.id === remoteJudge.id || u.email?.trim().toLowerCase() === remoteJudge.email?.trim().toLowerCase()
-        );
-        return {
-          ...remoteJudge,
-          status: remoteJudge.status || localJudge?.status || 'pending',
-          password: localJudge?.password || remoteJudge.password
-        };
-      });
+      const validRemoteJudges = judgesRes.value.filter(r => !removedEmails.includes(normalizeEmail(r.email)));
 
-      // Keep any local judges that haven't synced to remote yet and are not removed
-      const localOnlyJudges = existingUsers.filter(
-        u => u.role === 'judge' && !removedEmails.includes(u.email?.trim().toLowerCase()) && !validRemoteJudges.some(r => r.id === u.id || r.email?.trim().toLowerCase() === u.email?.trim().toLowerCase())
-      );
+      const remoteMap = new Map<string, User>();
+      for (const rj of validRemoteJudges) {
+        remoteMap.set(normalizeEmail(rj.email), rj);
+      }
 
-      const combined = [...existingAdmins, ...mergedJudges, ...localOnlyJudges];
-      localStorage.setItem(USERS_KEY, JSON.stringify(combined));
+      const mergedJudges: User[] = [];
+      const localOnlyJudges: User[] = [];
+
+      for (const local of existingUsers) {
+        if (local.role === 'admin') continue;
+        const clean = normalizeEmail(local.email);
+        if (removedEmails.includes(clean)) continue;
+
+        const remoteMatch = remoteMap.get(clean);
+        if (remoteMatch) {
+          // Both exist: reconcile
+          // Status precedence: If either is approved, it is approved!
+          const isApproved = local.status === 'approved' || remoteMatch.status === 'approved';
+          const isRejected = !isApproved && (local.status === 'rejected' || remoteMatch.status === 'rejected');
+          const canonicalStatus: 'pending' | 'approved' | 'rejected' = isApproved ? 'approved' : (isRejected ? 'rejected' : 'pending');
+
+          // If local was approved but remote is pending, sync approval to backend
+          if (local.status === 'approved' && remoteMatch.status !== 'approved') {
+            api.approveJudge(remoteMatch.id, undefined, clean).catch(() => {});
+          }
+
+          mergedJudges.push({
+            ...remoteMatch,
+            id: remoteMatch.id || local.id,
+            fullName: local.fullName || remoteMatch.fullName,
+            email: clean,
+            status: canonicalStatus,
+            password: local.password || remoteMatch.password,
+            roomNumber: local.roomNumber || remoteMatch.roomNumber
+          });
+          remoteMap.delete(clean);
+        } else {
+          localOnlyJudges.push(local);
+        }
+      }
+
+      // Add remaining remote judges not found locally
+      for (const [clean, rj] of remoteMap.entries()) {
+        mergedJudges.push({
+          ...rj,
+          email: clean,
+          status: rj.status || 'pending'
+        });
+      }
+
+      const deduped = normalizeAndDeduplicateUsers([...getUsers().filter(u => u.role === 'admin'), ...mergedJudges, ...localOnlyJudges]);
+      localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_users_updated'));
       }
 
-      // Sync local-only judges to backend asynchronously
+      // Push local-only judges to backend cleanly
       if (localOnlyJudges.length > 0) {
         Promise.allSettled(
-          localOnlyJudges.map(j => api.register(j.fullName, j.email, j.password || 'password123'))
+          localOnlyJudges.map(async (j) => {
+            try {
+              const reg = await api.register(j.fullName, j.email, j.password || 'password123');
+              const judgeId = reg?.user?.id || j.id;
+              if (j.status === 'approved') {
+                await api.approveJudge(judgeId, undefined, j.email);
+              } else if (j.status === 'rejected') {
+                await api.rejectJudge(judgeId, undefined, j.email);
+              }
+            } catch {}
+          })
         ).catch(() => {});
       }
     }
@@ -707,7 +776,13 @@ export const deleteRoom = (id: string, actor?: { email: string; name: string }):
 export const getUsers = (): User[] => {
   initializeStorage();
   const data = localStorage.getItem(USERS_KEY);
-  return data ? JSON.parse(data) : [];
+  if (!data) return [];
+  try {
+    const parsed: User[] = JSON.parse(data);
+    return normalizeAndDeduplicateUsers(parsed);
+  } catch {
+    return [];
+  }
 };
 
 export const getJudges = (): User[] => {
@@ -716,10 +791,10 @@ export const getJudges = (): User[] => {
 
 export const findUserByEmail = (email: string): User | undefined => {
   if (!email) return undefined;
-  const cleanEmail = email.trim().toLowerCase();
+  const cleanEmail = normalizeEmail(email);
 
   // Single fixed admin check
-  if (cleanEmail === ADMIN_CONFIG.EMAIL.trim().toLowerCase()) {
+  if (cleanEmail === normalizeEmail(ADMIN_CONFIG.EMAIL)) {
     return {
       id: 'admin-fixed-1',
       fullName: ADMIN_CONFIG.NAME,
@@ -732,9 +807,9 @@ export const findUserByEmail = (email: string): User | undefined => {
   }
 
   const users = getUsers();
-  const found = users.find((u) => u.email?.trim().toLowerCase() === cleanEmail);
+  const found = users.find((u) => normalizeEmail(u.email) === cleanEmail);
   if (found) {
-    if (found.role === 'admin' && found.email?.trim().toLowerCase() !== ADMIN_CONFIG.EMAIL.trim().toLowerCase()) {
+    if (found.role === 'admin' && normalizeEmail(found.email) !== normalizeEmail(ADMIN_CONFIG.EMAIL)) {
       found.role = 'judge';
     }
     return found;
@@ -746,14 +821,16 @@ export const findUserByEmail = (email: string): User | undefined => {
   }
 
   // Fallback check against PRESEEDED_JUDGES
-  const preseeded = PRESEEDED_JUDGES.find((u) => u.email?.trim().toLowerCase() === cleanEmail);
+  const preseeded = PRESEEDED_JUDGES.find((u) => normalizeEmail(u.email) === cleanEmail);
   if (preseeded && preseeded.role !== 'admin') {
     const judgeUser: User = {
       ...preseeded,
+      email: cleanEmail,
       status: preseeded.status || 'approved'
     };
     users.push(judgeUser);
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    const deduped = normalizeAndDeduplicateUsers(users);
+    localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
     return judgeUser;
   }
 
@@ -762,87 +839,119 @@ export const findUserByEmail = (email: string): User | undefined => {
 
 export const saveUser = (user: User, actor?: { email: string; name: string }): void => {
   const users = getUsers();
-  const cleanEmail = user.email?.trim().toLowerCase();
+  const cleanEmail = normalizeEmail(user.email);
   if (cleanEmail) {
     clearRemovedJudgeEmail(cleanEmail);
   }
-  
+
+  const existingIdx = users.findIndex(u => (cleanEmail && normalizeEmail(u.email) === cleanEmail) || u.id === user.id);
+  const existingUser = existingIdx >= 0 ? users[existingIdx] : undefined;
+
+  // CRITICAL: NEVER overwrite an existing approved judge to pending!
+  const canonicalStatus: 'pending' | 'approved' | 'rejected' =
+    existingUser?.status === 'approved'
+      ? 'approved'
+      : (user.status || existingUser?.status || 'pending') as 'pending' | 'approved' | 'rejected';
+
   const safeUser: User = {
     ...user,
+    email: cleanEmail || user.email,
     role: 'judge',
-    status: user.status || 'pending'
+    status: canonicalStatus
   };
 
-  const existingIdx = users.findIndex(u => (cleanEmail && u.email?.trim().toLowerCase() === cleanEmail) || u.id === safeUser.id);
+  let updatedUsers: User[];
   if (existingIdx >= 0) {
-    users[existingIdx] = {
-      ...users[existingIdx],
-      ...safeUser,
-      password: safeUser.password || users[existingIdx].password
-    };
+    updatedUsers = users.map((u, i) => {
+      if (i === existingIdx) {
+        return {
+          ...u,
+          ...safeUser,
+          password: safeUser.password || u.password
+        };
+      }
+      return u;
+    });
   } else {
-    users.push(safeUser);
+    updatedUsers = [...users, safeUser];
   }
 
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  const deduped = normalizeAndDeduplicateUsers(updatedUsers);
+  localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('biin_users_updated'));
   }
-  
-  // Forward to backend API
-  api.register(safeUser.fullName, safeUser.email, safeUser.password || 'password123').catch(() => {});
+
+  // Forward to backend API ONLY IF NEW USER
+  if (existingIdx < 0 && !safeUser.id.startsWith('judge-remote-')) {
+    api.register(safeUser.fullName, safeUser.email, safeUser.password || 'password123')
+      .then(res => {
+        if (res?.user?.id) {
+          const current = getUsers().map(u => normalizeEmail(u.email) === cleanEmail ? { ...u, id: res.user.id } : u);
+          localStorage.setItem(USERS_KEY, JSON.stringify(normalizeAndDeduplicateUsers(current)));
+        }
+      })
+      .catch(() => {});
+  }
 
   if (actor) {
-    logAuditAction(actor.email, actor.name, 'CREATE_USER', 'judge', `Registered judge account for ${safeUser.fullName} (${safeUser.email}) with status "${safeUser.status}".`);
+    logAuditAction(actor.email, actor.name, existingIdx >= 0 ? 'UPDATE_USER' : 'CREATE_USER', 'judge', `Judge account for ${safeUser.fullName} (${safeUser.email}) with status "${safeUser.status}".`);
   }
 };
 
 export const approveJudge = (judgeId: string, actor?: { email: string; name: string }): void => {
   const users = getUsers();
-  const idx = users.findIndex(u => u.id === judgeId || u.email?.toLowerCase() === judgeId.toLowerCase());
+  const cleanId = normalizeEmail(judgeId);
+  const idx = users.findIndex(u => u.id === judgeId || normalizeEmail(u.email) === cleanId);
   if (idx >= 0) {
-    users[idx] = { ...users[idx], status: 'approved' };
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    const target = users[idx];
+    target.status = 'approved';
+    const deduped = normalizeAndDeduplicateUsers(users);
+    localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('biin_users_updated'));
     }
-    api.approveJudge(users[idx].id, actor).catch(() => {});
+    api.approveJudge(target.id, actor, target.email).catch(() => {});
     if (actor) {
-      logAuditAction(actor.email, actor.name, 'APPROVE_JUDGE', 'judge', `Approved judge registration for ${users[idx].fullName} (${users[idx].email}).`);
+      logAuditAction(actor.email, actor.name, 'APPROVE_JUDGE', 'judge', `Approved judge registration for ${target.fullName} (${target.email}).`);
     }
   }
 };
 
 export const rejectJudge = (judgeId: string, actor?: { email: string; name: string }): void => {
   const users = getUsers();
-  const idx = users.findIndex(u => u.id === judgeId || u.email?.toLowerCase() === judgeId.toLowerCase());
+  const cleanId = normalizeEmail(judgeId);
+  const idx = users.findIndex(u => u.id === judgeId || normalizeEmail(u.email) === cleanId);
   if (idx >= 0) {
-    users[idx] = { ...users[idx], status: 'rejected' };
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    const target = users[idx];
+    target.status = 'rejected';
+    const deduped = normalizeAndDeduplicateUsers(users);
+    localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('biin_users_updated'));
     }
-    api.rejectJudge(users[idx].id, actor).catch(() => {});
+    api.rejectJudge(target.id, actor, target.email).catch(() => {});
     if (actor) {
-      logAuditAction(actor.email, actor.name, 'REJECT_JUDGE', 'judge', `Rejected judge registration for ${users[idx].fullName} (${users[idx].email}).`);
+      logAuditAction(actor.email, actor.name, 'REJECT_JUDGE', 'judge', `Rejected judge registration for ${target.fullName} (${target.email}).`);
     }
   }
 };
 
 export const resetJudgePassword = (email: string, newPassword: string): boolean => {
   if (!email || !newPassword || newPassword.length < 4) return false;
-  const users = getUsers();
-  const cleanEmail = email.trim().toLowerCase();
-  if (cleanEmail === ADMIN_CONFIG.EMAIL.trim().toLowerCase()) return false;
+  const cleanEmail = normalizeEmail(email);
+  if (cleanEmail === normalizeEmail(ADMIN_CONFIG.EMAIL)) return false;
 
-  let idx = users.findIndex(u => u.email?.trim().toLowerCase() === cleanEmail);
+  const users = getUsers();
+  let idx = users.findIndex(u => normalizeEmail(u.email) === cleanEmail);
   if (idx < 0) {
     // If not in users array, check preseeded judges ONLY if not removed
     if (!isJudgeEmailRemoved(cleanEmail)) {
-      const preseeded = PRESEEDED_JUDGES.find(u => u.email?.trim().toLowerCase() === cleanEmail);
+      const preseeded = PRESEEDED_JUDGES.find(u => normalizeEmail(u.email) === cleanEmail);
       if (preseeded && preseeded.role !== 'admin' && (preseeded.status || 'approved').toLowerCase() === 'approved') {
         const judgeUser: User = {
           ...preseeded,
+          email: cleanEmail,
           password: newPassword,
           status: 'approved'
         };
@@ -863,7 +972,8 @@ export const resetJudgePassword = (email: string, newPassword: string): boolean 
   }
 
   users[idx] = { ...users[idx], password: newPassword, status: 'approved' };
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  const deduped = normalizeAndDeduplicateUsers(users);
+  localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
 
   // Also clean up any legacy user keys so they never resurrect old passwords
   const legacyKeys = ['biin_judge_portal_users', 'biin_users'];
@@ -873,7 +983,7 @@ export const resetJudgePassword = (email: string, newPassword: string): boolean 
       if (raw) {
         const list = JSON.parse(raw);
         if (Array.isArray(list)) {
-          const lIdx = list.findIndex((u: User) => u.email?.trim().toLowerCase() === cleanEmail);
+          const lIdx = list.findIndex((u: User) => normalizeEmail(u.email) === cleanEmail);
           if (lIdx >= 0) {
             list[lIdx].password = newPassword;
             localStorage.setItem(lk, JSON.stringify(list));
@@ -887,7 +997,7 @@ export const resetJudgePassword = (email: string, newPassword: string): boolean 
     window.dispatchEvent(new Event('biin_users_updated'));
   }
   const current = getCurrentUser();
-  if (current && current.email?.trim().toLowerCase() === cleanEmail) {
+  if (current && normalizeEmail(current.email) === cleanEmail) {
     setCurrentUserSession({ ...current, password: newPassword });
   }
   api.resetPassword(cleanEmail, newPassword).catch(() => {});
@@ -896,14 +1006,17 @@ export const resetJudgePassword = (email: string, newPassword: string): boolean 
 
 export const updateUser = (updated: User, actor?: { email: string; name: string }): void => {
   const users = getUsers();
-  const idx = users.findIndex(u => u.id === updated.id);
+  const cleanEmail = normalizeEmail(updated.email);
+  const idx = users.findIndex(u => u.id === updated.id || (cleanEmail && normalizeEmail(u.email) === cleanEmail));
   if (idx >= 0) {
     const safeUpdated: User = {
       ...updated,
-      role: updated.email?.trim().toLowerCase() === ADMIN_CONFIG.EMAIL.trim().toLowerCase() ? 'admin' : 'judge'
+      email: cleanEmail || updated.email,
+      role: cleanEmail === normalizeEmail(ADMIN_CONFIG.EMAIL) ? 'admin' : 'judge'
     };
     users[idx] = safeUpdated;
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    const deduped = normalizeAndDeduplicateUsers(users);
+    localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('biin_users_updated'));
     }
@@ -915,23 +1028,28 @@ export const updateUser = (updated: User, actor?: { email: string; name: string 
 
 export const deleteUser = (id: string, actor?: { email: string; name: string }): void => {
   const users = getUsers();
-  const target = users.find(u => u.id === id || u.email?.trim().toLowerCase() === id.trim().toLowerCase());
-  if (target?.email?.trim().toLowerCase() === ADMIN_CONFIG.EMAIL.trim().toLowerCase()) {
+  const cleanId = normalizeEmail(id);
+  const target = users.find(u => u.id === id || normalizeEmail(u.email) === cleanId);
+  if (target && normalizeEmail(target.email) === normalizeEmail(ADMIN_CONFIG.EMAIL)) {
     return;
   }
-  const cleanEmail = target?.email?.trim().toLowerCase();
+  const cleanEmail = target ? normalizeEmail(target.email) : (id.includes('@') ? cleanId : '');
   if (cleanEmail) {
     addRemovedJudgeEmail(cleanEmail);
-  } else if (id.includes('@')) {
-    addRemovedJudgeEmail(id.trim().toLowerCase());
   }
 
-  const remaining = users.filter(u => u.id !== id && u.email?.trim().toLowerCase() !== id.trim().toLowerCase() && (cleanEmail ? u.email?.trim().toLowerCase() !== cleanEmail : true));
-  localStorage.setItem(USERS_KEY, JSON.stringify(remaining));
+  const remaining = users.filter(u => {
+    if (u.id === id) return false;
+    if (cleanEmail && normalizeEmail(u.email) === cleanEmail) return false;
+    return true;
+  });
+
+  const deduped = normalizeAndDeduplicateUsers(remaining);
+  localStorage.setItem(USERS_KEY, JSON.stringify(deduped));
 
   // Clear session if the deleted user is currently logged in
   const current = getCurrentUser();
-  if (current && (current.id === id || (cleanEmail && current.email?.trim().toLowerCase() === cleanEmail))) {
+  if (current && (current.id === id || (cleanEmail && normalizeEmail(current.email) === cleanEmail))) {
     setCurrentUserSession(null);
   }
 
@@ -939,7 +1057,7 @@ export const deleteUser = (id: string, actor?: { email: string; name: string }):
     window.dispatchEvent(new Event('biin_users_updated'));
   }
 
-  api.deleteJudge(id, actor).catch(() => {});
+  api.deleteJudge(target?.id || id, actor, cleanEmail).catch(() => {});
 
   if (target && actor) {
     logAuditAction(actor.email, actor.name, 'DELETE_USER', 'judge', `Deleted ${target.role} user account for ${target.fullName} (${target.email}).`);
