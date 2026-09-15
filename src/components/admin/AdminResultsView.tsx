@@ -128,18 +128,16 @@ export const AdminResultsView: React.FC = () => {
   };
 
   const getAwardBadge = (award: string) => {
-    switch (award) {
-      case 'Champion':
-        return 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black shadow-md shadow-amber-500/30';
-      case 'Winner':
-        return 'bg-gradient-to-r from-indigo-600 to-cyan-500 text-white font-extrabold shadow-md shadow-indigo-500/30';
-      case 'Merit':
-        return 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-bold';
-      case 'No Award':
-      case 'Participant':
-      default:
-        return 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold';
+    if (award.includes('Champion')) {
+      return 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black shadow-md shadow-amber-500/30';
     }
+    if (award.includes('Winner')) {
+      return 'bg-gradient-to-r from-indigo-600 to-cyan-500 text-white font-extrabold shadow-md shadow-indigo-500/30';
+    }
+    if (award.includes('Merit')) {
+      return 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-bold';
+    }
+    return 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold';
   };
 
   const getCategoryIcon = (code: HeadCategoryCode) => {
@@ -233,10 +231,10 @@ export const AdminResultsView: React.FC = () => {
   // Overall totals across categories
   const overallTotals = useMemo(() => {
     const totalProjects = allProjects.length;
-    const totalChampions = allCombinedResults.filter(r => r.award === 'Champion').length;
-    const totalWinners = allCombinedResults.filter(r => r.award === 'Winner').length;
-    const totalMerits = allCombinedResults.filter(r => r.award === 'Merit').length;
-    const totalNoAward = allCombinedResults.filter(r => r.award === 'No Award' || r.award === 'Participant').length;
+    const totalChampions = allCombinedResults.filter(r => r.award.includes('Champion') || r.awardBase === 'Champion').length;
+    const totalWinners = allCombinedResults.filter(r => r.award.includes('Winner') || r.awardBase === 'Winner').length;
+    const totalMerits = allCombinedResults.filter(r => r.award.includes('Merit') || r.awardBase === 'Merit').length;
+    const totalNoAward = allCombinedResults.filter(r => (!r.award.includes('Champion') && !r.award.includes('Winner') && !r.award.includes('Merit')) || r.awardBase === 'No Award').length;
 
     return { totalProjects, totalChampions, totalWinners, totalMerits, totalNoAward };
   }, [allProjects, allCombinedResults]);
@@ -249,16 +247,38 @@ export const AdminResultsView: React.FC = () => {
           body {
             background-color: #ffffff !important;
             color: #000000 !important;
+            font-family: inherit;
           }
           .no-print {
             display: none !important;
           }
-          .print-card {
-            border: 1px solid #cbd5e1 !important;
+          .print-sheet {
+            display: block !important;
+            padding: 0 !important;
+            padding-top: 1.5in !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            background: white !important;
+            color: black !important;
             box-shadow: none !important;
-            background: #ffffff !important;
-            color: #000000 !important;
+            border: none !important;
+          }
+          .print-category-table {
             page-break-inside: avoid;
+            border-collapse: collapse !important;
+            width: 100% !important;
+            margin-bottom: 24px;
+          }
+          .print-category-table th, .print-category-table td {
+            border: 1px solid #94a3b8 !important;
+            padding: 6px 10px !important;
+            color: black !important;
+          }
+          .print-badge {
+            border: 1px solid #000 !important;
+            color: black !important;
+            background: #f8fafc !important;
           }
         }
       `}</style>
@@ -272,17 +292,17 @@ export const AdminResultsView: React.FC = () => {
       )}
 
       {/* Header Banner */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center space-x-2 rounded-full bg-amber-50 dark:bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 mb-2">
+          <div className="inline-flex items-center space-x-2 rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 mb-2">
             <Trophy className="h-3.5 w-3.5" />
-            <span>Master Results & Award Board (20 Independent Categories)</span>
+            <span>Official Competition Results & Ranking Board</span>
           </div>
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
             Results & Award Designation
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-            4 Application Types × 5 Head Categories = 20 completely independent result categories. Award designations are calculated by score threshold: <strong>≥80% Champion</strong>, <strong>≥70% Winner</strong>, <strong>≥60% Merit</strong>, and <strong>&lt;60% No Award</strong>, with no limit on recipient counts.
+            12 Independent Award Categories. Designations: <strong>≥85% Champion</strong> (and highest in category), <strong>≥70% Winner</strong>, <strong>≥65% Merit</strong>, and <strong>&lt;65% No Award</strong>. When multiple projects qualify in the same tier, they are sequenced as <strong>1st, 2nd, 3rd</strong>.
           </p>
         </div>
 
@@ -290,7 +310,7 @@ export const AdminResultsView: React.FC = () => {
           {/* Recalculate Results Button (Rule 17) */}
           <button
             onClick={handleRecalculate}
-            title="Recalculate results across all 20 categories using latest judge evaluations"
+            title="Recalculate results across all 12 categories using latest judge evaluations"
             className="inline-flex items-center justify-center space-x-2 rounded-2xl px-4 py-3 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg transition-all hover:scale-105 min-h-[40px]"
           >
             <RotateCcw className="h-4 w-4" />
@@ -336,40 +356,40 @@ export const AdminResultsView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Applications</p>
           <p className="text-xl font-black text-slate-900 dark:text-white font-mono mt-0.5">{overallTotals.totalProjects}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">Across 20 categories</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Across 12 categories</p>
         </div>
 
         <div className="bg-gradient-to-br from-amber-500/10 to-yellow-500/5 border border-amber-300/40 dark:border-amber-500/30 rounded-2xl p-3.5 shadow-sm">
           <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center space-x-1">
             <Trophy className="h-3 w-3" />
-            <span>Champions (≥80%)</span>
+            <span>Champions (≥85%)</span>
           </p>
           <p className="text-xl font-black text-amber-600 dark:text-amber-400 font-mono mt-0.5">{overallTotals.totalChampions}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">Unlimited recipients</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Sequenced 1st, 2nd, 3rd</p>
         </div>
 
         <div className="bg-gradient-to-br from-indigo-500/10 to-cyan-500/5 border border-indigo-300/40 dark:border-indigo-500/30 rounded-2xl p-3.5 shadow-sm">
           <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center space-x-1">
             <Medal className="h-3 w-3" />
-            <span>Winners (70–79%)</span>
+            <span>Winners (70–84%)</span>
           </p>
           <p className="text-xl font-black text-indigo-600 dark:text-indigo-400 font-mono mt-0.5">{overallTotals.totalWinners}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">Unlimited recipients</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Sequenced 1st, 2nd, 3rd</p>
         </div>
 
         <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-300/40 dark:border-emerald-500/30 rounded-2xl p-3.5 shadow-sm">
           <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center space-x-1">
             <Award className="h-3 w-3" />
-            <span>Merits (60–69%)</span>
+            <span>Merits (65–69%)</span>
           </p>
           <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">{overallTotals.totalMerits}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">Unlimited recipients</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Sequenced 1st, 2nd, 3rd</p>
         </div>
 
         <div className="col-span-2 min-[640px]:col-span-1 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">No Award (&lt;60%)</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">No Award (&lt;65%)</p>
           <p className="text-xl font-black text-slate-700 dark:text-slate-300 font-mono mt-0.5">{overallTotals.totalNoAward}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">Below 60% threshold</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Below 65% threshold</p>
         </div>
       </div>
 
@@ -576,13 +596,13 @@ export const AdminResultsView: React.FC = () => {
                                 {/* 4 DESIGNATION BLOCKS: Champion, Winner, Merit, No Award */}
                                 <div className="space-y-2.5">
 
-                                  {/* 1. CHAMPION (>= 80%) */}
+                                  {/* 1. CHAMPION (>= 85%) */}
                                   <div className="rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50 p-3">
                                     <div className="flex items-center justify-between mb-2">
                                       <div className="flex items-center space-x-1.5">
                                         <Trophy className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                                         <span className="text-xs font-black tracking-wider text-amber-900 dark:text-amber-200 uppercase">
-                                          Champion (≥ 80%)
+                                          Champion (≥ 85%)
                                         </span>
                                       </div>
                                       <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-800/50 text-amber-900 dark:text-amber-200">
@@ -613,6 +633,9 @@ export const AdminResultsView: React.FC = () => {
                                                 </p>
                                               </div>
                                               <div className="flex items-center space-x-2 shrink-0">
+                                                <span className="text-[10px] font-black font-mono px-2 py-0.5 rounded-md bg-amber-200/80 dark:bg-amber-800/60 text-amber-900 dark:text-amber-100 uppercase">
+                                                  {app.awardRank || app.award}
+                                                </span>
                                                 <span className="font-mono font-black text-xs text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 rounded-md">
                                                   {formatScoreNumber(app.finalAverageScore)}%
                                                 </span>
@@ -624,13 +647,13 @@ export const AdminResultsView: React.FC = () => {
                                     )}
                                   </div>
 
-                                  {/* 2. WINNER (>= 70% AND < 80%) */}
+                                  {/* 2. WINNER (>= 70% AND < 85%) */}
                                   <div className="rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-800/50 p-3">
                                     <div className="flex items-center justify-between mb-2">
                                       <div className="flex items-center space-x-1.5">
                                         <Medal className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                                         <span className="text-xs font-black tracking-wider text-indigo-900 dark:text-indigo-200 uppercase">
-                                          Winner (70% – 79.99%)
+                                          Winner (70% – 84.99%)
                                         </span>
                                       </div>
                                       <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-indigo-200/70 dark:bg-indigo-800/50 text-indigo-900 dark:text-indigo-200">
@@ -661,6 +684,9 @@ export const AdminResultsView: React.FC = () => {
                                                 </p>
                                               </div>
                                               <div className="flex items-center space-x-2 shrink-0">
+                                                <span className="text-[10px] font-black font-mono px-2 py-0.5 rounded-md bg-indigo-200/80 dark:bg-indigo-800/60 text-indigo-900 dark:text-indigo-100 uppercase">
+                                                  {app.awardRank || app.award}
+                                                </span>
                                                 <span className="font-mono font-black text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/60 px-2 py-0.5 rounded-md">
                                                   {formatScoreNumber(app.finalAverageScore)}%
                                                 </span>
@@ -672,13 +698,13 @@ export const AdminResultsView: React.FC = () => {
                                     )}
                                   </div>
 
-                                  {/* 3. MERIT (>= 60% AND < 70%) */}
+                                  {/* 3. MERIT (>= 65% AND < 70%) */}
                                   <div className="rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/50 p-3">
                                     <div className="flex items-center justify-between mb-2">
                                       <div className="flex items-center space-x-1.5">
                                         <Award className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                                         <span className="text-xs font-black tracking-wider text-emerald-900 dark:text-emerald-200 uppercase">
-                                          Merit (60% – 69.99%)
+                                          Merit (65% – 69.99%)
                                         </span>
                                       </div>
                                       <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-200/70 dark:bg-emerald-800/50 text-emerald-900 dark:text-emerald-200">
@@ -709,6 +735,9 @@ export const AdminResultsView: React.FC = () => {
                                                 </p>
                                               </div>
                                               <div className="flex items-center space-x-2 shrink-0">
+                                                <span className="text-[10px] font-black font-mono px-2 py-0.5 rounded-md bg-emerald-200/80 dark:bg-emerald-800/60 text-emerald-900 dark:text-emerald-100 uppercase">
+                                                  {app.awardRank || app.award}
+                                                </span>
                                                 <span className="font-mono font-black text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-md">
                                                   {formatScoreNumber(app.finalAverageScore)}%
                                                 </span>
@@ -720,12 +749,12 @@ export const AdminResultsView: React.FC = () => {
                                     )}
                                   </div>
 
-                                  {/* 4. NO AWARD (< 60%) */}
+                                  {/* 4. NO AWARD (< 65%) */}
                                   {cat.noAwards.length > 0 && (
                                     <div className="rounded-xl bg-slate-100/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 p-3">
                                       <div className="flex items-center justify-between mb-2">
                                         <span className="text-xs font-bold tracking-wider text-slate-600 dark:text-slate-400 uppercase">
-                                          No Award (&lt; 60%)
+                                          No Award (&lt; 65%)
                                         </span>
                                         <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                                           {cat.noAwards.length}

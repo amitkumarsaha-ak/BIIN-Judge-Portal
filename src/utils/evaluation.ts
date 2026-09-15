@@ -172,9 +172,9 @@ import type { HeadCategoryCode } from '../types';
 
 export const RESULT_APPLICATION_TYPES: { id: ApplicationType; title: string; shortTitle: string }[] = [
   { id: 'Student-Secondary', title: 'Student-Secondary', shortTitle: 'Student-Secondary' },
-  { id: 'Student-Tertiary', title: 'Student Tertiary (University Level)', shortTitle: 'Student Tertiary' },
+  { id: 'Individual or Group', title: 'Individual/Group', shortTitle: 'Individual/Group' },
   { id: 'Organisation', title: 'Organization', shortTitle: 'Organization' },
-  { id: 'Individual or Group', title: 'Individual/Group', shortTitle: 'Individual/Group' }
+  { id: 'Student-Tertiary', title: 'Student-Tertiary (University Level)', shortTitle: 'Student-Tertiary' }
 ];
 
 export const RESULT_HEAD_CATEGORIES: { code: HeadCategoryCode; name: string }[] = [
@@ -220,18 +220,20 @@ export const matchesAppType = (projectType?: string, filterType?: string): boole
   return canonicalAppType(projectType) === canonicalAppType(filterType);
 };
 
-export const matchesCategory = (projectCategory?: string, filterCategory?: string, projectAppType?: string): boolean => {
-  if (projectAppType) {
-    const canon = canonicalAppType(projectAppType);
-    if (canon === 'Student-Secondary' || canon === 'Individual or Group') {
-      return true;
-    }
+export const matchesCategory = (
+  projectCategory?: string,
+  filterCategory?: string,
+  projectAppType?: string
+): boolean => {
+  if (!filterCategory || filterCategory === 'All' || filterCategory === 'All Head Category' || filterCategory === 'All Head Categories') {
+    return true;
   }
-  const fc = (filterCategory || '').toLowerCase().trim();
-  if (!fc || fc === 'all' || fc === 'all head category' || fc === 'all head categories' || fc === 'all categories' || fc === 'all category' || fc === 'n/a' || fc === 'null' || fc === 'none') {
+  const appType = canonicalAppType(projectAppType);
+  if (appType === 'Student-Secondary' || appType === 'Individual or Group') {
     return true;
   }
   const pc = (projectCategory || '').toLowerCase().trim();
+  const fc = filterCategory.toLowerCase().trim();
   if (!pc || pc === 'all' || pc === 'all head category' || pc === 'all head categories' || pc === 'all categories' || pc === 'all category' || pc === 'n/a' || pc === 'null' || pc === 'none') {
     return true;
   }
@@ -239,17 +241,39 @@ export const matchesCategory = (projectCategory?: string, filterCategory?: strin
   return canonicalHeadCategory(projectCategory) === canonicalHeadCategory(filterCategory);
 };
 
-export const calculateAward = (finalScore: number, _isHighestInCategory?: boolean): AwardDesignation => {
-  if (finalScore >= 80) {
+/**
+ * Base award threshold calculation:
+ * - Champion: >= 85%
+ * - Winner:   >= 70% (and < 85%)
+ * - Merit:    >= 65% (and < 70%)
+ * - No Award: < 65%
+ */
+export const calculateBaseAward = (finalScore: number): 'Champion' | 'Winner' | 'Merit' | 'No Award' => {
+  if (finalScore >= 85) {
     return 'Champion';
   }
   if (finalScore >= 70) {
     return 'Winner';
   }
-  if (finalScore >= 60) {
+  if (finalScore >= 65) {
     return 'Merit';
   }
   return 'No Award';
+};
+
+export const calculateAward = (finalScore: number, _isHighestInCategory?: boolean): AwardDesignation => {
+  return calculateBaseAward(finalScore);
+};
+
+export const getOrdinal = (n: number): string => {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+};
+
+export const getOrdinalWord = (n: number): string => {
+  const words = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
+  return words[n - 1] || `${getOrdinal(n)}`;
 };
 
 export const getProjectCombinedResult = (
@@ -281,7 +305,7 @@ export const getProjectCombinedResult = (
     finalAverageScore = Number((totalConvertedSum / judgesEvaluations.length).toFixed(2));
   }
 
-  // Determine highest score in category (combination of ApplicationType and HeadCategory)
+  // Determine category pool
   const projectAppType = canonicalAppType(project.applicationType);
   const projectHeadCat = canonicalHeadCategory(project.headCategory);
   const isNoHeadCategory = projectAppType === 'Student-Secondary' || projectAppType === 'Individual or Group';
@@ -290,9 +314,10 @@ export const getProjectCombinedResult = (
     (p) => canonicalAppType(p.applicationType) === projectAppType && (isNoHeadCategory || canonicalHeadCategory(p.headCategory) === projectHeadCat)
   );
 
-  let categoryMaxScore = 0;
-  for (const p of sameCategoryProjects) {
+  // Score all projects in the same category to determine rankings and sequenced designations
+  const scoredCategoryProjects = sameCategoryProjects.map((p) => {
     const pEvals = allEvaluations.filter((e) => e.projectId === p.id);
+    let avg = 0;
     if (pEvals.length > 0) {
       const pMaxRaw = getMaxRawScoreForApplicationType(p.applicationType);
       const sumConverted = pEvals.reduce((acc, e) => {
@@ -300,17 +325,51 @@ export const getProjectCombinedResult = (
         const conv = e.convertedScore ?? e.percentage ?? calculateConvertedScore(raw, pMaxRaw);
         return acc + conv;
       }, 0);
-      const avgConverted = sumConverted / pEvals.length;
-      if (avgConverted > categoryMaxScore) {
-        categoryMaxScore = avgConverted;
+      avg = Number((sumConverted / pEvals.length).toFixed(2));
+    }
+    return { id: p.id, score: avg };
+  });
+
+  scoredCategoryProjects.sort((a, b) => b.score - a.score);
+
+  const categoryMaxScore = scoredCategoryProjects[0]?.score ?? 0;
+  const isHighestInCategory = finalAverageScore > 0 && Math.abs(finalAverageScore - categoryMaxScore) < 0.001;
+
+  const baseAward = calculateBaseAward(finalAverageScore);
+  let awardRank: string = baseAward;
+  let awardFullTitle: string = baseAward;
+  let awardSequence = 1;
+
+  if (baseAward !== 'No Award' && finalAverageScore > 0) {
+    const peersInTier = scoredCategoryProjects.filter(
+      (p) => calculateBaseAward(p.score) === baseAward && p.score > 0
+    );
+
+    if (peersInTier.length > 1) {
+      // Multiple qualifiers in this tier -> sequence as 1st, 2nd, 3rd
+      let rank = 1;
+      for (const peer of peersInTier) {
+        if (peer.id === project.id) break;
+        if (peer.score > finalAverageScore) {
+          rank++;
+        }
       }
+      awardSequence = rank;
+      const ord = getOrdinal(rank);
+      const ordWord = getOrdinalWord(rank);
+      awardRank = `${ord} ${baseAward}`;
+      awardFullTitle = `${ordWord} ${baseAward}`;
+    } else {
+      awardSequence = 1;
+      awardRank = baseAward;
+      awardFullTitle = baseAward;
     }
   }
 
-  const isHighestInCategory =
-    finalAverageScore > 0 && Math.abs(finalAverageScore - categoryMaxScore) < 0.001;
-
-  const award = calculateAward(finalAverageScore);
+  // If multiple projects in category qualify for the tier, award display is sequenced (e.g. "1st Champion", "2nd Champion")
+  // If only 1 project qualifies in tier, award display is "Champion" / "Winner" / "Merit"
+  const totalTierQualifiers = scoredCategoryProjects.filter(p => calculateBaseAward(p.score) === baseAward && p.score > 0).length;
+  const award: AwardDesignation = (totalTierQualifiers > 1 ? awardRank : baseAward) as AwardDesignation;
 
   return {
     project,
@@ -318,6 +377,10 @@ export const getProjectCombinedResult = (
     judgesEvaluations,
     finalAverageScore,
     award,
+    awardRank,
+    awardFullTitle,
+    awardBase: baseAward,
+    awardSequence,
     isHighestInCategory
   };
 };
@@ -354,10 +417,10 @@ export const calculateCategorizedResults = (
 
       results.sort((a, b) => b.finalAverageScore - a.finalAverageScore);
 
-      const champions = results.filter((r) => r.award === 'Champion');
-      const winners = results.filter((r) => r.award === 'Winner');
-      const merits = results.filter((r) => r.award === 'Merit');
-      const noAwards = results.filter((r) => r.award === 'No Award' || r.award === 'Participant');
+      const champions = results.filter((r) => r.awardBase === 'Champion' || r.award.includes('Champion'));
+      const winners = results.filter((r) => r.awardBase === 'Winner' || r.award.includes('Winner'));
+      const merits = results.filter((r) => r.awardBase === 'Merit' || r.award.includes('Merit'));
+      const noAwards = results.filter((r) => (!r.awardBase || r.awardBase === 'No Award') && !r.award.includes('Champion') && !r.award.includes('Winner') && !r.award.includes('Merit'));
 
       groups.push({
         appType: app.id,
@@ -391,10 +454,10 @@ export const calculateCategorizedResults = (
       // Sort results highest to lowest for display
       results.sort((a, b) => b.finalAverageScore - a.finalAverageScore);
 
-      const champions = results.filter((r) => r.award === 'Champion');
-      const winners = results.filter((r) => r.award === 'Winner');
-      const merits = results.filter((r) => r.award === 'Merit');
-      const noAwards = results.filter((r) => r.award === 'No Award' || r.award === 'Participant');
+      const champions = results.filter((r) => r.awardBase === 'Champion' || r.award.includes('Champion'));
+      const winners = results.filter((r) => r.awardBase === 'Winner' || r.award.includes('Winner'));
+      const merits = results.filter((r) => r.awardBase === 'Merit' || r.award.includes('Merit'));
+      const noAwards = results.filter((r) => (!r.awardBase || r.awardBase === 'No Award') && !r.award.includes('Champion') && !r.award.includes('Winner') && !r.award.includes('Merit'));
 
       groups.push({
         appType: app.id,

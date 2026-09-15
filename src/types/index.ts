@@ -163,7 +163,13 @@ export interface Evaluation {
   updatedAt?: string;
 }
 
-export type AwardDesignation = 'Champion' | 'Winner' | 'Merit' | 'No Award' | 'Participant';
+export type AwardDesignation = 
+  | 'Champion' 
+  | 'Winner' 
+  | 'Merit' 
+  | 'No Award' 
+  | 'Participant'
+  | string;
 
 export interface JudgeScoreBreakdown {
   judgeEmail: string;
@@ -183,6 +189,10 @@ export interface CombinedProjectResult {
   judgesEvaluations: JudgeScoreBreakdown[];
   finalAverageScore: number;
   award: AwardDesignation;
+  awardRank?: string;        // e.g. "1st Champion", "2nd Champion", "Champion"
+  awardFullTitle?: string;   // e.g. "First Champion", "Second Champion"
+  awardBase?: 'Champion' | 'Winner' | 'Merit' | 'No Award' | 'Participant';
+  awardSequence?: number;    // 1, 2, 3...
   isHighestInCategory: boolean;
 }
 

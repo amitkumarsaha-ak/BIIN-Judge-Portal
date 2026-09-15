@@ -29,29 +29,23 @@ export const CombinedProjectResultView: React.FC<CombinedProjectResultViewProps>
     : null;
 
   const getAwardBadgeStyle = (award: string) => {
-    switch (award) {
-      case 'Champion':
-        return 'bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/30 font-black';
-      case 'Winner':
-        return 'bg-gradient-to-r from-indigo-600 to-cyan-500 text-white shadow-lg shadow-indigo-500/30 font-extrabold';
-      case 'Merit':
-        return 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-lg font-bold';
-      default:
-        return 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold';
+    if (award.includes('Champion')) {
+      return 'bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/30 font-black';
     }
+    if (award.includes('Winner')) {
+      return 'bg-gradient-to-r from-indigo-600 to-cyan-500 text-white shadow-lg shadow-indigo-500/30 font-extrabold';
+    }
+    if (award.includes('Merit')) {
+      return 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-lg font-bold';
+    }
+    return 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold';
   };
 
   const getAwardIcon = (award: string) => {
-    switch (award) {
-      case 'Champion':
-        return Trophy;
-      case 'Winner':
-        return Medal;
-      case 'Merit':
-        return Award;
-      default:
-        return CheckCircle2;
-    }
+    if (award.includes('Champion')) return Trophy;
+    if (award.includes('Winner')) return Medal;
+    if (award.includes('Merit')) return Award;
+    return CheckCircle2;
   };
 
   const AwardIcon = combinedResult ? getAwardIcon(combinedResult.award) : Award;
@@ -257,7 +251,7 @@ export const CombinedProjectResultView: React.FC<CombinedProjectResultViewProps>
                 <span>AWARD: {combinedResult.award}</span>
               </div>
 
-              {combinedResult.isHighestInCategory && combinedResult.award === 'Champion' && (
+              {combinedResult.isHighestInCategory && combinedResult.award.includes('Champion') && (
                 <p className="text-xs text-amber-300 font-semibold tracking-wide mt-1">
                   ★ Highest Score in Category ({combinedResult.applicationType}
                   {canonicalAppType(combinedResult.applicationType) !== 'Student-Secondary' &&
