@@ -327,7 +327,7 @@ export const getProjectCombinedResult = (
       }, 0);
       avg = Number((sumConverted / pEvals.length).toFixed(2));
     }
-    return { id: p.id, score: avg };
+    return { id: p.id, score: avg, evalCount: pEvals.length };
   });
 
   scoredCategoryProjects.sort((a, b) => b.score - a.score);
@@ -335,41 +335,73 @@ export const getProjectCombinedResult = (
   const categoryMaxScore = scoredCategoryProjects[0]?.score ?? 0;
   const isHighestInCategory = finalAverageScore > 0 && Math.abs(finalAverageScore - categoryMaxScore) < 0.001;
 
-  const baseAward = calculateBaseAward(finalAverageScore);
-  let awardRank: string = baseAward;
-  let awardFullTitle: string = baseAward;
-  let awardSequence = 1;
+  // Exact Award Allocation Logic per Category Pool (12 pools):
+  // 1. Exactly 1 Champion max: Highest scorer in category pool, MUST be >= 85%
+  // 2. Exactly 1 Winner max: 2nd highest scorer (or 1st if no Champion), MUST be >= 70%
+  // 3. Up to 5 Merits max: Next highest scorers with score >= 65% (maximum 5 Merits)
+  // 4. No Award: Score < 65% or beyond the top 5 merits
+  let championId: string | null = null;
+  let winnerId: string | null = null;
+  const meritIds: string[] = [];
 
-  if (baseAward !== 'No Award' && finalAverageScore > 0) {
-    const peersInTier = scoredCategoryProjects.filter(
-      (p) => calculateBaseAward(p.score) === baseAward && p.score > 0
-    );
+  for (const item of scoredCategoryProjects) {
+    if (item.score <= 0 || item.evalCount === 0) continue;
 
-    if (peersInTier.length > 1) {
-      // Multiple qualifiers in this tier -> sequence as 1st, 2nd, 3rd
-      let rank = 1;
-      for (const peer of peersInTier) {
-        if (peer.id === project.id) break;
-        if (peer.score > finalAverageScore) {
-          rank++;
-        }
-      }
-      awardSequence = rank;
-      const ord = getOrdinal(rank);
-      const ordWord = getOrdinalWord(rank);
-      awardRank = `${ord} ${baseAward}`;
-      awardFullTitle = `${ordWord} ${baseAward}`;
-    } else {
-      awardSequence = 1;
-      awardRank = baseAward;
-      awardFullTitle = baseAward;
+    // 1 Champion slot: Must be >= 85% and highest in category
+    if (!championId && item.score >= 85) {
+      championId = item.id;
+      continue;
+    }
+
+    // 1 Winner slot: 2nd highest (or highest if no Champion), must be >= 70%
+    if (!winnerId && item.score >= 70) {
+      winnerId = item.id;
+      continue;
+    }
+
+    // Up to 5 Merits: Next highest with >= 65%
+    if (meritIds.length < 5 && item.score >= 65) {
+      meritIds.push(item.id);
+      continue;
     }
   }
 
-  // If multiple projects in category qualify for the tier, award display is sequenced (e.g. "1st Champion", "2nd Champion")
-  // If only 1 project qualifies in tier, award display is "Champion" / "Winner" / "Merit"
-  const totalTierQualifiers = scoredCategoryProjects.filter(p => calculateBaseAward(p.score) === baseAward && p.score > 0).length;
-  const award: AwardDesignation = (totalTierQualifiers > 1 ? awardRank : baseAward) as AwardDesignation;
+  let baseAward: 'Champion' | 'Winner' | 'Merit' | 'No Award' = 'No Award';
+  let awardRank = 'No Award';
+  let awardFullTitle = 'No Award';
+  let awardSequence = 0;
+
+  if (project.id === championId) {
+    baseAward = 'Champion';
+    awardRank = 'Champion';
+    awardFullTitle = 'Champion';
+    awardSequence = 1;
+  } else if (project.id === winnerId) {
+    baseAward = 'Winner';
+    awardRank = 'Winner';
+    awardFullTitle = 'Winner';
+    awardSequence = 1;
+  } else if (meritIds.includes(project.id)) {
+    baseAward = 'Merit';
+    const meritRank = meritIds.indexOf(project.id) + 1;
+    awardSequence = meritRank;
+    if (meritIds.length > 1) {
+      const ord = getOrdinal(meritRank);
+      const ordWord = getOrdinalWord(meritRank);
+      awardRank = `${ord} Merit`;
+      awardFullTitle = `${ordWord} Merit`;
+    } else {
+      awardRank = 'Merit';
+      awardFullTitle = 'Merit';
+    }
+  } else {
+    baseAward = 'No Award';
+    awardRank = 'No Award';
+    awardFullTitle = 'No Award';
+    awardSequence = 0;
+  }
+
+  const award: AwardDesignation = awardRank as AwardDesignation;
 
   return {
     project,

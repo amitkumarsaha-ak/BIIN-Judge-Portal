@@ -26,12 +26,12 @@ console.assert(calculateAward(50.0) === 'No Award', '50% must be No Award');
 console.assert(calculateAward(0.0) === 'No Award', '0% must be No Award');
 console.log('[PASS] Exact boundary rules verified (≥85% Champion, ≥70% Winner, ≥65% Merit, <65% No Award).');
 
-// --- ACCEPTANCE TEST 1: Multiple Champions Sequence ---
-console.log('\n--- Acceptance Test 1: Multiple Champions Sequence (e.g. 95%, 88%) ---');
+// --- ACCEPTANCE TEST 1: Exactly 1 Champion, 1 Winner, Up to 5 Merits ---
+console.log('\n--- Acceptance Test 1: 1 Champion (96%), 1 Winner (90%), Merits (75%, 68%) ---');
 const testProjects: Project[] = [
   {
     id: 'sec-1',
-    title: 'Secondary Project 1',
+    title: 'Secondary Project 1 (96%)',
     applicationId: 'SEC-001',
     projectCode: 'SEC-001',
     applicationType: 'Student-Secondary',
@@ -46,7 +46,7 @@ const testProjects: Project[] = [
   },
   {
     id: 'sec-2',
-    title: 'Secondary Project 2',
+    title: 'Secondary Project 2 (90%)',
     applicationId: 'SEC-002',
     projectCode: 'SEC-002',
     applicationType: 'Student-Secondary',
@@ -54,6 +54,51 @@ const testProjects: Project[] = [
     teamOrOrgName: 'Team Two',
     representativeName: 'Rep Two',
     email: 'sec2@biin.org',
+    contactNumber: '123456789',
+    description: 'Desc',
+    tags: [],
+    status: 'active'
+  },
+  {
+    id: 'sec-3',
+    title: 'Secondary Project 3 (75%)',
+    applicationId: 'SEC-003',
+    projectCode: 'SEC-003',
+    applicationType: 'Student-Secondary',
+    headCategory: 'N/A',
+    teamOrOrgName: 'Team Three',
+    representativeName: 'Rep Three',
+    email: 'sec3@biin.org',
+    contactNumber: '123456789',
+    description: 'Desc',
+    tags: [],
+    status: 'active'
+  },
+  {
+    id: 'sec-4',
+    title: 'Secondary Project 4 (68%)',
+    applicationId: 'SEC-004',
+    projectCode: 'SEC-004',
+    applicationType: 'Student-Secondary',
+    headCategory: 'N/A',
+    teamOrOrgName: 'Team Four',
+    representativeName: 'Rep Four',
+    email: 'sec4@biin.org',
+    contactNumber: '123456789',
+    description: 'Desc',
+    tags: [],
+    status: 'active'
+  },
+  {
+    id: 'sec-5',
+    title: 'Secondary Project 5 (60%)',
+    applicationId: 'SEC-005',
+    projectCode: 'SEC-005',
+    applicationType: 'Student-Secondary',
+    headCategory: 'N/A',
+    teamOrOrgName: 'Team Five',
+    representativeName: 'Rep Five',
+    email: 'sec5@biin.org',
     contactNumber: '123456789',
     description: 'Desc',
     tags: [],
@@ -80,22 +125,67 @@ const testEvals: Evaluation[] = [
     projectId: 'sec-2',
     judgeEmail: 'judge@biin.org',
     judgeName: 'Judge One',
-    scores: { uniqueness: 9, proofOfConcept: 9, features: 9, quality: 8, presentation: 8 }, // 43/50 = 86%
-    rawTotalScore: 43,
+    scores: { uniqueness: 9, proofOfConcept: 9, features: 9, quality: 9, presentation: 9 }, // 45/50 = 90%
+    rawTotalScore: 45,
     maxRawScore: 50,
-    convertedScore: 86,
-    totalScore: 43,
-    percentage: 86,
+    convertedScore: 90,
+    totalScore: 45,
+    percentage: 90,
+    submittedAt: '2026-08-01T10:00:00Z'
+  },
+  {
+    id: 'eval-sec-3',
+    projectId: 'sec-3',
+    judgeEmail: 'judge@biin.org',
+    judgeName: 'Judge One',
+    scores: { uniqueness: 8, proofOfConcept: 7, features: 8, quality: 7, presentation: 7.5 }, // 37.5/50 = 75%
+    rawTotalScore: 37.5,
+    maxRawScore: 50,
+    convertedScore: 75,
+    totalScore: 37.5,
+    percentage: 75,
+    submittedAt: '2026-08-01T10:00:00Z'
+  },
+  {
+    id: 'eval-sec-4',
+    projectId: 'sec-4',
+    judgeEmail: 'judge@biin.org',
+    judgeName: 'Judge One',
+    scores: { uniqueness: 7, proofOfConcept: 7, features: 7, quality: 7, presentation: 6 }, // 34/50 = 68%
+    rawTotalScore: 34,
+    maxRawScore: 50,
+    convertedScore: 68,
+    totalScore: 34,
+    percentage: 68,
+    submittedAt: '2026-08-01T10:00:00Z'
+  },
+  {
+    id: 'eval-sec-5',
+    projectId: 'sec-5',
+    judgeEmail: 'judge@biin.org',
+    judgeName: 'Judge One',
+    scores: { uniqueness: 6, proofOfConcept: 6, features: 6, quality: 6, presentation: 6 }, // 30/50 = 60%
+    rawTotalScore: 30,
+    maxRawScore: 50,
+    convertedScore: 60,
+    totalScore: 30,
+    percentage: 60,
     submittedAt: '2026-08-01T10:00:00Z'
   }
 ];
 
 const res1 = getProjectCombinedResult(testProjects[0], testProjects, testEvals);
 const res2 = getProjectCombinedResult(testProjects[1], testProjects, testEvals);
+const res3 = getProjectCombinedResult(testProjects[2], testProjects, testEvals);
+const res4 = getProjectCombinedResult(testProjects[3], testProjects, testEvals);
+const res5 = getProjectCombinedResult(testProjects[4], testProjects, testEvals);
 
-console.assert(res1.award === '1st Champion', `Expected '1st Champion', got '${res1.award}'`);
-console.assert(res2.award === '2nd Champion', `Expected '2nd Champion', got '${res2.award}'`);
-console.log(`[PASS] Sequenced ranking works: res1 = '${res1.award}', res2 = '${res2.award}'.`);
+console.assert(res1.award === 'Champion', `Expected 'Champion', got '${res1.award}'`);
+console.assert(res2.award === 'Winner', `Expected 'Winner', got '${res2.award}'`);
+console.assert(res3.award === '1st Merit', `Expected '1st Merit', got '${res3.award}'`);
+console.assert(res4.award === '2nd Merit', `Expected '2nd Merit', got '${res4.award}'`);
+console.assert(res5.award === 'No Award', `Expected 'No Award', got '${res5.award}'`);
+console.log(`[PASS] 1 Champion (96%), 1 Winner (90%), 1st Merit (75%), 2nd Merit (68%), No Award (60%).`);
 
 // --- TEST 12 RESULT POOLS ---
 console.log('\n--- Testing 12 Competition Category Pools ---');

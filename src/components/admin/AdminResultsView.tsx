@@ -365,31 +365,31 @@ export const AdminResultsView: React.FC = () => {
             <span>Champions (≥85%)</span>
           </p>
           <p className="text-xl font-black text-amber-600 dark:text-amber-400 font-mono mt-0.5">{overallTotals.totalChampions}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">Sequenced 1st, 2nd, 3rd</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">1 Max per pool (Highest)</p>
         </div>
 
         <div className="bg-gradient-to-br from-indigo-500/10 to-cyan-500/5 border border-indigo-300/40 dark:border-indigo-500/30 rounded-2xl p-3.5 shadow-sm">
           <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center space-x-1">
             <Medal className="h-3 w-3" />
-            <span>Winners (70–84%)</span>
+            <span>Winners (≥70%)</span>
           </p>
           <p className="text-xl font-black text-indigo-600 dark:text-indigo-400 font-mono mt-0.5">{overallTotals.totalWinners}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">Sequenced 1st, 2nd, 3rd</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">1 Max per pool (2nd Highest)</p>
         </div>
 
         <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-300/40 dark:border-emerald-500/30 rounded-2xl p-3.5 shadow-sm">
           <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center space-x-1">
             <Award className="h-3 w-3" />
-            <span>Merits (65–69%)</span>
+            <span>Merits (≥65%)</span>
           </p>
           <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">{overallTotals.totalMerits}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">Sequenced 1st, 2nd, 3rd</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Up to 5 per pool (Sequenced)</p>
         </div>
 
         <div className="col-span-2 min-[640px]:col-span-1 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">No Award (&lt;65%)</p>
           <p className="text-xl font-black text-slate-700 dark:text-slate-300 font-mono mt-0.5">{overallTotals.totalNoAward}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">Below 65% threshold</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Below 65% or unranked</p>
         </div>
       </div>
 
@@ -448,14 +448,14 @@ export const AdminResultsView: React.FC = () => {
             ))}
         </select>
 
-        {/* View Mode Toggle: 20-Category Board vs Ranked Table */}
+        {/* View Mode Toggle: 12-Category Board vs Ranked Table */}
         <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 shrink-0">
           <button
             onClick={() => setViewMode('board')}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'board' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
           >
             <LayoutGrid className="h-3.5 w-3.5" />
-            <span>20-Category Board</span>
+            <span>12-Category Board</span>
           </button>
           <button
             onClick={() => setViewMode('table')}
@@ -596,13 +596,13 @@ export const AdminResultsView: React.FC = () => {
                                 {/* 4 DESIGNATION BLOCKS: Champion, Winner, Merit, No Award */}
                                 <div className="space-y-2.5">
 
-                                  {/* 1. CHAMPION (>= 85%) */}
+                                  {/* 1. CHAMPION (Max 1, >= 85%) */}
                                   <div className="rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50 p-3">
                                     <div className="flex items-center justify-between mb-2">
                                       <div className="flex items-center space-x-1.5">
                                         <Trophy className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                                         <span className="text-xs font-black tracking-wider text-amber-900 dark:text-amber-200 uppercase">
-                                          Champion (≥ 85%)
+                                          Champion (Max 1 • ≥ 85%)
                                         </span>
                                       </div>
                                       <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-800/50 text-amber-900 dark:text-amber-200">
@@ -634,7 +634,7 @@ export const AdminResultsView: React.FC = () => {
                                               </div>
                                               <div className="flex items-center space-x-2 shrink-0">
                                                 <span className="text-[10px] font-black font-mono px-2 py-0.5 rounded-md bg-amber-200/80 dark:bg-amber-800/60 text-amber-900 dark:text-amber-100 uppercase">
-                                                  {app.awardRank || app.award}
+                                                  Champion
                                                 </span>
                                                 <span className="font-mono font-black text-xs text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 rounded-md">
                                                   {formatScoreNumber(app.finalAverageScore)}%
@@ -647,13 +647,13 @@ export const AdminResultsView: React.FC = () => {
                                     )}
                                   </div>
 
-                                  {/* 2. WINNER (>= 70% AND < 85%) */}
+                                  {/* 2. WINNER (Max 1, >= 70%) */}
                                   <div className="rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-800/50 p-3">
                                     <div className="flex items-center justify-between mb-2">
                                       <div className="flex items-center space-x-1.5">
                                         <Medal className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                                         <span className="text-xs font-black tracking-wider text-indigo-900 dark:text-indigo-200 uppercase">
-                                          Winner (70% – 84.99%)
+                                          Winner (Max 1 • ≥ 70%)
                                         </span>
                                       </div>
                                       <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-indigo-200/70 dark:bg-indigo-800/50 text-indigo-900 dark:text-indigo-200">
@@ -685,7 +685,7 @@ export const AdminResultsView: React.FC = () => {
                                               </div>
                                               <div className="flex items-center space-x-2 shrink-0">
                                                 <span className="text-[10px] font-black font-mono px-2 py-0.5 rounded-md bg-indigo-200/80 dark:bg-indigo-800/60 text-indigo-900 dark:text-indigo-100 uppercase">
-                                                  {app.awardRank || app.award}
+                                                  Winner
                                                 </span>
                                                 <span className="font-mono font-black text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/60 px-2 py-0.5 rounded-md">
                                                   {formatScoreNumber(app.finalAverageScore)}%
@@ -698,13 +698,13 @@ export const AdminResultsView: React.FC = () => {
                                     )}
                                   </div>
 
-                                  {/* 3. MERIT (>= 65% AND < 70%) */}
+                                  {/* 3. MERIT (Max 5, >= 65%) */}
                                   <div className="rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/50 p-3">
                                     <div className="flex items-center justify-between mb-2">
                                       <div className="flex items-center space-x-1.5">
                                         <Award className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                                         <span className="text-xs font-black tracking-wider text-emerald-900 dark:text-emerald-200 uppercase">
-                                          Merit (65% – 69.99%)
+                                          Merit (Max 5 • ≥ 65%)
                                         </span>
                                       </div>
                                       <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-200/70 dark:bg-emerald-800/50 text-emerald-900 dark:text-emerald-200">
@@ -749,12 +749,12 @@ export const AdminResultsView: React.FC = () => {
                                     )}
                                   </div>
 
-                                  {/* 4. NO AWARD (< 65%) */}
+                                  {/* 4. NO AWARD (< 65% or Unranked) */}
                                   {cat.noAwards.length > 0 && (
                                     <div className="rounded-xl bg-slate-100/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 p-3">
                                       <div className="flex items-center justify-between mb-2">
                                         <span className="text-xs font-bold tracking-wider text-slate-600 dark:text-slate-400 uppercase">
-                                          No Award (&lt; 65%)
+                                          No Award (&lt; 65% or Unranked)
                                         </span>
                                         <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                                           {cat.noAwards.length}
