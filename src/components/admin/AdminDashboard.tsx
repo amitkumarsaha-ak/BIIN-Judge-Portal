@@ -75,16 +75,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const lockCategoriesList = [
     { applicationType: 'Student-Secondary', headCategory: 'N/A', headCategoryCode: null },
+    { applicationType: 'Individual/Group', headCategory: 'N/A', headCategoryCode: null },
     { applicationType: 'Organization', headCategory: 'Consumer', headCategoryCode: 'HC-C' },
     { applicationType: 'Organization', headCategory: 'Business Services', headCategoryCode: 'HC-BS' },
     { applicationType: 'Organization', headCategory: 'Industrial', headCategoryCode: 'HC-I' },
     { applicationType: 'Organization', headCategory: 'Public Sector and Government', headCategoryCode: 'HC-PSG' },
     { applicationType: 'Organization', headCategory: 'Inclusions & Community', headCategoryCode: 'HC-ICS' },
-    { applicationType: 'Individual/Group', headCategory: 'Consumer', headCategoryCode: 'HC-C' },
-    { applicationType: 'Individual/Group', headCategory: 'Business Services', headCategoryCode: 'HC-BS' },
-    { applicationType: 'Individual/Group', headCategory: 'Industrial', headCategoryCode: 'HC-I' },
-    { applicationType: 'Individual/Group', headCategory: 'Public Sector and Government', headCategoryCode: 'HC-PSG' },
-    { applicationType: 'Individual/Group', headCategory: 'Inclusions & Community', headCategoryCode: 'HC-ICS' },
     { applicationType: 'Student -Tertiary (University Level)', headCategory: 'Consumer', headCategoryCode: 'HC-C' },
     { applicationType: 'Student -Tertiary (University Level)', headCategory: 'Business Services', headCategoryCode: 'HC-BS' },
     { applicationType: 'Student -Tertiary (University Level)', headCategory: 'Industrial', headCategoryCode: 'HC-I' },

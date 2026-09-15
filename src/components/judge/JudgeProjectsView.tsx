@@ -280,9 +280,9 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
 
                   <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
                     <p><span className="text-slate-400">Participant:</span> <strong className="text-slate-800 dark:text-slate-200">{project.teamOrOrgName}</strong></p>
-                    <p><span className="text-slate-400">Representative:</span> {project.representativeName}</p>
-                    {project.teamLeadName && (
-                      <p><span className="text-slate-400">Team Lead:</span> <strong className="text-slate-800 dark:text-slate-200">{project.teamLeadName}</strong></p>
+                    <p><span className="text-slate-400">Team Lead:</span> <strong className="text-slate-800 dark:text-slate-200">{project.teamLeadName || project.representativeName}</strong></p>
+                    {project.representativeName && project.teamLeadName && project.representativeName !== project.teamLeadName && (
+                      <p><span className="text-slate-400">Representative:</span> {project.representativeName}</p>
                     )}
                     {canonicalAppType(project.applicationType) !== 'Student-Secondary' && canonicalAppType(project.applicationType) !== 'Individual or Group' && (
                       <p><span className="text-slate-400">Category:</span> {category?.name || project.headCategory}</p>
