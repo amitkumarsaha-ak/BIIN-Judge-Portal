@@ -195,7 +195,16 @@ export const DEFAULT_AUDIT_LOGS: AuditLog[] = [
 
 // Initialize default storage data
 export const initializeStorage = () => {
-  if (typeof window === 'undefined' && typeof localStorage === 'undefined') return;
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+
+  const CLOUD_SYNC_VERSION = 'biin_cloud_live_v4';
+  if (!localStorage.getItem(CLOUD_SYNC_VERSION)) {
+    localStorage.removeItem(PROJECTS_KEY);
+    localStorage.removeItem(ASSIGNMENTS_KEY);
+    localStorage.removeItem(EVALUATIONS_KEY);
+    localStorage.removeItem(USERS_KEY);
+    localStorage.setItem(CLOUD_SYNC_VERSION, 'true');
+  }
 
   const adminUser: User = {
     id: 'admin-fixed-1',
@@ -273,32 +282,17 @@ export const syncWithBackend = async (): Promise<boolean> => {
     ]);
 
     if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value)) {
-      const localProjects = getProjects();
-      if (projectsRes.value.length > 0) {
-        // Remote projects exist: merge so we keep any non-duplicated local projects
-        const remoteIds = new Set(projectsRes.value.map(p => p.id || p.applicationId));
-        const nonDuplicateLocal = localProjects.filter(lp => !remoteIds.has(lp.id) && !remoteIds.has(lp.applicationId));
-        const merged = [...projectsRes.value, ...nonDuplicateLocal];
-        localStorage.setItem(PROJECTS_KEY, JSON.stringify(merged));
-        if (nonDuplicateLocal.length > 0) {
-          const syncActor = { email: 'admin@biin.org', name: 'Administrator' };
-          await api.bulkCreateProjects(nonDuplicateLocal, syncActor).catch(() => {});
-        }
-      } else if (localProjects.length > 0) {
-        // Backend is empty but local storage has projects: seed them to backend
-        const syncActor = { email: 'admin@biin.org', name: 'Administrator' };
-        await api.bulkCreateProjects(localProjects, syncActor).catch(() => {});
-      }
+      // Backend is the single source of truth - update local storage directly
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projectsRes.value));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_projects_updated'));
       }
     }
 
     if (evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value)) {
-      if (evalsRes.value.length > 0) {
-        localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evalsRes.value));
-      }
+      localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evalsRes.value));
       if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('biin_evaluations_updated'));
         window.dispatchEvent(new Event('biin_projects_updated'));
       }
     }
@@ -334,22 +328,10 @@ export const syncWithBackend = async (): Promise<boolean> => {
     }
 
     if (assignmentsRes.status === 'fulfilled' && Array.isArray(assignmentsRes.value)) {
-      const localAssignments = getJudgeAssignments();
-      const syncActor = { email: 'admin@biin.org', name: 'Administrator' };
-      if (assignmentsRes.value.length > 0) {
-        const remoteIds = new Set(assignmentsRes.value.map(a => a.id));
-        const nonDupLocal = localAssignments.filter(la => !remoteIds.has(la.id));
-        const mergedAssignments = [...assignmentsRes.value, ...nonDupLocal];
-        localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(mergedAssignments));
-        if (nonDupLocal.length > 0) {
-          await Promise.allSettled(nonDupLocal.map(la => api.saveAssignment(la, syncActor)));
-        }
-      } else if (localAssignments.length > 0) {
-        await Promise.allSettled(localAssignments.map(la => api.saveAssignment(la, syncActor)));
-      }
+      // Backend is the single source of truth for assignments
+      localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignmentsRes.value));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_assignments_updated'));
-        window.dispatchEvent(new Event('biin_projects_updated'));
       }
     }
 
@@ -862,40 +844,43 @@ export const getProjectById = (id: string): Project | undefined => {
   return projects.find((p) => p.id === id);
 };
 
-export const addProject = (project: Project, actor?: { email: string; name: string }): void => {
+export const addProject = async (project: Project, actor?: { email: string; name: string }): Promise<Project> => {
+  let created = project;
+  try {
+    const remote = await api.createProject(project, actor);
+    if (remote && remote.id) {
+      created = remote;
+    }
+  } catch (err) {
+    console.warn('[Storage] Remote project creation failed, fallback locally:', err);
+  }
+
   const projects = getProjects();
-  const existingIdx = projects.findIndex(p => p.id === project.id || (project.applicationId && p.applicationId === project.applicationId));
+  const existingIdx = projects.findIndex(p => p.id === created.id || (created.applicationId && p.applicationId === created.applicationId));
   if (existingIdx >= 0) {
-    projects[existingIdx] = { ...projects[existingIdx], ...project };
+    projects[existingIdx] = { ...projects[existingIdx], ...created };
   } else {
-    projects.push(project);
+    projects.push(created);
   }
   localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('biin_projects_updated'));
   }
-  api.createProject(project, actor)
-    .then(saved => {
-      if (saved && saved.id && saved.id !== project.id) {
-        const cur = getProjects();
-        const updated = cur.map(p => p.id === project.id ? { ...p, id: saved.id } : p);
-        localStorage.setItem(PROJECTS_KEY, JSON.stringify(updated));
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('biin_projects_updated'));
-        }
-      }
-    })
-    .catch(err => {
-      console.warn('[Storage] Remote project creation deferred, saved locally:', err);
-    });
 
   if (actor) {
-    logAuditAction(actor.email, actor.name, 'CREATE_PROJECT', 'project', `Created project "${project.title}" (${project.applicationId}).`);
+    logAuditAction(actor.email, actor.name, 'CREATE_PROJECT', 'project', `Created project "${created.title}" (${created.applicationId}).`);
   }
+  return created;
 };
 
-export const addProjects = (newProjects: Project[], actor?: { email: string; name: string }): void => {
+export const addProjects = async (newProjects: Project[], actor?: { email: string; name: string }): Promise<void> => {
   if (newProjects.length === 0) return;
+  try {
+    await api.bulkCreateProjects(newProjects, actor);
+  } catch {
+    await Promise.allSettled(newProjects.map(p => api.createProject(p, actor)));
+  }
+
   const projects = getProjects();
   for (const np of newProjects) {
     const existingIdx = projects.findIndex(p => p.id === np.id || (np.applicationId && p.applicationId === np.applicationId));
@@ -909,15 +894,18 @@ export const addProjects = (newProjects: Project[], actor?: { email: string; nam
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('biin_projects_updated'));
   }
-  api.bulkCreateProjects(newProjects, actor).catch(() => {
-    newProjects.forEach(p => api.createProject(p, actor).catch(() => {}));
-  });
   if (actor) {
     logAuditAction(actor.email, actor.name, 'BULK_IMPORT_PROJECTS', 'project', `Imported ${newProjects.length} projects via Excel.`);
   }
 };
 
-export const updateProject = (updated: Project, actor?: { email: string; name: string }): void => {
+export const updateProject = async (updated: Project, actor?: { email: string; name: string }): Promise<void> => {
+  try {
+    await api.updateProject(updated, actor);
+  } catch (err) {
+    console.warn('[Storage] Remote project update failed:', err);
+  }
+
   const projects = getProjects();
   const idx = projects.findIndex((p) => p.id === updated.id);
   if (idx >= 0) {
@@ -926,14 +914,13 @@ export const updateProject = (updated: Project, actor?: { email: string; name: s
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('biin_projects_updated'));
     }
-    api.updateProject(updated, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'UPDATE_PROJECT', 'project', `Updated project "${updated.title}" (${updated.applicationId}).`);
     }
   }
 };
 
-export const deleteProject = (id: string, actor?: { email: string; name: string }): void => {
+export const deleteProject = async (id: string, actor?: { email: string; name: string }): Promise<void> => {
   const projects = getProjects();
   const target = projects.find(p => p.id === id);
   const remaining = projects.filter((p) => p.id !== id);
@@ -954,14 +941,24 @@ export const deleteProject = (id: string, actor?: { email: string; name: string 
     window.dispatchEvent(new Event('biin_projects_updated'));
   }
 
-  api.deleteProject(id, actor).catch(() => {});
+  try {
+    await api.deleteProject(id, actor);
+  } catch (err) {
+    console.warn('[Storage] Remote delete failed:', err);
+  }
 
   if (target && actor) {
     logAuditAction(actor.email, actor.name, 'DELETE_PROJECT', 'project', `Deleted project "${target.title}" and purged all associated evaluations.`);
   }
 };
 
-export const toggleProjectStatus = (id: string, actor?: { email: string; name: string }): void => {
+export const toggleProjectStatus = async (id: string, actor?: { email: string; name: string }): Promise<void> => {
+  try {
+    await api.toggleProjectStatus(id, actor);
+  } catch (err) {
+    console.warn('[Storage] Remote status toggle failed:', err);
+  }
+
   const projects = getProjects();
   const idx = projects.findIndex((p) => p.id === id);
   if (idx >= 0) {
@@ -974,7 +971,6 @@ export const toggleProjectStatus = (id: string, actor?: { email: string; name: s
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('biin_projects_updated'));
     }
-    api.toggleProjectStatus(id, actor).catch(() => {});
     if (actor) {
       logAuditAction(actor.email, actor.name, 'TOGGLE_PROJECT_STATUS', 'project', `Changed status of "${projects[idx].title}" to ${nextStatus}.`);
     }

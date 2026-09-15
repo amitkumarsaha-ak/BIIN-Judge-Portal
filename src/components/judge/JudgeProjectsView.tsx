@@ -7,8 +7,7 @@ import type { Project } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import {
   getProjectsForJudge, getEvaluationsByJudge, getSystemSettings,
-  isCategoryEvaluationLocked, PROJECTS_KEY, ASSIGNMENTS_KEY,
-  getProjects, getJudgeAssignments
+  isCategoryEvaluationLocked, PROJECTS_KEY, ASSIGNMENTS_KEY, EVALUATIONS_KEY
 } from '../../services/storage';
 import { api } from '../../services/api';
 import { HEAD_CATEGORIES } from '../../data/mockData';
@@ -46,29 +45,18 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
             api.getEvaluationsByJudge(currentUser.email)
           ]);
 
-          if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value) && projectsRes.value.length > 0) {
-            const currentProjects = getProjects();
-            const pMap = new Map(currentProjects.map(p => [p.id, p]));
-            projectsRes.value.forEach(p => pMap.set(p.id, p));
-            localStorage.setItem(PROJECTS_KEY, JSON.stringify(Array.from(pMap.values())));
+          if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value)) {
+            localStorage.setItem(PROJECTS_KEY, JSON.stringify(projectsRes.value));
           }
 
-          let incomingAssignments: any[] = [];
-          if (assignmentsRes.status === 'fulfilled' && Array.isArray(assignmentsRes.value) && assignmentsRes.value.length > 0) {
-            incomingAssignments = incomingAssignments.concat(assignmentsRes.value);
-          }
-          if (judgeAssignmentsRes.status === 'fulfilled' && Array.isArray(judgeAssignmentsRes.value) && judgeAssignmentsRes.value.length > 0) {
-            incomingAssignments = incomingAssignments.concat(judgeAssignmentsRes.value);
-          }
-
-          if (incomingAssignments.length > 0) {
-            const currentAsgns = getJudgeAssignments();
-            const asgnMap = new Map(currentAsgns.map(a => [a.id, a]));
-            incomingAssignments.forEach(a => asgnMap.set(a.id, a));
-            localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(Array.from(asgnMap.values())));
+          if (assignmentsRes.status === 'fulfilled' && Array.isArray(assignmentsRes.value)) {
+            localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignmentsRes.value));
+          } else if (judgeAssignmentsRes.status === 'fulfilled' && Array.isArray(judgeAssignmentsRes.value)) {
+            localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(judgeAssignmentsRes.value));
           }
 
           if (evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value)) {
+            localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evalsRes.value));
             if (mounted) {
               setMyEvaluations(evalsRes.value);
             }

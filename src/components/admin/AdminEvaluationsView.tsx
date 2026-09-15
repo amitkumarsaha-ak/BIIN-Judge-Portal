@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   CheckSquare, Search, Trash2, Pencil,
   Check, X, AlertCircle, Printer, Calendar,
@@ -7,8 +7,9 @@ import {
 import type { Evaluation, Project, User, ApplicationType, HeadCategoryCode } from '../../types';
 import {
   getEvaluations, getProjects, getJudges, deleteEvaluation,
-  saveEvaluation
+  saveEvaluation, EVALUATIONS_KEY, PROJECTS_KEY
 } from '../../services/storage';
+import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import {
   getMaxRawScoreForApplicationType,
@@ -165,6 +166,7 @@ export const AdminEvaluationsView: React.FC = () => {
   const [filterType, setFilterType] = useState<ApplicationType | 'All'>('All');
   const [filterCategory, setFilterCategory] = useState<HeadCategoryCode | 'All'>('All');
   const [filterJudge, setFilterJudge] = useState('All');
+  const [onlyEvaluated, setOnlyEvaluated] = useState(false);
 
   const isNoHeadCategory =
     filterType === 'Student-Secondary' ||
@@ -179,6 +181,38 @@ export const AdminEvaluationsView: React.FC = () => {
     setEvaluations(getEvaluations());
     setProjects(getProjects());
     setJudges(getJudges());
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchLive = async () => {
+      try {
+        const [liveEvals, liveProjects, liveJudges] = await Promise.all([
+          api.getEvaluations(),
+          api.getProjects(),
+          api.getJudges()
+        ]);
+        if (mounted) {
+          if (Array.isArray(liveEvals)) {
+            setEvaluations(liveEvals);
+            localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(liveEvals));
+          }
+          if (Array.isArray(liveProjects) && liveProjects.length > 0) {
+            setProjects(liveProjects);
+            localStorage.setItem(PROJECTS_KEY, JSON.stringify(liveProjects));
+          }
+          if (Array.isArray(liveJudges) && liveJudges.length > 0) {
+            setJudges(liveJudges);
+          }
+        }
+      } catch {}
+    };
+    fetchLive();
+    const interval = setInterval(fetchLive, 5000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   // Filter projects by Application Type, Head Category and Search Query
@@ -202,10 +236,18 @@ export const AdminEvaluationsView: React.FC = () => {
     });
   }, [projects, filterType, filterCategory, searchQuery]);
 
-  // Group evaluations per project
+  // Group evaluations per project (matching by project id, applicationId, or projectCode)
   const projectEvaluationGroups = useMemo(() => {
     return filteredProjects.map(proj => {
-      let evals = evaluations.filter(e => e.projectId === proj.id);
+      const pId = String(proj.id || '').trim().toLowerCase();
+      const pAppId = String(proj.applicationId || '').trim().toLowerCase();
+      const pCode = String(proj.projectCode || '').trim().toLowerCase();
+
+      let evals = evaluations.filter(e => {
+        const eProjId = String(e.projectId || '').trim().toLowerCase();
+        return eProjId === pId || (pAppId && eProjId === pAppId) || (pCode && eProjId === pCode);
+      });
+
       if (filterJudge !== 'All') {
         evals = evals.filter(e => e.judgeEmail.toLowerCase() === filterJudge.toLowerCase());
       }
@@ -232,6 +274,13 @@ export const AdminEvaluationsView: React.FC = () => {
       };
     });
   }, [filteredProjects, evaluations, filterJudge]);
+
+  const displayedGroups = useMemo(() => {
+    if (onlyEvaluated) {
+      return projectEvaluationGroups.filter(g => g.evaluations.length > 0);
+    }
+    return projectEvaluationGroups;
+  }, [projectEvaluationGroups, onlyEvaluated]);
 
   const handleSaveEdit = (updated: Evaluation) => {
     const actor = currentUser ? { email: currentUser.email, name: currentUser.fullName } : undefined;
@@ -404,10 +453,24 @@ export const AdminEvaluationsView: React.FC = () => {
             <option key={j.email} value={j.email}>{j.fullName}</option>
           ))}
         </select>
+
+        {/* Toggle Evaluated Only */}
+        <button
+          type="button"
+          onClick={() => setOnlyEvaluated(prev => !prev)}
+          className={`w-full lg:w-auto px-3.5 py-2 text-xs font-bold rounded-xl border transition-all flex items-center justify-center gap-1.5 whitespace-nowrap min-h-[38px] ${
+            onlyEvaluated
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/30'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          <CheckSquare className="h-4 w-4" />
+          <span>Show Evaluated Only ({projectEvaluationGroups.filter(g => g.evaluations.length > 0).length})</span>
+        </button>
       </div>
 
       {/* Active Filter Indicators */}
-      {(filterType !== 'All' || (!isNoHeadCategory && filterCategory !== 'All')) && (
+      {(filterType !== 'All' || (!isNoHeadCategory && filterCategory !== 'All') || onlyEvaluated) && (
         <div className="no-print flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-400 bg-emerald-50/50 dark:bg-emerald-950/20 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800">
           <Filter className="h-4 w-4 text-emerald-600" />
           <span>Active View:</span>
@@ -422,20 +485,25 @@ export const AdminEvaluationsView: React.FC = () => {
               </span>
             </>
           )}
-          <span className="text-slate-400">({filteredProjects.length} project{filteredProjects.length !== 1 ? 's' : ''} matching)</span>
+          {onlyEvaluated && (
+            <span className="ml-2 rounded-md bg-emerald-500 text-white px-2 py-0.5 text-[11px] font-bold">
+              Evaluated Only
+            </span>
+          )}
+          <span className="text-slate-400">({displayedGroups.length} project{displayedGroups.length !== 1 ? 's' : ''} showing)</span>
         </div>
       )}
 
       {/* Projects and Evaluation Submissions List */}
       <div className="space-y-6">
-        {projectEvaluationGroups.length === 0 ? (
+        {displayedGroups.length === 0 ? (
           <div className="glass-panel rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500">
             <CheckSquare className="mx-auto h-12 w-12 text-slate-400 mb-3" />
             <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No projects found for selected filters</h3>
-            <p className="text-xs mt-1">Try selecting a different Application Type or Head Category.</p>
+            <p className="text-xs mt-1">Try selecting a different Application Type or toggle off "Show Evaluated Only".</p>
           </div>
         ) : (
-          projectEvaluationGroups.map(({ project, evaluations: projEvals, maxRaw, criteria, averageConverted }) => {
+          displayedGroups.map(({ project, evaluations: projEvals, maxRaw, criteria, averageConverted }) => {
             const hasEvals = projEvals.length > 0;
 
             return (

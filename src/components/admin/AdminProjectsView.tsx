@@ -560,32 +560,33 @@ export const AdminProjectsView: React.FC = () => {
   const { currentUser } = useAuth();
   const actor = useMemo(() => currentUser ? { email: currentUser.email, name: currentUser.fullName } : undefined, [currentUser]);
 
-  const handleSave = (project: Project) => {
+  const handleSave = async (project: Project) => {
     if (formModal?.mode === 'add') {
-      addProject(project, actor);
+      await addProject(project, actor);
     } else {
-      updateProject(project, actor);
+      await updateProject(project, actor);
     }
-    refresh();
+    await refresh();
     setFormModal(null);
   };
 
-  const handleBulkImport = (newProjects: Project[]) => {
-    addProjects(newProjects, actor);
-    refresh();
+  const handleBulkImport = async (newProjects: Project[]) => {
+    await addProjects(newProjects, actor);
+    await refresh();
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
-    deleteProject(deleteTarget.id, actor);
-    refresh();
+    const targetId = deleteTarget.id;
     setDeleteTarget(null);
-    if (detailTarget?.id === deleteTarget.id) setDetailTarget(null);
+    if (detailTarget?.id === targetId) setDetailTarget(null);
+    await deleteProject(targetId, actor);
+    await refresh();
   };
 
-  const handleToggleStatus = (id: string) => {
-    toggleProjectStatus(id, actor);
-    refresh();
+  const handleToggleStatus = async (id: string) => {
+    await toggleProjectStatus(id, actor);
+    await refresh();
     if (detailTarget && detailTarget.id === id) {
       setDetailTarget(prev => prev ? { ...prev, status: prev.status === 'active' ? 'inactive' : 'active' } : null);
     }

@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   X, Check, Trash2, Sliders, AlertCircle, CheckSquare, Square,
-  GraduationCap, Building2, Users, University, FolderGit2
+  GraduationCap, Building2, Users, University, FolderGit2,
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 import type { User, JudgeAssignment, ApplicationType, HeadCategoryCode, Project } from '../../types';
 import {
@@ -10,6 +11,7 @@ import {
   deleteJudgeAssignment,
   getProjects
 } from '../../services/storage';
+import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { HEAD_CATEGORIES } from '../../data/mockData';
 import { canonicalAppType, matchesAppType, matchesCategory } from '../../utils/evaluation';
@@ -41,12 +43,65 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
   const [assignments, setAssignments] = useState<JudgeAssignment[]>(() =>
     getJudgeAssignmentsByJudge(judge.email)
   );
-  const [allProjects] = useState<Project[]>(() => getProjects());
+  const [allProjects, setAllProjects] = useState<Project[]>(() => getProjects());
+  const [expandedAsgnIds, setExpandedAsgnIds] = useState<string[]>([]);
 
-  // Form State
+  useEffect(() => {
+    let mounted = true;
+    const fetchFresh = async () => {
+      try {
+        const [liveProjects, liveAssignments] = await Promise.all([
+          api.getProjects(),
+          api.getAssignmentsByJudge(judge.email)
+        ]);
+        if (mounted) {
+          if (Array.isArray(liveProjects) && liveProjects.length > 0) {
+            setAllProjects(liveProjects);
+          }
+          if (Array.isArray(liveAssignments)) {
+            setAssignments(liveAssignments);
+            setExpandedAsgnIds(liveAssignments.map(a => a.id));
+          }
+        }
+      } catch {}
+    };
+    fetchFresh();
+    return () => {
+      mounted = false;
+    };
+  }, [judge.email]);
+
+  const toggleExpand = (id: string) => {
+    setExpandedAsgnIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  // Helper to get projects assigned under an assignment
+  const getProjectsForAssignment = (asgn: JudgeAssignment): Project[] => {
+    if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
+      const idSet = new Set(asgn.projectIds.map(id => String(id).trim().toLowerCase()));
+      return allProjects.filter(p => {
+        const pId = String(p.id || '').trim().toLowerCase();
+        const pAppId = String(p.applicationId || '').trim().toLowerCase();
+        const pCode = String(p.projectCode || '').trim().toLowerCase();
+        return idSet.has(pId) || (pAppId && idSet.has(pAppId)) || (pCode && idSet.has(pCode));
+      });
+    }
+
+    return allProjects.filter(p => {
+      const statusStr = (p.status || 'active').trim().toLowerCase();
+      if (statusStr !== 'active') return false;
+      if (!matchesAppType(p.applicationType, asgn.applicationType)) return false;
+      if (asgn.headCategory && asgn.headCategory !== 'All Head Category' && asgn.headCategory !== 'N/A') {
+        if (!matchesCategory(p.headCategory, asgn.headCategory, p.applicationType)) return false;
+      }
+      return true;
+    });
+  };
+
+  // Form State - default to specific selection
   const [selectedAppType, setSelectedAppType] = useState<ApplicationType>('Student-Secondary');
   const [selectedHeadCategory, setSelectedHeadCategory] = useState<string>('All Head Category');
-  const [assignMode, setAssignMode] = useState<'scope' | 'specific'>('scope');
+  const [assignMode, setAssignMode] = useState<'scope' | 'specific'>('specific');
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -126,12 +181,13 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
       window.dispatchEvent(new Event('biin_projects_updated'));
     }
 
-    const updated = getJudgeAssignmentsByJudge(judge.email);
+    const updated = await api.getAssignmentsByJudge(judge.email).catch(() => getJudgeAssignmentsByJudge(judge.email));
     setAssignments(updated);
+    setExpandedAsgnIds(prev => [...prev, newAsgn.id]);
     setSelectedProjectIds([]);
     setFeedback({
       type: 'success',
-      message: `Successfully assigned ${selectedAppType} projects to ${judge.fullName}.`
+      message: `Successfully assigned projects to ${judge.fullName}.`
     });
     onUpdated?.();
 
@@ -148,7 +204,7 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
       window.dispatchEvent(new Event('biin_projects_updated'));
     }
 
-    const updated = getJudgeAssignmentsByJudge(judge.email);
+    const updated = await api.getAssignmentsByJudge(judge.email).catch(() => getJudgeAssignmentsByJudge(judge.email));
     setAssignments(updated);
     onUpdated?.();
     setFeedback({
@@ -158,6 +214,63 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
     setTimeout(() => {
       setFeedback(null);
     }, 3000);
+  };
+
+  const handleRemoveProjectFromAssignment = async (asgn: JudgeAssignment, projectIdToRemove: string) => {
+    setFeedback(null);
+    try {
+      const pTarget = String(projectIdToRemove || '').trim().toLowerCase();
+      if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
+        const remainingIds = asgn.projectIds.filter(id => {
+          const clean = String(id || '').trim().toLowerCase();
+          return clean !== pTarget;
+        });
+
+        if (remainingIds.length === 0) {
+          await deleteJudgeAssignment(asgn.id, safeActor);
+        } else {
+          const updatedAsgn: JudgeAssignment = {
+            ...asgn,
+            projectIds: remainingIds
+          };
+          await saveJudgeAssignment(updatedAsgn, safeActor);
+        }
+      } else {
+        const scopeProjects = getProjectsForAssignment(asgn);
+        const remainingIds = scopeProjects
+          .map(p => p.id)
+          .filter(id => String(id).trim().toLowerCase() !== pTarget);
+
+        if (remainingIds.length === 0) {
+          await deleteJudgeAssignment(asgn.id, safeActor);
+        } else {
+          const updatedAsgn: JudgeAssignment = {
+            ...asgn,
+            projectIds: remainingIds
+          };
+          await saveJudgeAssignment(updatedAsgn, safeActor);
+        }
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('biin_assignments_updated'));
+        window.dispatchEvent(new Event('biin_projects_updated'));
+      }
+
+      const updated = await api.getAssignmentsByJudge(judge.email).catch(() => getJudgeAssignmentsByJudge(judge.email));
+      setAssignments(updated);
+      setFeedback({
+        type: 'success',
+        message: 'Project removed from judge assignment.'
+      });
+      onUpdated?.();
+      setTimeout(() => setFeedback(null), 3000);
+    } catch {
+      setFeedback({
+        type: 'error',
+        message: 'Failed to remove project from assignment.'
+      });
+    }
   };
 
   const getAppTypeIcon = (type: string) => {
@@ -232,57 +345,122 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
                 <FolderGit2 className="mx-auto h-8 w-8 text-slate-400 mb-2" />
                 <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">No Projects Assigned Yet</p>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  This judge will see an empty project list until you assign an Application Type or specific projects below.
+                  This judge will see an empty project list until you assign specific projects below.
                 </p>
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {assignments.map(asgn => {
                   const Icon = getAppTypeIcon(asgn.applicationType);
                   const isSpecific = Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0;
                   const asgnCanon = canonicalAppType(asgn.applicationType);
                   const isNoCat = asgnCanon === 'Student-Secondary' || asgnCanon === 'Individual or Group';
+                  const asgnProjects = getProjectsForAssignment(asgn);
+                  const isExpanded = expandedAsgnIds.includes(asgn.id);
 
                   return (
                     <div
                       key={asgn.id}
-                      className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                      className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 overflow-hidden transition-all shadow-xs"
                     >
-                      <div className="flex items-center space-x-3 min-w-0">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center space-x-2 flex-wrap">
-                            <span className="font-bold text-xs text-slate-900 dark:text-white">
-                              {asgn.applicationType}
-                            </span>
-                            {!isNoCat && asgn.headCategory && asgn.headCategory !== 'N/A' && (
-                              <span className="inline-block rounded-md bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                                {asgn.headCategory}
-                              </span>
-                            )}
-                            {isNoCat && (
-                              <span className="inline-block rounded-md bg-slate-200 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-400">
-                                No Head Category
-                              </span>
-                            )}
+                      {/* Assignment Card Header */}
+                      <div className="flex items-center justify-between p-3.5 gap-2">
+                        <div
+                          onClick={() => toggleExpand(asgn.id)}
+                          className="flex items-center space-x-3 min-w-0 cursor-pointer flex-1"
+                        >
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
+                            <Icon className="h-4 w-4" />
                           </div>
-                          <p className="text-[11px] text-slate-500 mt-0.5">
-                            {isSpecific
-                              ? `${asgn.projectIds?.length} specific project(s) assigned`
-                              : 'All projects in this scope'}
-                          </p>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                              <span className="font-bold text-xs text-slate-900 dark:text-white">
+                                {asgn.applicationType}
+                              </span>
+                              {!isNoCat && asgn.headCategory && asgn.headCategory !== 'N/A' && (
+                                <span className="inline-block rounded-md bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                  {asgn.headCategory}
+                                </span>
+                              )}
+                              <span className="inline-block rounded-md bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2 py-0.5 text-[10px] font-bold">
+                                {asgnProjects.length} project{asgnProjects.length !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              {isSpecific
+                                ? `Specific projects assigned`
+                                : 'Scope-wide assignment'} · Click to {isExpanded ? 'hide' : 'view'} projects
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => toggleExpand(asgn.id)}
+                            title={isExpanded ? 'Collapse' : 'Expand projects'}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                          >
+                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAssignment(asgn.id)}
+                            title="Delete entire assignment"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => handleDeleteAssignment(asgn.id)}
-                        title="Remove assignment"
-                        className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors shrink-0"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {/* Expanded Projects List */}
+                      {isExpanded && (
+                        <div className="border-t border-slate-200 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 p-3 space-y-2">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                            Assigned Projects ({asgnProjects.length})
+                          </p>
+
+                          {asgnProjects.length === 0 ? (
+                            <p className="text-xs text-slate-400 p-2 text-center italic">
+                              No matching projects found in database.
+                            </p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {asgnProjects.map(p => (
+                                <div
+                                  key={p.id}
+                                  className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200/70 dark:border-slate-800/70 text-xs gap-2"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-mono text-[10px] font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/50 px-1.5 py-0.5 rounded border border-violet-200 dark:border-violet-800 shrink-0">
+                                        {p.applicationId || p.projectCode || p.id.slice(0, 8)}
+                                      </span>
+                                      <p className="font-semibold text-slate-900 dark:text-white truncate">
+                                        {p.title}
+                                      </p>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                                      {p.teamOrOrgName} · {p.headCategory || p.applicationType}
+                                    </p>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveProjectFromAssignment(asgn, p.id)}
+                                    title={`Remove "${p.title}" from this judge`}
+                                    className="flex items-center space-x-1 px-2 py-1 rounded-lg text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-900 shrink-0 transition-colors"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                    <span>Remove</span>
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
