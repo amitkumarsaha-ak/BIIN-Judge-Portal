@@ -664,14 +664,26 @@ export const projectDb = {
 
   async bulkCreate(projects: SeedProject[]): Promise<number> {
     let count = 0;
+    const all = await projectDb.getAll();
+    const existingTitles = new Set(all.map(p => (p.title || (p as any).solutionName || '').trim().toLowerCase()));
+    const existingAppIds = new Set(all.map(p => (p.applicationId || '').trim().toLowerCase()));
+    const existingIds = new Set(all.map(p => (p.id || '').trim().toLowerCase()));
+
     for (const proj of projects) {
       try {
-        const existing = (await projectDb.findById(proj.id)) ||
-                         (proj.applicationId ? (await projectDb.getAll()).find(p => p.applicationId === proj.applicationId) : undefined);
-        if (!existing) {
-          await projectDb.create(proj);
-          count++;
+        const normTitle = (proj.title || (proj as any).solutionName || '').trim().toLowerCase();
+        const normAppId = (proj.applicationId || '').trim().toLowerCase();
+        const normId = (proj.id || '').trim().toLowerCase();
+
+        if (existingTitles.has(normTitle) || existingAppIds.has(normAppId) || existingIds.has(normId)) {
+          continue;
         }
+
+        await projectDb.create(proj);
+        existingTitles.add(normTitle);
+        existingAppIds.add(normAppId);
+        existingIds.add(normId);
+        count++;
       } catch (err) {
         console.warn('[projectDb.bulkCreate] Skipped invalid project row:', err);
       }

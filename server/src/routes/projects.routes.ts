@@ -61,6 +61,17 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Check for existing duplicate by title
+    const allExisting = await projectDb.getAll();
+    const existing = allExisting.find(ep => 
+      (ep.title || (ep as any).solutionName || '').trim().toLowerCase() === titleVal.toLowerCase()
+    );
+    if (existing) {
+      // If already exists, return existing project without creating a duplicate
+      res.status(200).json(existing);
+      return;
+    }
+
     const isNoHeadCategory = appTypeVal === 'Student-Secondary' || appTypeVal === 'Individual/Group' || appTypeVal === 'Individual or Group';
     const finalHeadCat = isNoHeadCategory ? 'N/A' : headCatVal;
 
@@ -110,7 +121,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
 /**
  * POST /api/projects/bulk
- * Supports Excel file imports
+ * Supports Excel file imports with strict deduplication
  */
 router.post('/bulk', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -120,15 +131,38 @@ router.post('/bulk', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const sanitizedProjects = projects.map((p, index) => {
+    // Existing projects lookup to prevent duplicates
+    const allExisting = await projectDb.getAll();
+    const existingTitles = new Set(allExisting.map(ep => (ep.title || (ep as any).solutionName || '').trim().toLowerCase()));
+    const existingAppIds = new Set(allExisting.map(ep => (ep.applicationId || '').trim().toLowerCase()));
+    const existingIds = new Set(allExisting.map(ep => (ep.id || '').trim().toLowerCase()));
+
+    const seenBatchTitles = new Set<string>();
+    const sanitizedProjects: any[] = [];
+
+    for (const [index, p] of projects.entries()) {
       const title = (p.solutionName || p.title || 'Untitled Project').trim();
+      const normTitle = title.toLowerCase();
       const appId = (p.applicationId || `BIIN-2026-${Date.now().toString().slice(-4)}-${index}`).trim();
+      const normAppId = appId.toLowerCase();
+      const pId = (p.id || `proj-${Date.now()}-${index}`).trim().toLowerCase();
+
+      // Skip if already in database by title, appId, or id
+      if (existingTitles.has(normTitle) || existingAppIds.has(normAppId) || existingIds.has(pId)) {
+        continue;
+      }
+      // Skip if duplicated within this incoming batch
+      if (seenBatchTitles.has(normTitle)) {
+        continue;
+      }
+      seenBatchTitles.add(normTitle);
+
       const appType = p.applicationType || 'Student-Secondary';
       const isNoHeadCategory = appType === 'Student-Secondary' || appType === 'Individual/Group' || appType === 'Individual or Group';
       const headCat = isNoHeadCategory ? 'N/A' : (p.headCategory || null);
       const desc = (p.projectOverview || p.description || p.solutionSummary || 'No description').trim();
 
-      return {
+      sanitizedProjects.push({
         id: p.id || `proj-${Date.now()}-${index}`,
         title,
         solutionName: title,
@@ -150,8 +184,13 @@ router.post('/bulk', async (req: Request, res: Response): Promise<void> => {
         tags: Array.isArray(p.tags) ? p.tags : [],
         roomNumber: p.roomNumber || '',
         status: (p.status || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active'
-      };
-    });
+      });
+    }
+
+    if (sanitizedProjects.length === 0) {
+      res.json({ success: true, count: 0, message: 'All projects already exist in the database. No duplicates imported.' });
+      return;
+    }
 
     const insertedCount = await projectDb.bulkCreate(sanitizedProjects as any);
 
@@ -163,7 +202,7 @@ router.post('/bulk', async (req: Request, res: Response): Promise<void> => {
           actorName: actor.name || 'Administrator',
           action: 'BULK_IMPORT_PROJECTS',
           targetType: 'project',
-          details: `Bulk imported ${insertedCount} projects into database.`,
+          details: `Bulk imported ${insertedCount} new unique projects into database.`,
           timestamp: new Date().toISOString()
         });
       } catch (auditErr) {
@@ -295,13 +334,19 @@ router.patch('/:id/room', async (req: Request, res: Response): Promise<void> => 
  */
 router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    const existing = await projectDb.findById(req.params.id);
+    const idParam = req.params.id;
+    let existing = await projectDb.findById(idParam);
+    if (!existing) {
+      const all = await projectDb.getAll();
+      existing = all.find(p => p.id === idParam || p.applicationId === idParam || p.projectCode === idParam);
+    }
+
     if (!existing) {
       res.status(404).json({ error: 'Project not found.' });
       return;
     }
 
-    const success = await projectDb.delete(req.params.id);
+    const success = await projectDb.delete(existing.id);
 
     const actor = req.body.actor;
     if (actor && success) {

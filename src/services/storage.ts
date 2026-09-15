@@ -197,12 +197,14 @@ export const DEFAULT_AUDIT_LOGS: AuditLog[] = [
 export const initializeStorage = () => {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
 
-  const CLOUD_SYNC_VERSION = 'biin_cloud_live_v4';
+  const CLOUD_SYNC_VERSION = 'biin_cloud_live_v6';
   if (!localStorage.getItem(CLOUD_SYNC_VERSION)) {
     localStorage.removeItem(PROJECTS_KEY);
     localStorage.removeItem(ASSIGNMENTS_KEY);
     localStorage.removeItem(EVALUATIONS_KEY);
     localStorage.removeItem(USERS_KEY);
+    localStorage.removeItem('biin_cloud_live_v4');
+    localStorage.removeItem('biin_cloud_live_v5');
     localStorage.setItem(CLOUD_SYNC_VERSION, 'true');
   }
 
@@ -282,8 +284,17 @@ export const syncWithBackend = async (): Promise<boolean> => {
     ]);
 
     if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value)) {
-      // Backend is the single source of truth - update local storage directly
-      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projectsRes.value));
+      // Backend is the single source of truth - update local storage directly with deduplicated entries
+      const seenTitles = new Set<string>();
+      const dedupedProjects: Project[] = [];
+      for (const p of projectsRes.value) {
+        const key = (p.solutionName || p.title || p.id || '').trim().toLowerCase();
+        if (!seenTitles.has(key)) {
+          seenTitles.add(key);
+          dedupedProjects.push(p);
+        }
+      }
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(dedupedProjects));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_projects_updated'));
       }
@@ -819,24 +830,34 @@ export const getProjects = (): Project[] => {
   initializeStorage();
   const data = localStorage.getItem(PROJECTS_KEY);
   if (!data) return [];
-  const list: Project[] = JSON.parse(data);
-  return list.map(p => {
-    if (p.applicationType === 'Student') {
-      return {
-        ...p,
-        applicationType: 'Student-Secondary',
-        headCategory: 'N/A'
-      };
+  try {
+    const list: Project[] = JSON.parse(data);
+    if (!Array.isArray(list)) return [];
+
+    const seen = new Set<string>();
+    const unique: Project[] = [];
+
+    for (const raw of list) {
+      let p = { ...raw };
+      if (p.applicationType === 'Student') {
+        p.applicationType = 'Student-Secondary';
+        p.headCategory = 'N/A';
+      }
+      const canon = canonicalAppType(p.applicationType);
+      if ((canon === 'Individual or Group' || p.applicationType === 'Individual/Group') && p.headCategory !== 'N/A') {
+        p.headCategory = 'N/A';
+      }
+
+      const key = (p.solutionName || p.title || p.id || '').trim().toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(p);
+      }
     }
-    const canon = canonicalAppType(p.applicationType);
-    if ((canon === 'Individual or Group' || p.applicationType === 'Individual/Group') && p.headCategory !== 'N/A') {
-      return {
-        ...p,
-        headCategory: 'N/A'
-      };
-    }
-    return p;
-  });
+    return unique;
+  } catch {
+    return [];
+  }
 };
 
 export const getProjectById = (id: string): Project | undefined => {
@@ -922,18 +943,27 @@ export const updateProject = async (updated: Project, actor?: { email: string; n
 
 export const deleteProject = async (id: string, actor?: { email: string; name: string }): Promise<void> => {
   const projects = getProjects();
-  const target = projects.find(p => p.id === id);
-  const remaining = projects.filter((p) => p.id !== id);
+  const target = projects.find(p => p.id === id || p.applicationId === id || p.projectCode === id);
+  const targetId = target ? target.id : id;
+  const targetAppId = target ? target.applicationId : id;
+  const targetTitle = target ? (target.solutionName || target.title || '').trim().toLowerCase() : '';
+
+  const remaining = projects.filter((p) => {
+    if (p.id === targetId || p.id === id) return false;
+    if (targetAppId && p.applicationId === targetAppId) return false;
+    if (targetTitle && (p.solutionName || p.title || '').trim().toLowerCase() === targetTitle) return false;
+    return true;
+  });
   localStorage.setItem(PROJECTS_KEY, JSON.stringify(remaining));
 
   // Also remove all evaluations linked to this project
-  const evaluations = getEvaluations().filter((e) => e.projectId !== id);
+  const evaluations = getEvaluations().filter((e) => e.projectId !== targetId && e.projectId !== id && e.projectId !== targetAppId);
   localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evaluations));
 
   // Also remove this project from all judge assignments
   const assignments = getJudgeAssignments().map((a: JudgeAssignment) => ({
     ...a,
-    projectIds: (a.projectIds || []).filter((pid: string) => pid !== id)
+    projectIds: (a.projectIds || []).filter((pid: string) => pid !== targetId && pid !== id && pid !== targetAppId)
   }));
   localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignments));
 
@@ -942,7 +972,7 @@ export const deleteProject = async (id: string, actor?: { email: string; name: s
   }
 
   try {
-    await api.deleteProject(id, actor);
+    await api.deleteProject(targetId, actor);
   } catch (err) {
     console.warn('[Storage] Remote delete failed:', err);
   }
