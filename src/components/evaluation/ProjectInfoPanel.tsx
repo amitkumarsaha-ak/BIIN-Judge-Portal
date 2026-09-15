@@ -52,23 +52,14 @@ export const ProjectInfoPanel: React.FC<ProjectInfoPanelProps> = ({ project }) =
           {project.solutionName || project.title}
         </h1>
 
-        {/* Team Lead Name & Team/Organization Info */}
-        {(teamLead || project.teamOrOrgName) && (
-          <div className="mt-3 flex flex-wrap items-center gap-2.5">
-            {teamLead && (
-              <div className="inline-flex items-center space-x-2 rounded-xl bg-amber-50 dark:bg-amber-500/10 px-3.5 py-1.5 border border-amber-200 dark:border-amber-500/30 text-xs shadow-sm">
-                <UserCheck className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                <span className="text-amber-800 dark:text-amber-300 font-semibold">Team Lead Name:</span>
-                <strong className="text-amber-950 dark:text-amber-100 font-bold">{teamLead}</strong>
-              </div>
-            )}
-            {project.teamOrOrgName && (
-              <div className="inline-flex items-center space-x-2 rounded-xl bg-slate-100 dark:bg-slate-800 px-3.5 py-1.5 border border-slate-200 dark:border-slate-700 text-xs">
-                <Users className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
-                <span className="text-slate-500 dark:text-slate-400 font-semibold">Participant / Org:</span>
-                <strong className="text-slate-800 dark:text-slate-200 font-bold">{project.teamOrOrgName}</strong>
-              </div>
-            )}
+        {/* Team Lead Name */}
+        {teamLead && (
+          <div className="mt-3 flex items-center">
+            <div className="inline-flex items-center space-x-2 rounded-xl bg-amber-50 dark:bg-amber-500/10 px-3.5 py-1.5 border border-amber-200 dark:border-amber-500/30 text-xs shadow-sm">
+              <UserCheck className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="text-amber-800 dark:text-amber-300 font-semibold">Team Lead Name:</span>
+              <strong className="text-amber-950 dark:text-amber-100 font-bold">{teamLead}</strong>
+            </div>
           </div>
         )}
       </div>
