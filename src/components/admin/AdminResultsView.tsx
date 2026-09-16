@@ -23,6 +23,7 @@ import {
   canonicalHeadCategory
 } from '../../utils/evaluation';
 import { PrintResultReportSheet } from '../reports/PrintResultReportSheet';
+import { CategoryResultReportSheet } from '../reports/CategoryResultReportSheet';
 
 export const AdminResultsView: React.FC = () => {
   const { currentUser } = useAuth();
@@ -49,6 +50,7 @@ export const AdminResultsView: React.FC = () => {
   const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
   const [selectedProjectId, setSelectedProjectId] = useState<string>(allProjects[0]?.id || '');
   const [activePrintResult, setActivePrintResult] = useState<CombinedProjectResult | null>(null);
+  const [activeCategoryPrintKey, setActiveCategoryPrintKey] = useState<string | null>(null);
   const [collapsedTypes, setCollapsedTypes] = useState<Record<string, boolean>>({});
 
   // 1. Calculate all combined results
@@ -117,7 +119,18 @@ export const AdminResultsView: React.FC = () => {
   };
 
   const handlePrintFullTable = () => {
-    window.print();
+    if (filterType !== 'All') {
+      const matched = categoryGroups.find(g => {
+        const typeMatch = g.appType === filterType;
+        const catMatch = filterCategory === 'All' || g.headCategoryCode === filterCategory;
+        return typeMatch && catMatch;
+      });
+      if (matched) {
+        setActiveCategoryPrintKey(matched.categoryKey);
+        return;
+      }
+    }
+    setActiveCategoryPrintKey('ALL');
   };
 
   const toggleTypeCollapse = (typeId: string) => {
@@ -283,11 +296,20 @@ export const AdminResultsView: React.FC = () => {
         }
       `}</style>
 
-      {/* Print Sheet Modal */}
+      {/* Print Sheet Modal (Single Project Scorecard) */}
       {activePrintResult && (
         <PrintResultReportSheet
           result={activePrintResult}
           onClose={() => setActivePrintResult(null)}
+        />
+      )}
+
+      {/* Category Result Report Sheet Modal (All category projects + 5 judge signatures) */}
+      {activeCategoryPrintKey && (
+        <CategoryResultReportSheet
+          categoryGroups={categoryGroups}
+          initialCategoryKey={activeCategoryPrintKey}
+          onClose={() => setActiveCategoryPrintKey(null)}
         />
       )}
 
@@ -302,7 +324,7 @@ export const AdminResultsView: React.FC = () => {
             Results & Award Designation
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-            12 Independent Award Categories. Designations: <strong>≥85% Champion</strong> (and highest in category), <strong>≥70% Winner</strong>, <strong>≥65% Merit</strong>, and <strong>&lt;65% No Award</strong>. When multiple projects qualify in the same tier, they are sequenced as <strong>1st, 2nd, 3rd</strong>.
+            12 Independent Award Categories. Designations: <strong>≥85% Champion</strong> (and highest in category), <strong>≥70% Winner</strong>, <strong>≥65% Merit (max 2 per category)</strong>, and <strong>&lt;65% No Award</strong>.
           </p>
         </div>
 
@@ -383,7 +405,7 @@ export const AdminResultsView: React.FC = () => {
             <span>Merits (≥65%)</span>
           </p>
           <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">{overallTotals.totalMerits}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">Up to 5 per pool (Sequenced)</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Up to 2 per pool (Sequenced)</p>
         </div>
 
         <div className="col-span-2 min-[640px]:col-span-1 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
@@ -588,9 +610,19 @@ export const AdminResultsView: React.FC = () => {
                                     </div>
                                   </div>
 
-                                  <span className="text-[11px] font-mono text-slate-500 font-semibold">
-                                    {cat.totalApplicants} Total Applicant{cat.totalApplicants !== 1 ? 's' : ''}
-                                  </span>
+                                  <div className="flex items-center space-x-2">
+                                    <button
+                                      onClick={() => setActiveCategoryPrintKey(cat.categoryKey)}
+                                      title={`Print official result report for ${cat.headCategoryName}`}
+                                      className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 transition-colors shadow-sm"
+                                    >
+                                      <Printer className="h-3.5 w-3.5 text-indigo-500" />
+                                      <span>Print Report</span>
+                                    </button>
+                                    <span className="text-[11px] font-mono text-slate-500 font-semibold">
+                                      {cat.totalApplicants} Total Applicant{cat.totalApplicants !== 1 ? 's' : ''}
+                                    </span>
+                                  </div>
                                 </div>
 
                                 {/* 4 DESIGNATION BLOCKS: Champion, Winner, Merit, No Award */}
@@ -704,7 +736,7 @@ export const AdminResultsView: React.FC = () => {
                                       <div className="flex items-center space-x-1.5">
                                         <Award className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                                         <span className="text-xs font-black tracking-wider text-emerald-900 dark:text-emerald-200 uppercase">
-                                          Merit (Max 5 • ≥ 65%)
+                                          Merit (Max 2 • ≥ 65%)
                                         </span>
                                       </div>
                                       <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-200/70 dark:bg-emerald-800/50 text-emerald-900 dark:text-emerald-200">

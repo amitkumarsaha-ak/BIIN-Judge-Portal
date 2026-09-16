@@ -26,7 +26,7 @@ console.assert(calculateAward(50.0) === 'No Award', '50% must be No Award');
 console.assert(calculateAward(0.0) === 'No Award', '0% must be No Award');
 console.log('[PASS] Exact boundary rules verified (≥85% Champion, ≥70% Winner, ≥65% Merit, <65% No Award).');
 
-// --- ACCEPTANCE TEST 1: Exactly 1 Champion, 1 Winner, Up to 5 Merits ---
+// --- ACCEPTANCE TEST 1: Exactly 1 Champion, 1 Winner, Up to 2 Merits ---
 console.log('\n--- Acceptance Test 1: 1 Champion (96%), 1 Winner (90%), Merits (75%, 68%) ---');
 const testProjects: Project[] = [
   {
@@ -103,6 +103,21 @@ const testProjects: Project[] = [
     description: 'Desc',
     tags: [],
     status: 'active'
+  },
+  {
+    id: 'sec-6',
+    title: 'Secondary Project 6 (66% - 3rd qualifying)',
+    applicationId: 'SEC-006',
+    projectCode: 'SEC-006',
+    applicationType: 'Student-Secondary',
+    headCategory: 'N/A',
+    teamOrOrgName: 'Team Six',
+    representativeName: 'Rep Six',
+    email: 'sec6@biin.org',
+    contactNumber: '123456789',
+    description: 'Desc',
+    tags: [],
+    status: 'active'
   }
 ];
 
@@ -160,6 +175,19 @@ const testEvals: Evaluation[] = [
     submittedAt: '2026-08-01T10:00:00Z'
   },
   {
+    id: 'eval-sec-6',
+    projectId: 'sec-6',
+    judgeEmail: 'judge@biin.org',
+    judgeName: 'Judge One',
+    scores: { uniqueness: 7, proofOfConcept: 7, features: 7, quality: 6, presentation: 6 }, // 33/50 = 66%
+    rawTotalScore: 33,
+    maxRawScore: 50,
+    convertedScore: 66,
+    totalScore: 33,
+    percentage: 66,
+    submittedAt: '2026-08-01T10:00:00Z'
+  },
+  {
     id: 'eval-sec-5',
     projectId: 'sec-5',
     judgeEmail: 'judge@biin.org',
@@ -179,13 +207,15 @@ const res2 = getProjectCombinedResult(testProjects[1], testProjects, testEvals);
 const res3 = getProjectCombinedResult(testProjects[2], testProjects, testEvals);
 const res4 = getProjectCombinedResult(testProjects[3], testProjects, testEvals);
 const res5 = getProjectCombinedResult(testProjects[4], testProjects, testEvals);
+const res6 = getProjectCombinedResult(testProjects[5], testProjects, testEvals);
 
 console.assert(res1.award === 'Champion', `Expected 'Champion', got '${res1.award}'`);
 console.assert(res2.award === 'Winner', `Expected 'Winner', got '${res2.award}'`);
 console.assert(res3.award === '1st Merit', `Expected '1st Merit', got '${res3.award}'`);
 console.assert(res4.award === '2nd Merit', `Expected '2nd Merit', got '${res4.award}'`);
 console.assert(res5.award === 'No Award', `Expected 'No Award', got '${res5.award}'`);
-console.log(`[PASS] 1 Champion (96%), 1 Winner (90%), 1st Merit (75%), 2nd Merit (68%), No Award (60%).`);
+console.assert(res6.award === 'No Award', `Expected 'No Award' for 66% due to max 2 Merits, got '${res6.award}'`);
+console.log(`[PASS] 1 Champion (96%), 1 Winner (90%), 1st Merit (75%), 2nd Merit (68%), 3rd qualifying (66%) -> No Award (Max 2 Merits enforced).`);
 
 // --- TEST 12 RESULT POOLS ---
 console.log('\n--- Testing 12 Competition Category Pools ---');

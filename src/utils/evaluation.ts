@@ -338,8 +338,8 @@ export const getProjectCombinedResult = (
   // Exact Award Allocation Logic per Category Pool (12 pools):
   // 1. Exactly 1 Champion max: Highest scorer in category pool, MUST be >= 85%
   // 2. Exactly 1 Winner max: 2nd highest scorer (or 1st if no Champion), MUST be >= 70%
-  // 3. Up to 5 Merits max: Next highest scorers with score >= 65% (maximum 5 Merits)
-  // 4. No Award: Score < 65% or beyond the top 5 merits
+  // 3. Up to 2 Merits max: Next highest scorers with score >= 65% (maximum 2 Merits)
+  // 4. No Award: Score < 65% or beyond the top 2 merits
   let championId: string | null = null;
   let winnerId: string | null = null;
   const meritIds: string[] = [];
@@ -359,8 +359,8 @@ export const getProjectCombinedResult = (
       continue;
     }
 
-    // Up to 5 Merits: Next highest with >= 65%
-    if (meritIds.length < 5 && item.score >= 65) {
+    // Up to 2 Merits: Next highest with >= 65%
+    if (meritIds.length < 2 && item.score >= 65) {
       meritIds.push(item.id);
       continue;
     }
