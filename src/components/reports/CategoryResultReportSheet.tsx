@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Printer, X } from 'lucide-react';
+import { Printer, X, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import type { CombinedProjectResult, JudgeScoreBreakdown } from '../../types';
 import { formatScoreNumber, canonicalAppType, type CategoryResultGroup } from '../../utils/evaluation';
 
@@ -54,6 +55,69 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadExcel = () => {
+    const wb = XLSX.utils.book_new();
+
+    displayedGroups.forEach((group) => {
+      const sortedResults = [...group.allResults].sort(
+        (a, b) => b.finalAverageScore - a.finalAverageScore
+      );
+
+      const isNoHeadCat =
+        canonicalAppType(group.appType) === 'Student-Secondary' ||
+        canonicalAppType(group.appType) === 'Individual or Group';
+
+      const catTitle = isNoHeadCat ? 'General' : group.headCategoryName;
+
+      // Prepare 2D rows
+      const rows: (string | number)[][] = [
+        ['Bangladesh ICT & Innovation Network'],
+        ['Official Competition Result Sheet'],
+        [`Application Type: ${group.appTypeTitle} | Category: ${catTitle}`],
+        [],
+        ['SL', 'Solution Name', 'Team Lead Name', 'Team / Organization Name', 'Final Score (%)', 'Position']
+      ];
+
+      sortedResults.forEach((item, idx) => {
+        const sl = idx + 1;
+        const solutionName = item.project.solutionName || item.project.title;
+        const teamLead = item.project.teamLeadName || item.project.representativeName || item.project.teamOrOrgName || 'N/A';
+        const org = item.project.teamOrOrgName || 'N/A';
+        const score = `${formatScoreNumber(item.finalAverageScore)}%`;
+        const position = getPositionDisplay(item);
+        rows.push([sl, solutionName, teamLead, org, score, position]);
+      });
+
+      rows.push([]);
+      rows.push(['Judges Committee Signatures:']);
+      rows.push(['Judge 1', 'Judge 2', 'Judge 3', 'Judge 4', 'Judge 5']);
+      rows.push(['Signature: ____________', 'Signature: ____________', 'Signature: ____________', 'Signature: ____________', 'Signature: ____________']);
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 8 },  // SL
+        { wch: 38 }, // Solution Name
+        { wch: 25 }, // Team Lead Name
+        { wch: 28 }, // Team / Org
+        { wch: 16 }, // Final Score
+        { wch: 16 }  // Position
+      ];
+
+      // Safe sheet name (max 31 chars, no invalid characters)
+      let sheetName = `${group.appTypeTitle.slice(0, 14)}_${catTitle.slice(0, 14)}`.replace(/[:\\/?*\[\]]/g, '_');
+      if (wb.SheetNames.includes(sheetName)) {
+        sheetName = `${sheetName.slice(0, 27)}_${wb.SheetNames.length + 1}`;
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+
+    const fileSuffix = selectedKey === 'ALL' ? 'All_Categories' : selectedKey.replace(/[^a-zA-Z0-9_-]/g, '_');
+    XLSX.writeFile(wb, `BIIN_Result_Report_${fileSuffix}.xlsx`);
   };
 
   return (
@@ -134,6 +198,15 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
                 </option>
               ))}
             </select>
+
+            <button
+              onClick={handleDownloadExcel}
+              className="inline-flex items-center space-x-2 rounded-xl px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg transition-transform hover:scale-105"
+              title="Download official results sheet as Excel file (.xlsx)"
+            >
+              <Download className="h-4 w-4" />
+              <span>Download Excel</span>
+            </button>
 
             <button
               onClick={handlePrint}

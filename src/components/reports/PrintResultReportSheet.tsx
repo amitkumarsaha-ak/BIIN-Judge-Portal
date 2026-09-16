@@ -1,5 +1,6 @@
 import React from 'react';
-import { Printer, X } from 'lucide-react';
+import { Printer, X, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import type { CombinedProjectResult } from '../../types';
 import { getCriteriaForApplicationType, formatScoreNumber, canonicalAppType } from '../../utils/evaluation';
 
@@ -23,6 +24,63 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadExcel = () => {
+    const wb = XLSX.utils.book_new();
+
+    const rows: (string | number)[][] = [
+      ['Bangladesh ICT & Innovation Network'],
+      ['Project Evaluation Result Sheet'],
+      [],
+      ['Project Name:', project.title],
+      ['Application ID:', project.applicationId],
+      ['Application Type:', applicationType],
+      ['Head Category:', project.headCategory || 'N/A'],
+      ['Team / Organization:', project.teamOrOrgName],
+      ['Team Lead / Representative:', project.representativeName || project.teamLeadName || 'N/A'],
+      ['Final Score:', `${formatScoreNumber(finalAverageScore)} / 100`],
+      ['Award Designation:', award.toUpperCase()],
+      [],
+      ['Criteria Breakdown:']
+    ];
+
+    const headerRow: (string | number)[] = ['Criteria', 'Max Mark'];
+    judgesEvaluations.forEach((j, idx) => {
+      headerRow.push(cleanJudgeName(j.judgeName) || `Judge ${idx + 1}`);
+    });
+    rows.push(headerRow);
+
+    criteria.forEach((crit) => {
+      const critRow: (string | number)[] = [crit.label, 10];
+      judgesEvaluations.forEach((j) => {
+        critRow.push(j.scores[crit.key] ?? 0);
+      });
+      rows.push(critRow);
+    });
+
+    const rawTotalRow: (string | number)[] = ['Raw Total', criteria.length * 10];
+    judgesEvaluations.forEach((j) => {
+      rawTotalRow.push(`${formatScoreNumber(j.rawScore)} / ${j.maxRawScore}`);
+    });
+    rows.push(rawTotalRow);
+
+    const convertedRow: (string | number)[] = ['Converted Score / 100', 100];
+    judgesEvaluations.forEach((j) => {
+      convertedRow.push(`${formatScoreNumber(j.convertedScore)}%`);
+    });
+    rows.push(convertedRow);
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 30 },
+      { wch: 15 },
+      ...judgesEvaluations.map(() => ({ wch: 20 }))
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Evaluation_Result');
+    const safeTitle = project.title.slice(0, 20).replace(/[^a-zA-Z0-9_-]/g, '_');
+    XLSX.writeFile(wb, `BIIN_Evaluation_${project.applicationId || safeTitle}.xlsx`);
   };
 
   return (
@@ -88,6 +146,15 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
           </div>
 
           <div className="flex items-center space-x-3">
+            <button
+              onClick={handleDownloadExcel}
+              className="inline-flex items-center space-x-2 rounded-xl px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg transition-transform hover:scale-105"
+              title="Download scorecard breakdown as Excel (.xlsx)"
+            >
+              <Download className="h-4 w-4" />
+              <span>Download Excel</span>
+            </button>
+
             <button
               onClick={handlePrint}
               className="btn-primary inline-flex items-center space-x-2 rounded-xl px-5 py-2 text-xs font-bold text-white shadow-lg"

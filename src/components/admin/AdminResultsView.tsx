@@ -3,8 +3,9 @@ import {
   Trophy, Medal, Award, Printer, Lock, Unlock,
   Search, UserCheck, Sparkles, Filter, RotateCcw,
   CheckCircle2, LayoutGrid, ListOrdered, ChevronDown, ChevronRight,
-  Smartphone, Briefcase, Factory, Landmark, HeartHandshake
+  Smartphone, Briefcase, Factory, Landmark, HeartHandshake, Download
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import type { CombinedProjectResult, ApplicationType, HeadCategoryCode } from '../../types';
 import {
   getProjects, getEvaluations, getSystemSettings,
@@ -131,6 +132,77 @@ export const AdminResultsView: React.FC = () => {
       }
     }
     setActiveCategoryPrintKey('ALL');
+  };
+
+  const handleDownloadExcel = () => {
+    const wb = XLSX.utils.book_new();
+
+    const targetGroups = filterType === 'All'
+      ? categoryGroups
+      : categoryGroups.filter(g => {
+          const typeMatch = g.appType === filterType;
+          const catMatch = filterCategory === 'All' || g.headCategoryCode === filterCategory;
+          return typeMatch && catMatch;
+        });
+
+    targetGroups.forEach((group) => {
+      const sortedResults = [...group.allResults].sort(
+        (a, b) => b.finalAverageScore - a.finalAverageScore
+      );
+
+      const isNoHeadCat =
+        canonicalAppType(group.appType) === 'Student-Secondary' ||
+        canonicalAppType(group.appType) === 'Individual or Group';
+
+      const catTitle = isNoHeadCat ? 'General' : group.headCategoryName;
+
+      const rows: (string | number)[][] = [
+        ['Bangladesh ICT & Innovation Network'],
+        ['Official Competition Result Sheet'],
+        [`Application Type: ${group.appTypeTitle} | Category: ${catTitle}`],
+        [],
+        ['SL', 'Solution Name', 'Team Lead Name', 'Team / Organization Name', 'Final Score (%)', 'Position']
+      ];
+
+      sortedResults.forEach((item, idx) => {
+        const sl = idx + 1;
+        const solutionName = item.project.solutionName || item.project.title;
+        const teamLead = item.project.teamLeadName || item.project.representativeName || item.project.teamOrOrgName || 'N/A';
+        const org = item.project.teamOrOrgName || 'N/A';
+        const score = `${formatScoreNumber(item.finalAverageScore)}%`;
+        let position = 'N/A';
+        if (item.awardBase === 'Champion' || item.award === 'Champion' || item.award.includes('Champion')) position = 'Champion';
+        else if (item.awardBase === 'Winner' || item.award === 'Winner' || item.award.includes('Winner')) position = 'Winner';
+        else if (item.awardBase === 'Merit' || item.award.includes('Merit')) position = 'Merit';
+
+        rows.push([sl, solutionName, teamLead, org, score, position]);
+      });
+
+      rows.push([]);
+      rows.push(['Judges Committee Signatures:']);
+      rows.push(['Judge 1', 'Judge 2', 'Judge 3', 'Judge 4', 'Judge 5']);
+      rows.push(['Signature: ____________', 'Signature: ____________', 'Signature: ____________', 'Signature: ____________', 'Signature: ____________']);
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [
+        { wch: 8 },
+        { wch: 38 },
+        { wch: 25 },
+        { wch: 28 },
+        { wch: 16 },
+        { wch: 16 }
+      ];
+
+      let sheetName = `${group.appTypeTitle.slice(0, 14)}_${catTitle.slice(0, 14)}`.replace(/[:\\/?*\[\]]/g, '_');
+      if (wb.SheetNames.includes(sheetName)) {
+        sheetName = `${sheetName.slice(0, 27)}_${wb.SheetNames.length + 1}`;
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+
+    const fileSuffix = filterType === 'All' ? 'All_Categories' : `${filterType}_${filterCategory}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+    XLSX.writeFile(wb, `BIIN_Result_Report_${fileSuffix}.xlsx`);
   };
 
   const toggleTypeCollapse = (typeId: string) => {
@@ -345,6 +417,15 @@ export const AdminResultsView: React.FC = () => {
           >
             <Printer className="h-4 w-4" />
             <span>Print Results Report</span>
+          </button>
+
+          <button
+            onClick={handleDownloadExcel}
+            title="Download official results sheet as Excel file (.xlsx)"
+            className="inline-flex items-center justify-center space-x-2 rounded-2xl px-4 py-3 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl hover:scale-105 transition-transform min-h-[40px]"
+          >
+            <Download className="h-4 w-4" />
+            <span>Download Excel</span>
           </button>
 
           <button
