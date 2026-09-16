@@ -18,9 +18,10 @@ import {
   getCriteriaForApplicationType,
   getMaxRawScoreForApplicationType,
   RESULT_APPLICATION_TYPES,
-  RESULT_HEAD_CATEGORIES,
   canonicalAppType,
-  canonicalHeadCategory
+  getHeadCategoriesForAppType,
+  getHeadCategoryDisplayName,
+  matchesCategory
 } from '../../utils/evaluation';
 import { PrintResultReportSheet } from '../reports/PrintResultReportSheet';
 import { CategoryResultReportSheet } from '../reports/CategoryResultReportSheet';
@@ -71,10 +72,9 @@ export const AdminResultsView: React.FC = () => {
     const q = searchQuery.toLowerCase().trim();
     return list.filter(res => {
       const pAppType = canonicalAppType(res.project.applicationType);
-      const pHeadCat = canonicalHeadCategory(res.project.headCategory);
 
       if (filterType !== 'All' && pAppType !== filterType) return false;
-      if (pAppType !== 'Student-Secondary' && pAppType !== 'Individual or Group' && filterCategory !== 'All' && pHeadCat !== filterCategory) return false;
+      if (pAppType !== 'Student-Secondary' && pAppType !== 'Individual or Group' && filterCategory !== 'All' && !matchesCategory(res.project.headCategory, filterCategory, res.project.applicationType)) return false;
       if (q) {
         const hay = [
           res.project.title,
@@ -460,24 +460,24 @@ export const AdminResultsView: React.FC = () => {
           title={isNoHeadCategory ? 'Head Category cannot be selected for this Application Type' : undefined}
         >
           <option value="All">
-            {isNoHeadCategory ? `No Head Category for ${filterType}` : 'All Head Categories (5 Categories)'}
+            {isNoHeadCategory ? `No Head Category for ${filterType}` : 'All Head Categories'}
           </option>
           {!isNoHeadCategory &&
-            RESULT_HEAD_CATEGORIES.map(hc => (
+            getHeadCategoriesForAppType(filterType === 'All' ? undefined : filterType).map(hc => (
               <option key={hc.code} value={hc.code}>
                 {hc.code} — {hc.name}
               </option>
             ))}
         </select>
 
-        {/* View Mode Toggle: 12-Category Board vs Ranked Table */}
+        {/* View Mode Toggle: Category Board vs Ranked Table */}
         <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 shrink-0">
           <button
             onClick={() => setViewMode('board')}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'board' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
           >
             <LayoutGrid className="h-3.5 w-3.5" />
-            <span>12-Category Board</span>
+            <span>Category Board</span>
           </button>
           <button
             onClick={() => setViewMode('table')}
@@ -501,7 +501,7 @@ export const AdminResultsView: React.FC = () => {
             <>
               <span>×</span>
               <span className="font-bold text-slate-900 dark:text-white">
-                {filterCategory !== 'All' ? (RESULT_HEAD_CATEGORIES.find(c => c.code === filterCategory)?.name || filterCategory) : 'All Head Categories'}
+                {filterCategory !== 'All' ? getHeadCategoryDisplayName(filterCategory, filterType) : 'All Head Categories'}
               </span>
             </>
           )}
@@ -876,7 +876,7 @@ export const AdminResultsView: React.FC = () => {
                                res.project.headCategory && res.project.headCategory !== 'N/A' && (
                                 <>
                                   <span>•</span>
-                                  <span className="rounded bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.2">{res.project.headCategory}</span>
+                                  <span className="rounded bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.2">{getHeadCategoryDisplayName(res.project.headCategory, res.project.applicationType)}</span>
                                 </>
                               )}
                             </div>
@@ -934,7 +934,7 @@ export const AdminResultsView: React.FC = () => {
                      selectedResult.project.headCategory && selectedResult.project.headCategory !== 'N/A' && (
                       <>
                         <span>•</span>
-                        <span>Category: <strong>{selectedResult.project.headCategory}</strong></span>
+                        <span>Category: <strong>{getHeadCategoryDisplayName(selectedResult.project.headCategory, selectedResult.project.applicationType)}</strong></span>
                       </>
                     )}
                   </div>

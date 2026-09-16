@@ -217,14 +217,202 @@ console.assert(res5.award === 'No Award', `Expected 'No Award', got '${res5.awar
 console.assert(res6.award === 'No Award', `Expected 'No Award' for 66% due to max 2 Merits, got '${res6.award}'`);
 console.log(`[PASS] 1 Champion (96%), 1 Winner (90%), 2 Eligible for Merit (75%, 68%), 3rd qualifying (66%) -> No Award (Max 2 Merits enforced).`);
 
-// --- TEST 12 RESULT POOLS ---
-console.log('\n--- Testing 12 Competition Category Pools ---');
+// --- TEST 10 RESULT POOLS ---
+console.log('\n--- Testing 10 Competition Category Pools ---');
 const dummyCats = calculateCategorizedResults([], []);
-console.assert(dummyCats.length === 12, `Expected 12 category pools, got ${dummyCats.length}`);
-console.log(`[PASS] Exactly 12 pools generated:`);
+console.assert(dummyCats.length === 10, `Expected 10 category pools, got ${dummyCats.length}`);
+console.log(`[PASS] Exactly 10 pools generated:`);
 dummyCats.forEach((c, idx) => {
   console.log(`  ${idx + 1}. [${c.appTypeTitle}] ${c.headCategoryName}`);
 });
 
+// --- ACCEPTANCE TEST 2: Organization Merged Category Pooling (PSG, I, C) ---
+console.log('\n--- Acceptance Test 2: Organization Merged Category (PSG, Industrial, Consumer) ---');
+const orgProjects: Project[] = [
+  {
+    id: 'org-psg-1',
+    applicationId: 'ORG-001',
+    projectCode: 'ORG-001',
+    title: 'Smart Civic Governance',
+    solutionName: 'Smart Civic Governance',
+    teamOrOrgName: 'GovTech Org',
+    representativeName: 'Rahim Ali',
+    applicationType: 'Organization',
+    headCategory: 'Public Sector and Government',
+    status: 'active',
+    email: 'org1@test.com',
+    contactNumber: '01710000001',
+    description: 'Civic governance',
+    members: [],
+    tags: []
+  },
+  {
+    id: 'org-ind-1',
+    applicationId: 'ORG-002',
+    projectCode: 'ORG-002',
+    title: 'Factory Automation Suite',
+    solutionName: 'Factory Automation Suite',
+    teamOrOrgName: 'RoboWorks Ltd',
+    representativeName: 'Karim Ahmed',
+    applicationType: 'Organization',
+    headCategory: 'Industrial',
+    status: 'active',
+    email: 'org2@test.com',
+    contactNumber: '01710000002',
+    description: 'Factory automation',
+    members: [],
+    tags: []
+  },
+  {
+    id: 'org-con-1',
+    applicationId: 'ORG-003',
+    projectCode: 'ORG-003',
+    title: 'Smart Home Hub',
+    solutionName: 'Smart Home Hub',
+    teamOrOrgName: 'IoT Living',
+    representativeName: 'Farhana Yasmin',
+    applicationType: 'Organization',
+    headCategory: 'Consumer',
+    status: 'active',
+    email: 'org3@test.com',
+    contactNumber: '01710000003',
+    description: 'Smart home hub',
+    members: [],
+    tags: []
+  },
+  {
+    id: 'org-merged-1',
+    applicationId: 'ORG-004',
+    projectCode: 'ORG-004',
+    title: 'Multi-Utility Platform',
+    solutionName: 'Multi-Utility Platform',
+    teamOrOrgName: 'Integrated Systems',
+    representativeName: 'Tanvir Hossain',
+    applicationType: 'Organization',
+    headCategory: '(Public Sector and Government , Industrial, Consumer)',
+    status: 'active',
+    email: 'org4@test.com',
+    contactNumber: '01710000004',
+    description: 'Multi-utility platform',
+    members: [],
+    tags: []
+  },
+  {
+    id: 'org-psg-2',
+    applicationId: 'ORG-005',
+    projectCode: 'ORG-005',
+    title: 'Public Health Tracker',
+    solutionName: 'Public Health Tracker',
+    teamOrOrgName: 'HealthNet Org',
+    representativeName: 'Dr. Nasir',
+    applicationType: 'Organization',
+    headCategory: 'Public Sector and Government',
+    status: 'active',
+    email: 'org5@test.com',
+    contactNumber: '01710000005',
+    description: 'Public health tracker',
+    members: [],
+    tags: []
+  }
+];
+
+const orgEvals: Evaluation[] = [
+  // org-psg-1: 92% (Champion)
+  {
+    id: 'eval-org-1',
+    projectId: 'org-psg-1',
+    judgeEmail: 'j1@biin.org',
+    judgeName: 'Judge 1',
+    scores: { 'problem-validation': 92 },
+    rawTotalScore: 46,
+    maxRawScore: 50,
+    convertedScore: 92,
+    totalScore: 46,
+    percentage: 92,
+    feedback: 'Excellent',
+    submittedAt: new Date().toISOString()
+  },
+  // org-ind-1: 82% (Winner)
+  {
+    id: 'eval-org-2',
+    projectId: 'org-ind-1',
+    judgeEmail: 'j1@biin.org',
+    judgeName: 'Judge 1',
+    scores: { 'problem-validation': 82 },
+    rawTotalScore: 41,
+    maxRawScore: 50,
+    convertedScore: 82,
+    totalScore: 41,
+    percentage: 82,
+    feedback: 'Great',
+    submittedAt: new Date().toISOString()
+  },
+  // org-con-1: 72% (Eligible for Merit 1)
+  {
+    id: 'eval-org-3',
+    projectId: 'org-con-1',
+    judgeEmail: 'j1@biin.org',
+    judgeName: 'Judge 1',
+    scores: { 'problem-validation': 72 },
+    rawTotalScore: 36,
+    maxRawScore: 50,
+    convertedScore: 72,
+    totalScore: 36,
+    percentage: 72,
+    feedback: 'Good',
+    submittedAt: new Date().toISOString()
+  },
+  // org-merged-1: 68% (Eligible for Merit 2)
+  {
+    id: 'eval-org-4',
+    projectId: 'org-merged-1',
+    judgeEmail: 'j1@biin.org',
+    judgeName: 'Judge 1',
+    scores: { 'problem-validation': 68 },
+    rawTotalScore: 34,
+    maxRawScore: 50,
+    convertedScore: 68,
+    totalScore: 34,
+    percentage: 68,
+    feedback: 'Solid',
+    submittedAt: new Date().toISOString()
+  },
+  // org-psg-2: 66% (No Award due to max 2 Merits)
+  {
+    id: 'eval-org-5',
+    projectId: 'org-psg-2',
+    judgeEmail: 'j1@biin.org',
+    judgeName: 'Judge 1',
+    scores: { 'problem-validation': 66 },
+    rawTotalScore: 33,
+    maxRawScore: 50,
+    convertedScore: 66,
+    totalScore: 33,
+    percentage: 66,
+    feedback: 'Decent',
+    submittedAt: new Date().toISOString()
+  }
+];
+
+const orgRes1 = getProjectCombinedResult(orgProjects[0], orgProjects, orgEvals);
+const orgRes2 = getProjectCombinedResult(orgProjects[1], orgProjects, orgEvals);
+const orgRes3 = getProjectCombinedResult(orgProjects[2], orgProjects, orgEvals);
+const orgRes4 = getProjectCombinedResult(orgProjects[3], orgProjects, orgEvals);
+const orgRes5 = getProjectCombinedResult(orgProjects[4], orgProjects, orgEvals);
+
+console.assert(orgRes1.award === 'Champion', `Expected orgRes1 to be Champion, got ${orgRes1.award}`);
+console.assert(orgRes2.award === 'Winner', `Expected orgRes2 to be Winner, got ${orgRes2.award}`);
+console.assert(orgRes3.award === 'Eligible for Merit', `Expected orgRes3 to be Eligible for Merit, got ${orgRes3.award}`);
+console.assert(orgRes4.award === 'Eligible for Merit', `Expected orgRes4 to be Eligible for Merit, got ${orgRes4.award}`);
+console.assert(orgRes5.award === 'No Award', `Expected orgRes5 to be No Award (max 2 Merits), got ${orgRes5.award}`);
+
+console.log(`[PASS] Organization merged category pooled projects successfully:`);
+console.log(`  1. [${orgRes1.project.headCategory}] ${orgRes1.project.title} (${orgRes1.finalAverageScore}%) -> ${orgRes1.award}`);
+console.log(`  2. [${orgRes2.project.headCategory}] ${orgRes2.project.title} (${orgRes2.finalAverageScore}%) -> ${orgRes2.award}`);
+console.log(`  3. [${orgRes3.project.headCategory}] ${orgRes3.project.title} (${orgRes3.finalAverageScore}%) -> ${orgRes3.award}`);
+console.log(`  4. [${orgRes4.project.headCategory}] ${orgRes4.project.title} (${orgRes4.finalAverageScore}%) -> ${orgRes4.award}`);
+console.log(`  5. [${orgRes5.project.headCategory}] ${orgRes5.project.title} (${orgRes5.finalAverageScore}%) -> ${orgRes5.award}`);
+
 console.log('\n=== ALL TESTS PASSED! ===');
+
 

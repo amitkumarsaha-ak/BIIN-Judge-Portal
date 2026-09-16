@@ -16,12 +16,14 @@ export type HeadCategoryCode =
   | 'HC-BS'
   | 'HC-ICS'
   | 'HC-PSG'
+  | 'HC-PSG-I-C'
   | 'Consumer'
   | 'Business Services'
   | 'Industrial'
   | 'Public Sector and Government'
   | 'Inclusions & Community'
   | 'Individual & Communication Services'
+  | '(Public Sector and Government , Industrial, Consumer)'
   | string;
 
 export type ProjectStatus = 'active' | 'inactive';

@@ -18,9 +18,10 @@ import {
   calculateConvertedScore,
   matchesAppType,
   matchesCategory,
-  canonicalAppType
+  canonicalAppType,
+  getHeadCategoriesForAppType,
+  getHeadCategoryDisplayName
 } from '../../utils/evaluation';
-import { HEAD_CATEGORIES } from '../../data/mockData';
 
 // --- EVALUATION EDIT MODAL ---
 interface EvaluationEditModalProps {
@@ -435,7 +436,7 @@ export const AdminEvaluationsView: React.FC = () => {
           className={`w-full lg:w-auto rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-semibold min-h-[38px] ${isNoHeadCategory ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <option value="All">{isNoHeadCategory ? `No Head Category for ${filterType}` : 'All Head Categories'}</option>
-          {!isNoHeadCategory && HEAD_CATEGORIES.map(hc => (
+          {!isNoHeadCategory && getHeadCategoriesForAppType(filterType === 'All' ? undefined : filterType).map(hc => (
             <option key={hc.code} value={hc.code}>
               {hc.code} — {hc.name}
             </option>
@@ -481,7 +482,7 @@ export const AdminEvaluationsView: React.FC = () => {
             <>
               <span>→</span>
               <span className="font-bold text-slate-900 dark:text-white">
-                {filterCategory !== 'All' ? (HEAD_CATEGORIES.find(c => c.code === filterCategory)?.name || filterCategory) : 'All Categories'}
+                {filterCategory !== 'All' ? getHeadCategoryDisplayName(filterCategory, filterType) : 'All Categories'}
               </span>
             </>
           )}
@@ -525,7 +526,7 @@ export const AdminEvaluationsView: React.FC = () => {
                        canonicalAppType(project.applicationType) !== 'Individual or Group' &&
                        project.headCategory && project.headCategory !== 'N/A' && (
                         <span className="rounded-md bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 px-2.5 py-0.5 text-xs font-semibold">
-                          {project.headCategory}
+                          {getHeadCategoryDisplayName(project.headCategory, project.applicationType)}
                         </span>
                       )}
                     </div>

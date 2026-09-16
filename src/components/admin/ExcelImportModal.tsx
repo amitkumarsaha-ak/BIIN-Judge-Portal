@@ -8,7 +8,12 @@ import * as XLSX from 'xlsx';
 import type { Project, ApplicationType, HeadCategoryCode } from '../../types';
 import { HEAD_CATEGORIES } from '../../data/mockData';
 import { getProjects } from '../../services/storage';
-import { canonicalAppType, canonicalHeadCategory } from '../../utils/evaluation';
+import {
+  canonicalAppType,
+  canonicalHeadCategory,
+  getHeadCategoriesForAppType,
+  getHeadCategoryDisplayName
+} from '../../utils/evaluation';
 
 interface ExcelImportModalProps {
   existingProjects: Project[];
@@ -38,7 +43,19 @@ const VALID_HEAD_CATEGORIES: { match: string[]; code: HeadCategoryCode }[] = [
   { match: ['hc-bs', 'hc-02', 'hc-2', 'business service', 'business services', 'business', 'b2b', 'enterprise', 'fintech', 'saas'], code: 'HC-BS' },
   { match: ['hc-i', 'hc-03', 'hc-3', 'industrial', 'industrial tech', 'robotics', 'iot', 'hardware', 'agritech', 'manufacturing'], code: 'HC-I' },
   { match: ['hc-psg', 'hc-04', 'hc-4', 'public sector and government', 'public sector & government', 'public sector', 'government', 'gov', 'smart city', 'civic', 'e-gov'], code: 'HC-PSG' },
-  { match: ['hc-ics', 'hc-05', 'hc-5', 'inclusions & community', 'inclusions and community', 'inclusion & community', 'inclusion and community', 'individual & communication services', 'individual and communication services', 'individual & communication', 'individual and communication', 'communication services', 'communication', 'inclusion & community service', 'community & social', 'inclusion', 'community', 'social', 'media', 'telecom'], code: 'HC-ICS' }
+  { match: ['hc-ics', 'hc-05', 'hc-5', 'inclusions & community', 'inclusions and community', 'inclusion & community', 'inclusion and community', 'individual & communication services', 'individual and communication services', 'individual & communication', 'individual and communication', 'communication services', 'communication', 'inclusion & community service', 'community & social', 'inclusion', 'community', 'social', 'media', 'telecom'], code: 'HC-ICS' },
+  { match: [
+      'hc-psg-i-c',
+      'hc-psg_i_c',
+      '(public sector and government , industrial, consumer)',
+      '(public sector and government, industrial, consumer)',
+      'public sector and government , industrial, consumer',
+      'public sector and government, industrial, consumer',
+      'public sector and government, industrial and consumer',
+      'public sector, industrial, consumer'
+    ],
+    code: 'HC-PSG-I-C'
+  }
 ];
 
 const APPLICATION_TYPE_OPTIONS: { id: ApplicationType; label: string; icon: React.FC<{ className?: string }> }[] = [
@@ -695,15 +712,12 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                       className={`w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white shadow-sm focus:border-emerald-500 focus:outline-none ${isNoCat ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <option value="All Head Category">{isNoCat ? `No Head Category for ${selectedAppType}` : 'All Head Category (Auto-detect from file)'}</option>
-                      {!isNoCat && (
-                        <>
-                          <option value="HC-C">Consumer</option>
-                          <option value="HC-BS">Business Services</option>
-                          <option value="HC-I">Industrial</option>
-                          <option value="HC-PSG">Public Sector and Government</option>
-                          <option value="HC-ICS">Inclusions & Community</option>
-                        </>
-                      )}
+                      {!isNoCat &&
+                        getHeadCategoriesForAppType(selectedAppType === 'All Application Types' ? undefined : selectedAppType).map(hc => (
+                          <option key={hc.code} value={hc.code}>
+                            {hc.name}
+                          </option>
+                        ))}
                     </select>
                   );
                 })()}
@@ -721,7 +735,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <ArrowRight className="h-3 w-3 text-slate-400" />
                 <span className="inline-flex items-center space-x-1 font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/40 px-2.5 py-0.5 rounded-lg border border-cyan-200 dark:border-cyan-800">
                   <Layers className="h-3.5 w-3.5" />
-                  <span>{activeCategoryObj?.name || selectedHeadCategory}</span>
+                  <span>{getHeadCategoryDisplayName(selectedHeadCategory, selectedAppType)}</span>
                 </span>
               </div>
 
@@ -871,7 +885,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                         <span>{validProjects.length} Project{validProjects.length !== 1 ? 's' : ''} Ready to Import</span>
                       </div>
                       <p className="text-xs text-emerald-100 mt-0.5">
-                        Target: {selectedAppType} · {activeCategoryObj?.name || selectedHeadCategory}
+                        Target: {selectedAppType} · {getHeadCategoryDisplayName(selectedHeadCategory, selectedAppType)}
                       </p>
                     </div>
                     <button
@@ -886,7 +900,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
                   <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
                     {validProjects.slice(0, 5).map((p, idx) => {
-                      const hcName = HEAD_CATEGORIES.find(h => h.code === p.headCategory)?.name || p.headCategory;
+                      const hcName = getHeadCategoryDisplayName(p.headCategory, p.applicationType);
                       return (
                         <div key={idx} className="flex items-center justify-between text-xs rounded-xl bg-white dark:bg-slate-900 p-2.5 border border-emerald-100 dark:border-emerald-900/30">
                           <div className="min-w-0 pr-2">

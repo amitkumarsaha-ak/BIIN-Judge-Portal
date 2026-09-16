@@ -1,6 +1,13 @@
 import type { User, Project, Evaluation, DashboardStats, Room, SystemSettings, AuditLog, JudgeAssignment } from '../types';
 import { ADMIN_CONFIG } from '../config/authConfig';
-import { matchesAppType, matchesCategory, canonicalAppType, canonicalHeadCategory } from '../utils/evaluation';
+import {
+  matchesAppType,
+  matchesCategory,
+  canonicalAppType,
+  canonicalHeadCategory,
+  isOrgMergedHeadCategory,
+  ORG_COMBINED_HEAD_CATEGORY_CODE
+} from '../utils/evaluation';
 import { api } from './api';
 
 export const USERS_KEY = 'biin_portal_users';
@@ -410,6 +417,11 @@ export const getCategoryLockKey = (appType?: string, headCategory?: string | nul
   const normType = canonicalAppType(appType);
   if (normType === 'Student-Secondary' || normType === 'Individual or Group') {
     return `${normType}___NONE`;
+  }
+  if (normType === 'Organisation') {
+    if (isOrgMergedHeadCategory(headCategory || '')) {
+      return `Organisation___${ORG_COMBINED_HEAD_CATEGORY_CODE}`;
+    }
   }
   const normCategory = canonicalHeadCategory(headCategory || '');
   return `${normType}___${normCategory}`;

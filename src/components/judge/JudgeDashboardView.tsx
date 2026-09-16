@@ -13,6 +13,7 @@ import { api } from '../../services/api';
 import { StatsCard } from '../dashboard/StatsCard';
 import type { Project } from '../../types';
 import type { JudgeTab } from './JudgeLayout';
+import { canonicalAppType, getHeadCategoryDisplayName } from '../../utils/evaluation';
 
 interface JudgeDashboardViewProps {
   onNavigate: (tab: JudgeTab) => void;
@@ -237,7 +238,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
 
                     <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200/80 dark:border-slate-800/80">
                       <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-400">
-                        {proj.applicationType}
+                        {proj.applicationType}{canonicalAppType(proj.applicationType) !== 'Student-Secondary' && canonicalAppType(proj.applicationType) !== 'Individual or Group' && proj.headCategory && proj.headCategory !== 'N/A' ? ` · ${getHeadCategoryDisplayName(proj.headCategory, proj.applicationType)}` : ''}
                       </span>
 
                       {isEvaluated && evalItem ? (
@@ -288,7 +289,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
 
                         <td className="px-4 py-3.5">
                           <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                            {proj.applicationType}
+                            {proj.applicationType}{canonicalAppType(proj.applicationType) !== 'Student-Secondary' && canonicalAppType(proj.applicationType) !== 'Individual or Group' && proj.headCategory && proj.headCategory !== 'N/A' ? ` · ${getHeadCategoryDisplayName(proj.headCategory, proj.applicationType)}` : ''}
                           </span>
                         </td>
 

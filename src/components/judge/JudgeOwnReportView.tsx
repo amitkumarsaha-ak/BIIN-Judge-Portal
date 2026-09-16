@@ -6,8 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   getEvaluationsByJudge, getProjectsForJudge
 } from '../../services/storage';
-import { HEAD_CATEGORIES } from '../../data/mockData';
-import { getCriteriaForApplicationType, formatScoreNumber } from '../../utils/evaluation';
+import { getCriteriaForApplicationType, formatScoreNumber, getHeadCategoryDisplayName } from '../../utils/evaluation';
 import type { Project, Evaluation } from '../../types';
 
 export const JudgeOwnReportView: React.FC = () => {
@@ -127,7 +126,6 @@ export const JudgeOwnReportView: React.FC = () => {
               const rawScore = e.rawTotalScore ?? e.totalScore ?? 0;
               const maxRaw = e.maxRawScore || 50;
               const converted = e.convertedScore ?? e.percentage ?? 0;
-              const categoryObj = HEAD_CATEGORIES.find(c => c.code === proj?.headCategory);
               const criteria = proj ? getCriteriaForApplicationType(proj.applicationType) : [];
 
               return (
@@ -146,7 +144,7 @@ export const JudgeOwnReportView: React.FC = () => {
                         </span>
                         {proj?.headCategory && (
                           <span className="rounded bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 px-2 py-0.5 text-[10px] font-semibold">
-                            {categoryObj?.name || proj.headCategory}
+                            {getHeadCategoryDisplayName(proj?.headCategory, proj?.applicationType)}
                           </span>
                         )}
                       </div>

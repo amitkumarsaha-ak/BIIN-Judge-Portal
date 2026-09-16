@@ -3,7 +3,7 @@ import { Printer, X, Download, Loader2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import type { CombinedProjectResult } from '../../types';
-import { getCriteriaForApplicationType, formatScoreNumber, canonicalAppType } from '../../utils/evaluation';
+import { getCriteriaForApplicationType, formatScoreNumber, canonicalAppType, getHeadCategoryDisplayName } from '../../utils/evaluation';
 
 interface PrintResultReportSheetProps {
   result: CombinedProjectResult;
@@ -206,7 +206,7 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
               <span className="font-semibold text-slate-900 block mt-0.5">
                 {canonicalAppType(applicationType) === 'Student-Secondary' || canonicalAppType(applicationType) === 'Individual or Group'
                   ? 'N/A'
-                  : project.headCategory}
+                  : getHeadCategoryDisplayName(project.headCategory, applicationType)}
               </span>
             </div>
 

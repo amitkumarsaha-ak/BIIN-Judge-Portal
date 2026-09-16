@@ -185,6 +185,69 @@ export const RESULT_HEAD_CATEGORIES: { code: HeadCategoryCode; name: string }[] 
   { code: 'HC-ICS', name: 'Inclusions & Community' }
 ];
 
+export const ORG_COMBINED_HEAD_CATEGORY_CODE: HeadCategoryCode = 'HC-PSG-I-C';
+export const ORG_COMBINED_HEAD_CATEGORY_NAME = '(Public Sector and Government , Industrial, Consumer)';
+
+export const ORG_HEAD_CATEGORIES: { code: HeadCategoryCode; name: string }[] = [
+  { code: 'HC-BS', name: 'Business Services' },
+  { code: 'HC-ICS', name: 'Inclusions & Community' },
+  { code: ORG_COMBINED_HEAD_CATEGORY_CODE, name: ORG_COMBINED_HEAD_CATEGORY_NAME }
+];
+
+export const isOrgCombinedHeadCategory = (cat?: string): boolean => {
+  if (!cat) return false;
+  const c = cat.toLowerCase().trim();
+  if (
+    c === 'hc-psg-i-c' ||
+    c === 'hc-psg_i_c' ||
+    c === 'hc-combined' ||
+    c === '(public sector and government , industrial, consumer)' ||
+    c === '(public sector and government, industrial, consumer)' ||
+    c === 'public sector and government , industrial, consumer' ||
+    c === 'public sector and government, industrial, consumer' ||
+    c.includes('psg-i-c')
+  ) {
+    return true;
+  }
+  if (c.includes('public') && (c.includes('industrial') || c.includes('consumer'))) {
+    return true;
+  }
+  return false;
+};
+
+export const isOrgMergedHeadCategory = (cat?: string): boolean => {
+  if (!cat) return false;
+  if (isOrgCombinedHeadCategory(cat)) return true;
+  const canon = canonicalHeadCategory(cat);
+  return canon === 'HC-PSG' || canon === 'HC-I' || canon === 'HC-C' || canon === 'HC-PSG-I-C';
+};
+
+export const getHeadCategoryDisplayName = (headCategory?: string | null, appType?: string): string => {
+  if (!headCategory || headCategory === 'N/A') return 'N/A';
+  if (canonicalAppType(appType) === 'Organisation') {
+    if (isOrgMergedHeadCategory(headCategory)) {
+      return ORG_COMBINED_HEAD_CATEGORY_NAME;
+    }
+    if (canonicalHeadCategory(headCategory) === 'HC-BS') return 'Business Services';
+    if (canonicalHeadCategory(headCategory) === 'HC-ICS') return 'Inclusions & Community';
+  }
+  const found = RESULT_HEAD_CATEGORIES.find(
+    h => h.code === headCategory || h.name.toLowerCase() === headCategory.toLowerCase()
+  );
+  return found ? found.name : headCategory;
+};
+
+export const getHeadCategoriesForAppType = (appType?: string): { code: HeadCategoryCode; name: string }[] => {
+  const norm = canonicalAppType(appType);
+  if (norm === 'Student-Secondary' || norm === 'Individual or Group') {
+    return [];
+  }
+  if (norm === 'Organisation') {
+    return ORG_HEAD_CATEGORIES;
+  }
+  return RESULT_HEAD_CATEGORIES;
+};
+
 export const canonicalAppType = (type?: string): ApplicationType => {
   const t = (type || '').toLowerCase().trim();
   if (t.includes('tertiary') || t === 'student-tertiary') {
@@ -205,6 +268,13 @@ export const canonicalAppType = (type?: string): ApplicationType => {
 export const canonicalHeadCategory = (cat?: string): HeadCategoryCode => {
   const c = (cat || '').toLowerCase().trim();
   if (!c || c === 'n/a' || c === 'none' || c === 'null') return 'N/A';
+  if (
+    c === 'hc-psg-i-c' ||
+    c.includes('psg-i-c') ||
+    (c.includes('public') && (c.includes('industrial') || c.includes('consumer')))
+  ) {
+    return 'HC-PSG-I-C';
+  }
   if (c === 'hc-c' || c === 'hc-01' || c === 'hc-1' || c.includes('consumer')) return 'HC-C';
   if (c === 'hc-bs' || c === 'hc-02' || c === 'hc-2' || c.includes('business')) return 'HC-BS';
   if (c === 'hc-i' || c === 'hc-03' || c === 'hc-3' || c.includes('industrial') || c.includes('robot')) return 'HC-I';
@@ -238,6 +308,16 @@ export const matchesCategory = (
     return true;
   }
   if (pc === fc) return true;
+
+  // Organization unified category matching
+  if (appType === 'Organisation') {
+    const isFilterMerged = isOrgMergedHeadCategory(filterCategory);
+    const isProjMerged = isOrgMergedHeadCategory(projectCategory);
+    if (isFilterMerged && isProjMerged) {
+      return true;
+    }
+  }
+
   return canonicalHeadCategory(projectCategory) === canonicalHeadCategory(filterCategory);
 };
 
@@ -309,10 +389,16 @@ export const getProjectCombinedResult = (
   const projectAppType = canonicalAppType(project.applicationType);
   const projectHeadCat = canonicalHeadCategory(project.headCategory);
   const isNoHeadCategory = projectAppType === 'Student-Secondary' || projectAppType === 'Individual or Group';
+  const isOrgMerged = projectAppType === 'Organisation' && isOrgMergedHeadCategory(project.headCategory);
 
-  const sameCategoryProjects = allProjects.filter(
-    (p) => canonicalAppType(p.applicationType) === projectAppType && (isNoHeadCategory || canonicalHeadCategory(p.headCategory) === projectHeadCat)
-  );
+  const sameCategoryProjects = allProjects.filter((p) => {
+    if (canonicalAppType(p.applicationType) !== projectAppType) return false;
+    if (isNoHeadCategory) return true;
+    if (isOrgMerged) {
+      return isOrgMergedHeadCategory(p.headCategory);
+    }
+    return canonicalHeadCategory(p.headCategory) === projectHeadCat;
+  });
 
   // Score all projects in the same category to determine rankings and sequenced designations
   const scoredCategoryProjects = sameCategoryProjects.map((p) => {
@@ -463,12 +549,23 @@ export const calculateCategorizedResults = (
       continue;
     }
 
-    for (const hc of RESULT_HEAD_CATEGORIES) {
+    const headCatsToIterate = app.id === 'Organisation' ? ORG_HEAD_CATEGORIES : RESULT_HEAD_CATEGORIES;
+
+    for (const hc of headCatsToIterate) {
       // Get all applications matching this applicationType and headCategory
       const categoryProjects = allProjects.filter((p) => {
         const appMatch = p.applicationType === 'All Application Types' || canonicalAppType(p.applicationType) === app.id;
+        if (!appMatch) return false;
+
+        if (app.id === 'Organisation') {
+          if (hc.code === ORG_COMBINED_HEAD_CATEGORY_CODE) {
+            return isOrgMergedHeadCategory(p.headCategory) || p.headCategory === 'All Head Category';
+          }
+          return p.headCategory === 'All Head Category' || canonicalHeadCategory(p.headCategory) === hc.code;
+        }
+
         const hcMatch = p.headCategory === 'All Head Category' || canonicalHeadCategory(p.headCategory) === hc.code;
-        return appMatch && hcMatch;
+        return hcMatch;
       });
 
       // Compute results for each project

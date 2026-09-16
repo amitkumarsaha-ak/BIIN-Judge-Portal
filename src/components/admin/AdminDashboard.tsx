@@ -13,6 +13,7 @@ import {
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import type { AdminTab } from './AdminLayout';
+import { ORG_COMBINED_HEAD_CATEGORY_CODE, ORG_COMBINED_HEAD_CATEGORY_NAME } from '../../utils/evaluation';
 
 interface AdminDashboardProps {
   onNavigate: (tab: AdminTab) => void;
@@ -76,11 +77,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const lockCategoriesList = [
     { applicationType: 'Student-Secondary', headCategory: 'N/A', headCategoryCode: null },
     { applicationType: 'Individual/Group', headCategory: 'N/A', headCategoryCode: null },
-    { applicationType: 'Organization', headCategory: 'Consumer', headCategoryCode: 'HC-C' },
     { applicationType: 'Organization', headCategory: 'Business Services', headCategoryCode: 'HC-BS' },
-    { applicationType: 'Organization', headCategory: 'Industrial', headCategoryCode: 'HC-I' },
-    { applicationType: 'Organization', headCategory: 'Public Sector and Government', headCategoryCode: 'HC-PSG' },
     { applicationType: 'Organization', headCategory: 'Inclusions & Community', headCategoryCode: 'HC-ICS' },
+    { applicationType: 'Organization', headCategory: ORG_COMBINED_HEAD_CATEGORY_NAME, headCategoryCode: ORG_COMBINED_HEAD_CATEGORY_CODE },
     { applicationType: 'Student -Tertiary (University Level)', headCategory: 'Consumer', headCategoryCode: 'HC-C' },
     { applicationType: 'Student -Tertiary (University Level)', headCategory: 'Business Services', headCategoryCode: 'HC-BS' },
     { applicationType: 'Student -Tertiary (University Level)', headCategory: 'Industrial', headCategoryCode: 'HC-I' },

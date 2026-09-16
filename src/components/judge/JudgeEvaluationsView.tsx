@@ -3,13 +3,12 @@ import {
   CheckCircle2, Pencil, Calendar, Award, Layers
 } from 'lucide-react';
 import type { Project, Evaluation } from '../../types';
+import { getCriteriaForApplicationType, getHeadCategoryDisplayName } from '../../utils/evaluation';
 import { useAuth } from '../../context/AuthContext';
 import {
   getEvaluationsByJudge, getProjectsForJudge, getSystemSettings,
   isCategoryEvaluationLocked
 } from '../../services/storage';
-import { HEAD_CATEGORIES } from '../../data/mockData';
-import { getCriteriaForApplicationType } from '../../utils/evaluation';
 
 interface JudgeEvaluationsViewProps {
   onSelectProjectForEvaluation: (project: Project) => void;
@@ -86,7 +85,6 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
             const rawScore = e.rawTotalScore ?? e.totalScore ?? 0;
             const maxRaw = e.maxRawScore || 50;
             const converted = e.convertedScore ?? e.percentage ?? 0;
-            const categoryObj = HEAD_CATEGORIES.find(c => c.code === project?.headCategory);
             const criteria = project ? getCriteriaForApplicationType(project.applicationType) : [];
 
             return (
@@ -106,7 +104,7 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
                       {project?.headCategory && project?.headCategory !== 'N/A' && (
                         <span className="rounded-md bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 px-2 py-0.5 text-[11px] font-semibold flex items-center space-x-1">
                           <Layers className="h-3 w-3" />
-                          <span>{categoryObj?.name || project.headCategory}</span>
+                          <span>{getHeadCategoryDisplayName(project?.headCategory, project?.applicationType)}</span>
                         </span>
                       )}
                     </div>

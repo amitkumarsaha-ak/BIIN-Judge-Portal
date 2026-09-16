@@ -10,11 +10,12 @@ import {
   isCategoryEvaluationLocked, PROJECTS_KEY, ASSIGNMENTS_KEY, EVALUATIONS_KEY
 } from '../../services/storage';
 import { api } from '../../services/api';
-import { HEAD_CATEGORIES } from '../../data/mockData';
 import {
   matchesAppType,
   matchesCategory,
-  canonicalAppType
+  canonicalAppType,
+  getHeadCategoriesForAppType,
+  getHeadCategoryDisplayName
 } from '../../utils/evaluation';
 
 interface JudgeProjectsViewProps {
@@ -218,7 +219,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
           className="text-xs rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-40"
         >
           <option value="">All Categories</option>
-          {HEAD_CATEGORIES.map(c => (
+          {getHeadCategoriesForAppType(filterType || undefined).map(c => (
             <option key={c.code} value={c.code}>{c.name}</option>
           ))}
         </select>
@@ -247,9 +248,6 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
           {filteredProjects.map(project => {
             const AppTypeIcon = getAppTypeIcon(project.applicationType);
-            const category = HEAD_CATEGORIES.find(
-              h => h.code === project.headCategory || h.name.toLowerCase() === (project.headCategory || '').toLowerCase()
-            );
             const evalItem = myEvaluations.find(e => e.projectId === project.id);
             const isEvaluated = Boolean(evalItem);
 
@@ -285,7 +283,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
                       <p><span className="text-slate-400">Representative:</span> {project.representativeName}</p>
                     )}
                     {canonicalAppType(project.applicationType) !== 'Student-Secondary' && canonicalAppType(project.applicationType) !== 'Individual or Group' && (
-                      <p><span className="text-slate-400">Category:</span> {category?.name || project.headCategory}</p>
+                      <p><span className="text-slate-400">Category:</span> {getHeadCategoryDisplayName(project.headCategory, project.applicationType)}</p>
                     )}
                   </div>
 

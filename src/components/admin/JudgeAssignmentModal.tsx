@@ -13,8 +13,14 @@ import {
 } from '../../services/storage';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { HEAD_CATEGORIES } from '../../data/mockData';
-import { canonicalAppType, matchesAppType, matchesCategory } from '../../utils/evaluation';
+
+import {
+  canonicalAppType,
+  matchesAppType,
+  matchesCategory,
+  getHeadCategoriesForAppType,
+  getHeadCategoryDisplayName
+} from '../../utils/evaluation';
 
 interface JudgeAssignmentModalProps {
   judge: User;
@@ -379,7 +385,7 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
                               </span>
                               {!isNoCat && asgn.headCategory && asgn.headCategory !== 'N/A' && (
                                 <span className="inline-block rounded-md bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                                  {asgn.headCategory}
+                                  {getHeadCategoryDisplayName(asgn.headCategory, asgn.applicationType)}
                                 </span>
                               )}
                               <span className="inline-block rounded-md bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2 py-0.5 text-[10px] font-bold">
@@ -442,7 +448,7 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
                                       </p>
                                     </div>
                                     <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                                      {p.teamOrOrgName} · {p.headCategory || p.applicationType}
+                                      {p.teamOrOrgName} · {getHeadCategoryDisplayName(p.headCategory, p.applicationType) || p.applicationType}
                                     </p>
                                   </div>
 
@@ -513,7 +519,7 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
                   className="w-full rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-violet-500 font-semibold"
                 >
                   <option value="All Head Category">All Head Categories in this Type</option>
-                  {HEAD_CATEGORIES.map(hc => (
+                  {getHeadCategoriesForAppType(selectedAppType).map(hc => (
                     <option key={hc.code} value={hc.code}>
                       {hc.name}
                     </option>
