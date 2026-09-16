@@ -13,6 +13,7 @@ interface ConfirmationModalProps {
   totalScore?: number;
   percentage?: number;
   judgeName: string;
+  isSubmitting?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }
@@ -27,6 +28,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   totalScore,
   percentage,
   judgeName,
+  isSubmitting = false,
   onCancel,
   onConfirm
 }) => {
@@ -117,10 +119,11 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           <button
             type="button"
             onClick={onConfirm}
-            className="btn-primary rounded-xl px-6 py-2.5 text-xs font-bold text-white shadow-lg flex items-center justify-center space-x-2 min-h-[40px]"
+            disabled={isSubmitting}
+            className={`btn-primary rounded-xl px-6 py-2.5 text-xs font-bold text-white shadow-lg flex items-center justify-center space-x-2 min-h-[40px] ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
             <Check className="h-4 w-4" />
-            <span>Confirm Submission</span>
+            <span>{isSubmitting ? 'Submitting...' : 'Confirm Submission'}</span>
           </button>
         </div>
 

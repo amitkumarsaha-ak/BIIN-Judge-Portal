@@ -3,10 +3,10 @@ import {
   FolderGit2, Search, CheckCircle2, Clock,
   Eye, Building2, GraduationCap, Users, University, Lock
 } from 'lucide-react';
-import type { Project } from '../../types';
+import type { Project, Evaluation } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import {
-  getProjectsForJudge, getEvaluationsByJudge, getSystemSettings,
+  getProjectsForJudge, getEvaluationsByJudge, getEvaluations, getSystemSettings,
   isProjectEvaluationLocked,
   PROJECTS_KEY, ASSIGNMENTS_KEY, EVALUATIONS_KEY, SETTINGS_KEY
 } from '../../services/storage';
@@ -33,7 +33,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
   const [myEvaluations, setMyEvaluations] = useState(() =>
     currentUser ? getEvaluationsByJudge(currentUser.email) : []
   );
-  const [, setSettings] = useState(() => getSystemSettings());
+  const [settings, setSettings] = useState(() => getSystemSettings());
 
   useEffect(() => {
     let mounted = true;
@@ -59,7 +59,12 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
           }
 
           if (evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value)) {
-            localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evalsRes.value));
+            const localEvals = getEvaluations();
+            const otherEvals = localEvals.filter((e: Evaluation) => e.judgeEmail.toLowerCase() !== currentUser.email.toLowerCase());
+            const combined = [...otherEvals, ...evalsRes.value];
+            try {
+              localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(combined));
+            } catch {}
             if (mounted) {
               setMyEvaluations(evalsRes.value);
             }
@@ -70,7 +75,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
             const merged = {
               ...existing,
               ...settingsRes.value,
-              categoryLocks: { ...(existing.categoryLocks || {}), ...(settingsRes.value.categoryLocks || {}) }
+              categoryLocks: settingsRes.value.categoryLocks || {}
             };
             localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
             if (mounted) setSettings(merged);
@@ -90,6 +95,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
     };
 
     refresh();
+    window.addEventListener('biin_evaluations_updated', refresh);
     window.addEventListener('biin_projects_updated', refresh);
     window.addEventListener('biin_assignments_updated', refresh);
     window.addEventListener('biin_settings_updated', refresh);
@@ -97,6 +103,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
     const interval = setInterval(refresh, 5000);
     return () => {
       mounted = false;
+      window.removeEventListener('biin_evaluations_updated', refresh);
       window.removeEventListener('biin_projects_updated', refresh);
       window.removeEventListener('biin_assignments_updated', refresh);
       window.removeEventListener('biin_settings_updated', refresh);
@@ -330,7 +337,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
                   )}
 
                   {(() => {
-                    const isLocked = isProjectEvaluationLocked(project);
+                    const isLocked = isProjectEvaluationLocked(project, settings);
                     return (
                       <button
                         onClick={() => onSelectProjectForEvaluation(project)}

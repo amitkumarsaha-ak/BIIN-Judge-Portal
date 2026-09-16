@@ -3,38 +3,85 @@ import { evaluationDb, settingsDb, auditDb, userDb, projectDb, assignmentDb } fr
 
 const router = Router();
 
+function canonicalAppType(type?: string): string {
+  const t = (type || '').toLowerCase().trim();
+  if (t.includes('tertiary') || t === 'student-tertiary') {
+    return 'Student-Tertiary';
+  }
+  if (t === 'student' || t === 'student-secondary' || t.includes('secondary')) {
+    return 'Student-Secondary';
+  }
+  if (t.includes('org')) {
+    return 'Organisation';
+  }
+  if (t.includes('individual') || t.includes('group')) {
+    return 'Individual or Group';
+  }
+  return 'Student-Secondary';
+}
+
+function canonicalHeadCategory(cat?: string): string {
+  const c = (cat || '').toLowerCase().trim();
+  if (!c || c === 'n/a' || c === 'none' || c === 'null') return 'N/A';
+  if (
+    c === 'hc-psg-i-c' ||
+    c.includes('psg-i-c') ||
+    (c.includes('public') && (c.includes('industrial') || c.includes('consumer')))
+  ) {
+    return 'HC-PSG-I-C';
+  }
+  if (c === 'hc-c' || c === 'hc-01' || c === 'hc-1' || c.includes('consumer')) return 'HC-C';
+  if (c === 'hc-bs' || c === 'hc-02' || c === 'hc-2' || c.includes('business')) return 'HC-BS';
+  if (c === 'hc-i' || c === 'hc-03' || c === 'hc-3' || c.includes('industrial') || c.includes('robot')) return 'HC-I';
+  if (c === 'hc-psg' || c === 'hc-04' || c === 'hc-4' || c.includes('public') || c.includes('government') || c.includes('smart city') || c.includes('civic')) return 'HC-PSG';
+  if (c === 'hc-ics' || c === 'hc-05' || c === 'hc-5' || c.includes('communication') || c.includes('inclusion') || c.includes('community')) return 'HC-ICS';
+  return cat ? cat.trim() : 'HC-C';
+}
+
+function isOrgMergedHeadCategory(cat?: string): boolean {
+  if (!cat) return false;
+  const c = cat.toLowerCase().trim();
+  if (
+    c === 'hc-psg-i-c' ||
+    c.includes('psg-i-c') ||
+    (c.includes('public') && (c.includes('industrial') || c.includes('consumer'))) ||
+    c.includes('public sector and government')
+  ) {
+    return true;
+  }
+  const canon = canonicalHeadCategory(cat);
+  return canon === 'HC-PSG' || canon === 'HC-I' || canon === 'HC-C' || canon === 'HC-PSG-I-C';
+}
+
+function getCategoryLockKey(appType?: string, headCategory?: string | null): string {
+  const normType = canonicalAppType(appType);
+  if (normType === 'Student-Secondary' || normType === 'Individual or Group') {
+    return `${normType}___NONE`;
+  }
+  if (normType === 'Organisation') {
+    if (isOrgMergedHeadCategory(headCategory || '')) {
+      return 'Organisation___HC-PSG-I-C';
+    }
+  }
+  const normCategory = canonicalHeadCategory(headCategory || '');
+  return `${normType}___${normCategory}`;
+}
+
 function isEvaluationLocked(settings: any, project: any, projectId: string): boolean {
   if (settings.evaluationsLocked) return true;
-  if (settings.lockedProjects && settings.lockedProjects.includes(projectId)) return true;
+  if (Array.isArray(settings.lockedProjects) && settings.lockedProjects.includes(projectId)) return true;
   if (!settings.categoryLocks || !project) return false;
 
-  const t = (project.applicationType || '').toLowerCase();
-  let normType = 'Student-Secondary';
-  if (t.includes('tertiary')) normType = 'Student-Tertiary';
-  else if (t.includes('org')) normType = 'Organisation';
-  else if (t.includes('individual') || t.includes('group')) normType = 'Individual or Group';
+  const key = getCategoryLockKey(project.applicationType, project.headCategory);
+  if (settings.categoryLocks[key]) return true;
 
-  let key = `${normType}___NONE`;
-  if (normType === 'Organisation') {
-    const hc = (project.headCategory || '').toLowerCase();
-    if (hc.includes('public') || hc.includes('industrial') || hc.includes('consumer') || hc.includes('psg')) {
-      key = 'Organisation___HC-PSG-I-C';
-    } else if (hc.includes('business') || hc === 'hc-bs') {
-      key = 'Organisation___HC-BS';
-    } else if (hc.includes('inclusion') || hc.includes('community') || hc === 'hc-ics') {
-      key = 'Organisation___HC-ICS';
-    }
-  } else if (normType === 'Student-Tertiary') {
-    const hc = (project.headCategory || '').toLowerCase();
-    let catCode = 'HC-C';
-    if (hc.includes('business') || hc === 'hc-bs') catCode = 'HC-BS';
-    else if (hc.includes('industrial') || hc === 'hc-i') catCode = 'HC-I';
-    else if (hc.includes('public') || hc.includes('government') || hc === 'hc-psg') catCode = 'HC-PSG';
-    else if (hc.includes('inclusion') || hc.includes('community') || hc === 'hc-ics') catCode = 'HC-ICS';
-    key = `${normType}___${catCode}`;
-  }
+  // Variant check (Organisation vs Organization)
+  const altKey = key.startsWith('Organisation')
+    ? key.replace('Organisation', 'Organization')
+    : key.replace('Organization', 'Organisation');
+  if (settings.categoryLocks[altKey]) return true;
 
-  return Boolean(settings.categoryLocks[key]);
+  return false;
 }
 
 /**
@@ -105,9 +152,11 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // 2. Verify project assignment
+    // 2. Verify project assignment (Administrators bypass this check)
+    const isAdminUser = judgeUser?.role === 'admin' || actor?.email === 'admin@biin.org';
     const targetProject = await projectDb.findById(evaluation.projectId);
-    if (targetProject) {
+
+    if (!isAdminUser && targetProject) {
       const judgeAssignments = await assignmentDb.getByJudge(evaluation.judgeEmail);
       if (judgeAssignments.length === 0) {
         res.status(403).json({ error: 'No projects have been assigned to your account. You can only evaluate projects assigned to you by the Administrator.' });

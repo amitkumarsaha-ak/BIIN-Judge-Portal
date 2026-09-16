@@ -58,6 +58,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
   const [feedback, setFeedback] = useState<string>(existingEvaluation?.feedback ?? '');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedEvaluation, setSubmittedEvaluation] = useState<Evaluation | null>(null);
 
   // Safe web-level deterrence: prevent accidental print shortcut and clear clipboard on PrintScreen in judge evaluation without blocking inputs
@@ -87,7 +88,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
     };
   }, []);
 
-  const [, setSettings] = useState(() => getSystemSettings());
+  const [settings, setSettings] = useState(() => getSystemSettings());
 
   useEffect(() => {
     let mounted = true;
@@ -95,33 +96,36 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
       setSettings(getSystemSettings());
     };
 
-    api.getSettings().then(cloudSettings => {
-      if (!mounted || !cloudSettings) return;
-      const local = getSystemSettings();
-      const merged = {
-        ...local,
-        ...cloudSettings,
-        categoryLocks: {
-          ...(local.categoryLocks || {}),
-          ...(cloudSettings.categoryLocks || {})
-        }
-      };
-      try {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
-      } catch { /* ignore */ }
-      setSettings(merged);
-    }).catch(() => {});
+    const fetchSettings = () => {
+      api.getSettings().then(cloudSettings => {
+        if (!mounted || !cloudSettings) return;
+        const local = getSystemSettings();
+        const merged = {
+          ...local,
+          ...cloudSettings,
+          categoryLocks: cloudSettings.categoryLocks || {}
+        };
+        try {
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+        } catch { /* ignore */ }
+        setSettings(merged);
+      }).catch(() => {});
+    };
+
+    fetchSettings();
+    const interval = setInterval(fetchSettings, 4000);
 
     window.addEventListener('biin_settings_updated', refreshSettings);
     window.addEventListener('storage', refreshSettings);
     return () => {
       mounted = false;
+      clearInterval(interval);
       window.removeEventListener('biin_settings_updated', refreshSettings);
       window.removeEventListener('storage', refreshSettings);
     };
   }, []);
 
-  const isLocked = isProjectEvaluationLocked(project);
+  const isLocked = isProjectEvaluationLocked(project, settings);
   const isAssigned = currentUser ? isProjectAssignedToJudge(currentUser.email, project) : false;
 
   const rawTotalScore = calculateRawTotal(scores, activeCriteria);
@@ -138,7 +142,8 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
   const handleOpenSubmissionModal = () => {
     setValidationError(null);
 
-    if (isLocked) {
+    const freshLocked = isLocked || isProjectEvaluationLocked(project, settings) || isProjectEvaluationLocked(project);
+    if (freshLocked) {
       setValidationError('Evaluation is locked for this Application Type and Head Category.');
       return;
     }
@@ -181,10 +186,11 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
     setIsModalOpen(true);
   };
 
-  const handleConfirmSubmit = () => {
-    if (!currentUser) return;
+  const handleConfirmSubmit = async () => {
+    if (!currentUser || isSubmitting) return;
 
-    if (isLocked) {
+    const freshLocked = isLocked || isProjectEvaluationLocked(project, settings) || isProjectEvaluationLocked(project);
+    if (freshLocked) {
       setValidationError('Evaluation is locked for this Application Type and Head Category.');
       setIsModalOpen(false);
       return;
@@ -195,6 +201,9 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
       setIsModalOpen(false);
       return;
     }
+
+    setIsSubmitting(true);
+    setValidationError(null);
 
     const evaluationRecord: Evaluation = {
       id: existingEvaluation?.id || `eval-${Date.now()}`,
@@ -212,9 +221,17 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
       submittedAt: new Date().toISOString()
     };
 
-    saveEvaluation(evaluationRecord, { email: currentUser.email, name: currentUser.fullName });
-    setIsModalOpen(false);
-    setSubmittedEvaluation(evaluationRecord);
+    try {
+      const saved = await saveEvaluation(evaluationRecord, { email: currentUser.email, name: currentUser.fullName });
+      setIsModalOpen(false);
+      setSubmittedEvaluation(saved || evaluationRecord);
+    } catch (err: any) {
+      setIsModalOpen(false);
+      const msg = err?.message || 'Failed to submit evaluation. Please check your network or assignment.';
+      setValidationError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submittedEvaluation) {
@@ -413,6 +430,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
           maxRawScore={maxRawScore}
           convertedScore={convertedScore}
           judgeName={currentUser.fullName}
+          isSubmitting={isSubmitting}
           onCancel={() => setIsModalOpen(false)}
           onConfirm={handleConfirmSubmit}
         />

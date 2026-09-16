@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Trophy, Medal, Award, Printer, Lock, Unlock,
   Search, UserCheck, Sparkles, Filter, RotateCcw,
@@ -10,6 +10,7 @@ import {
   getProjects, getEvaluations, getSystemSettings,
   toggleFinalResultLock
 } from '../../services/storage';
+import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import {
   getProjectCombinedResult,
@@ -33,12 +34,58 @@ export const AdminResultsView: React.FC = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [recalculatedNotice, setRecalculatedNotice] = useState<string | null>(null);
 
-  const allProjects = useMemo(() => getProjects(), [refreshTrigger]);
-  const allEvaluations = useMemo(() => getEvaluations(), [refreshTrigger]);
-
   // State-driven so toggling lock re-renders the button instantly
   const [settings, setSettings] = useState(() => getSystemSettings());
   const refreshSettings = useCallback(() => setSettings(getSystemSettings()), []);
+
+  const allProjects = useMemo(() => getProjects(), [refreshTrigger]);
+  const allEvaluations = useMemo(() => getEvaluations(), [refreshTrigger]);
+
+  useEffect(() => {
+    let mounted = true;
+    const triggerUpdate = () => {
+      setRefreshTrigger(prev => prev + 1);
+      refreshSettings();
+    };
+
+    const fetchLive = async () => {
+      try {
+        const [liveEvals, liveProjects] = await Promise.all([
+          api.getEvaluations().catch(() => null),
+          api.getProjects().catch(() => null)
+        ]);
+
+        if (!mounted) return;
+
+        let changed = false;
+        if (Array.isArray(liveEvals)) {
+          localStorage.setItem('biin_portal_evaluations', JSON.stringify(liveEvals));
+          changed = true;
+        }
+        if (Array.isArray(liveProjects) && liveProjects.length > 0) {
+          localStorage.setItem('biin_portal_projects', JSON.stringify(liveProjects));
+          changed = true;
+        }
+        if (changed) {
+          setRefreshTrigger(prev => prev + 1);
+        }
+      } catch {}
+    };
+
+    fetchLive();
+    const interval = setInterval(fetchLive, 5000);
+
+    window.addEventListener('biin_evaluations_updated', triggerUpdate);
+    window.addEventListener('biin_projects_updated', triggerUpdate);
+    window.addEventListener('storage', triggerUpdate);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+      window.removeEventListener('biin_evaluations_updated', triggerUpdate);
+      window.removeEventListener('biin_projects_updated', triggerUpdate);
+      window.removeEventListener('storage', triggerUpdate);
+    };
+  }, [refreshSettings]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<ApplicationType | 'All'>('All');

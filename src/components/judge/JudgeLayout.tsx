@@ -26,6 +26,10 @@ export const JudgeLayout: React.FC<JudgeLayoutProps> = ({
 
   useEffect(() => {
     syncWithBackend().catch(() => {});
+    const interval = setInterval(() => {
+      syncWithBackend().catch(() => {});
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {

@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { Layers, CheckCircle2, Clock, Award, ArrowRight, Eye, Calendar, Sparkles, Printer, Users, FileText, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getDashboardStatsForJudge, getEvaluationsByJudge, getProjects } from '../../services/storage';
@@ -21,6 +22,20 @@ export const JudgeDashboard: React.FC<JudgeDashboardProps> = ({
   onOpenAdminProjects
 }) => {
   const { currentUser, isAdmin } = useAuth();
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const refresh = () => setTick(t => t + 1);
+    window.addEventListener('biin_evaluations_updated', refresh);
+    window.addEventListener('biin_projects_updated', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('biin_evaluations_updated', refresh);
+      window.removeEventListener('biin_projects_updated', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
+
   if (!currentUser) return null;
 
   const stats = getDashboardStatsForJudge(currentUser.email);

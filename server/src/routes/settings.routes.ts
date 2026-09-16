@@ -21,11 +21,22 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
 router.put('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const { evaluationsLocked, finalResultsLocked, lockedProjects, categoryLocks, autoRankingEnabled, actor } = req.body;
+    let finalCategoryLocks = categoryLocks;
+    if (categoryLocks && typeof categoryLocks === 'object') {
+      finalCategoryLocks = { ...categoryLocks };
+      for (const [k, v] of Object.entries(categoryLocks)) {
+        if (k.startsWith('Organisation___')) {
+          finalCategoryLocks[k.replace('Organisation___', 'Organization___')] = Boolean(v);
+        } else if (k.startsWith('Organization___')) {
+          finalCategoryLocks[k.replace('Organization___', 'Organisation___')] = Boolean(v);
+        }
+      }
+    }
     const updated = await settingsDb.update({
       evaluationsLocked,
       finalResultsLocked,
       lockedProjects,
-      categoryLocks,
+      categoryLocks: finalCategoryLocks,
       autoRankingEnabled
     });
 
@@ -148,7 +159,14 @@ router.post('/toggle-category-lock', async (req: Request, res: Response): Promis
   try {
     const { key, locked, actor } = req.body;
     const current = await settingsDb.get();
-    const categoryLocks = { ...(current.categoryLocks || {}), [key]: Boolean(locked) };
+    const categoryLocks: Record<string, boolean> = { ...(current.categoryLocks || {}), [key]: Boolean(locked) };
+    if (typeof key === 'string') {
+      if (key.startsWith('Organisation___')) {
+        categoryLocks[key.replace('Organisation___', 'Organization___')] = Boolean(locked);
+      } else if (key.startsWith('Organization___')) {
+        categoryLocks[key.replace('Organization___', 'Organisation___')] = Boolean(locked);
+      }
+    }
     const updated = await settingsDb.update({ categoryLocks });
 
     if (actor) {

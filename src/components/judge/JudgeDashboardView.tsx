@@ -5,13 +5,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
-  getProjectsForJudge, getEvaluationsByJudge, getSystemSettings,
+  getProjectsForJudge, getEvaluationsByJudge, getEvaluations, getSystemSettings,
   isProjectEvaluationLocked,
   getDashboardStatsForJudge, PROJECTS_KEY, ASSIGNMENTS_KEY, EVALUATIONS_KEY, SETTINGS_KEY
 } from '../../services/storage';
 import { api } from '../../services/api';
 import { StatsCard } from '../dashboard/StatsCard';
-import type { Project } from '../../types';
+import type { Project, Evaluation } from '../../types';
 import type { JudgeTab } from './JudgeLayout';
 import { canonicalAppType, getHeadCategoryDisplayName } from '../../utils/evaluation';
 
@@ -31,7 +31,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
   const [myEvaluations, setMyEvaluations] = useState(() =>
     currentUser ? getEvaluationsByJudge(currentUser.email) : []
   );
-  const [, setSettings] = useState(() => getSystemSettings());
+  const [settings, setSettings] = useState(() => getSystemSettings());
   const [stats, setStats] = useState(() =>
     currentUser ? getDashboardStatsForJudge(currentUser.email) : {
       totalProjects: 0,
@@ -65,7 +65,12 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
           }
 
           if (evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value)) {
-            localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evalsRes.value));
+            const localEvals = getEvaluations();
+            const otherEvals = localEvals.filter((e: Evaluation) => e.judgeEmail.toLowerCase() !== currentUser.email.toLowerCase());
+            const combined = [...otherEvals, ...evalsRes.value];
+            try {
+              localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(combined));
+            } catch {}
             if (mounted) {
               setMyEvaluations(evalsRes.value);
             }
@@ -76,7 +81,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
             const merged = {
               ...existing,
               ...settingsRes.value,
-              categoryLocks: { ...(existing.categoryLocks || {}), ...(settingsRes.value.categoryLocks || {}) }
+              categoryLocks: settingsRes.value.categoryLocks || {}
             };
             localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
             if (mounted) setSettings(merged);
@@ -97,6 +102,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
     };
 
     refresh();
+    window.addEventListener('biin_evaluations_updated', refresh);
     window.addEventListener('biin_projects_updated', refresh);
     window.addEventListener('biin_assignments_updated', refresh);
     window.addEventListener('biin_settings_updated', refresh);
@@ -104,6 +110,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
     const interval = setInterval(refresh, 5000);
     return () => {
       mounted = false;
+      window.removeEventListener('biin_evaluations_updated', refresh);
       window.removeEventListener('biin_projects_updated', refresh);
       window.removeEventListener('biin_assignments_updated', refresh);
       window.removeEventListener('biin_settings_updated', refresh);
@@ -265,7 +272,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
                     </div>
 
                     {(() => {
-                      const isLocked = isProjectEvaluationLocked(proj);
+                      const isLocked = isProjectEvaluationLocked(proj, settings);
                       return (
                         <button
                           onClick={() => onSelectProjectForEvaluation(proj)}
@@ -331,7 +338,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
 
                         <td className="px-4 py-3.5 text-center">
                           {(() => {
-                            const isLocked = isProjectEvaluationLocked(proj);
+                            const isLocked = isProjectEvaluationLocked(proj, settings);
                             return (
                               <button
                                 onClick={() => onSelectProjectForEvaluation(proj)}

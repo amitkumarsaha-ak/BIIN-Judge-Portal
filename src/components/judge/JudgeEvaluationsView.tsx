@@ -6,8 +6,8 @@ import type { Project, Evaluation } from '../../types';
 import { getCriteriaForApplicationType, getHeadCategoryDisplayName } from '../../utils/evaluation';
 import { useAuth } from '../../context/AuthContext';
 import {
-  getEvaluationsByJudge, getProjectsForJudge, getSystemSettings,
-  isProjectEvaluationLocked, SETTINGS_KEY
+  getEvaluationsByJudge, getEvaluations, getProjectsForJudge, getSystemSettings,
+  isProjectEvaluationLocked, SETTINGS_KEY, EVALUATIONS_KEY
 } from '../../services/storage';
 import { api } from '../../services/api';
 
@@ -25,33 +25,57 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
   const [assignedProjects, setAssignedProjects] = useState<Project[]>(() =>
     currentUser ? getProjectsForJudge(currentUser.email) : []
   );
-  const [, setSettings] = useState(() => getSystemSettings());
+  const [settings, setSettings] = useState(() => getSystemSettings());
 
   useEffect(() => {
     if (!currentUser) return;
     let mounted = true;
+
     const refresh = () => {
       setMyEvaluations(getEvaluationsByJudge(currentUser.email));
       setAssignedProjects(getProjectsForJudge(currentUser.email));
       setSettings(getSystemSettings());
     };
 
-    api.getSettings().then(cloudSettings => {
-      if (!mounted || !cloudSettings) return;
-      const local = getSystemSettings();
-      const merged = {
-        ...local,
-        ...cloudSettings,
-        categoryLocks: {
-          ...(local.categoryLocks || {}),
-          ...(cloudSettings.categoryLocks || {})
-        }
-      };
+    const fetchLive = async () => {
+      if (!currentUser?.email) return;
       try {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+        const [cloudSettings, liveEvals] = await Promise.all([
+          api.getSettings().catch(() => null),
+          api.getEvaluationsByJudge(currentUser.email).catch(() => null)
+        ]);
+
+        if (!mounted) return;
+
+        if (cloudSettings) {
+          const local = getSystemSettings();
+          const merged = {
+            ...local,
+            ...cloudSettings,
+            categoryLocks: cloudSettings.categoryLocks || {}
+          };
+          try {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+          } catch { /* ignore */ }
+          setSettings(merged);
+        }
+
+        if (Array.isArray(liveEvals)) {
+          // Merge live evaluations into local store and component state
+          const localEvals = getEvaluations();
+          const otherEvals = localEvals.filter((e: Evaluation) => e.judgeEmail.toLowerCase() !== currentUser.email.toLowerCase());
+          const combined = [...otherEvals, ...liveEvals];
+          try {
+            localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(combined));
+          } catch { /* ignore */ }
+          setMyEvaluations(liveEvals);
+        }
       } catch { /* ignore */ }
-      setSettings(merged);
-    }).catch(() => {});
+    };
+
+    refresh();
+    fetchLive();
+    const interval = setInterval(fetchLive, 4000);
 
     window.addEventListener('biin_evaluations_updated', refresh);
     window.addEventListener('biin_projects_updated', refresh);
@@ -60,6 +84,7 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
     window.addEventListener('storage', refresh);
     return () => {
       mounted = false;
+      clearInterval(interval);
       window.removeEventListener('biin_evaluations_updated', refresh);
       window.removeEventListener('biin_projects_updated', refresh);
       window.removeEventListener('biin_assignments_updated', refresh);
@@ -156,7 +181,7 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
                     </div>
 
                     {project && (() => {
-                      const isLocked = isProjectEvaluationLocked(project);
+                      const isLocked = isProjectEvaluationLocked(project, settings);
                       return (
                         <button
                           onClick={() => onSelectProjectForEvaluation(project)}

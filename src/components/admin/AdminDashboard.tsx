@@ -28,36 +28,87 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }) => {
   const { currentUser } = useAuth();
 
-  // Use state so lock toggles trigger a re-render
+  // Use state so lock toggles and evaluation submissions trigger a re-render
   const [settings, setSettings] = useState(() => getSystemSettings());
   const [judges, setJudges] = useState(() => getJudges());
+  const [projects, setProjects] = useState(() => getProjects());
+  const [evaluations, setEvaluations] = useState(() => getEvaluations());
 
   const refreshData = useCallback(async () => {
-    setSettings(getSystemSettings());
+    try {
+      const remoteSettings = await api.getSettings();
+      if (remoteSettings && typeof remoteSettings === 'object') {
+        const local = getSystemSettings();
+        const updated = {
+          ...local,
+          ...remoteSettings,
+          categoryLocks: remoteSettings.categoryLocks || {}
+        };
+        localStorage.setItem('biin_judge_portal_settings', JSON.stringify(updated));
+        setSettings(updated);
+      } else {
+        setSettings(getSystemSettings());
+      }
+    } catch {
+      setSettings(getSystemSettings());
+    }
+
     try {
       const backendJudges = await api.getJudges();
       if (Array.isArray(backendJudges)) {
         setJudges(backendJudges);
-        return;
+      } else {
+        setJudges(getJudges());
       }
-    } catch {}
-    setJudges(getJudges());
+    } catch {
+      setJudges(getJudges());
+    }
+
+    try {
+      const [liveProjects, liveEvals] = await Promise.all([
+        api.getProjects().catch(() => null),
+        api.getEvaluations().catch(() => null)
+      ]);
+
+      if (Array.isArray(liveProjects) && liveProjects.length > 0) {
+        setProjects(liveProjects);
+        try {
+          localStorage.setItem('biin_portal_projects', JSON.stringify(liveProjects));
+        } catch {}
+      } else {
+        setProjects(getProjects());
+      }
+
+      if (Array.isArray(liveEvals)) {
+        setEvaluations(liveEvals);
+        try {
+          localStorage.setItem('biin_portal_evaluations', JSON.stringify(liveEvals));
+        } catch {}
+      } else {
+        setEvaluations(getEvaluations());
+      }
+    } catch {
+      setProjects(getProjects());
+      setEvaluations(getEvaluations());
+    }
   }, []);
 
   useEffect(() => {
     refreshData();
     window.addEventListener('storage', refreshData);
     window.addEventListener('biin_users_updated', refreshData);
-    const interval = setInterval(refreshData, 5000);
+    window.addEventListener('biin_evaluations_updated', refreshData);
+    window.addEventListener('biin_projects_updated', refreshData);
+    const interval = setInterval(refreshData, 4000);
     return () => {
       window.removeEventListener('storage', refreshData);
       window.removeEventListener('biin_users_updated', refreshData);
+      window.removeEventListener('biin_evaluations_updated', refreshData);
+      window.removeEventListener('biin_projects_updated', refreshData);
       clearInterval(interval);
     };
   }, [refreshData]);
 
-  const projects = getProjects();
-  const evaluations = getEvaluations();
   const auditLogs = getAuditLogs().slice(0, 5);
 
   const pendingJudgesCount = judges.filter(j => (j.status || 'approved') === 'pending').length;
@@ -258,7 +309,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {displayedLockCategories.map(cat => {
-                  const isLocked = isCategoryEvaluationLocked(cat.applicationType, cat.headCategoryCode || cat.headCategory);
+                  const isLocked = isCategoryEvaluationLocked(cat.applicationType, cat.headCategoryCode || cat.headCategory, settings);
                   const rowId = `lock-row-${cat.applicationType.replace(/[^a-zA-Z0-9]/g, '_')}-${(cat.headCategoryCode || cat.headCategory || 'NONE').replace(/[^a-zA-Z0-9]/g, '_')}`;
                   return (
                     <tr key={`${cat.applicationType}___${cat.headCategory}`} id={rowId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">

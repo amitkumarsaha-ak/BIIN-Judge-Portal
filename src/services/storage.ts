@@ -308,7 +308,24 @@ export const syncWithBackend = async (): Promise<boolean> => {
     }
 
     if (evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value)) {
-      localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evalsRes.value));
+      const backendEvals = evalsRes.value;
+      const localEvals = getEvaluations();
+
+      const mergedMap = new Map<string, Evaluation>();
+      for (const e of backendEvals) {
+        const key = `${e.projectId}___${e.judgeEmail.toLowerCase()}`;
+        mergedMap.set(key, e);
+      }
+      for (const e of localEvals) {
+        const key = `${e.projectId}___${e.judgeEmail.toLowerCase()}`;
+        if (!mergedMap.has(key)) {
+          mergedMap.set(key, e);
+          api.saveEvaluation(e).catch(() => {});
+        }
+      }
+
+      const mergedList = Array.from(mergedMap.values());
+      localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(mergedList));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('biin_evaluations_updated'));
         window.dispatchEvent(new Event('biin_projects_updated'));
@@ -339,14 +356,12 @@ export const syncWithBackend = async (): Promise<boolean> => {
 
     if (settingsRes.status === 'fulfilled' && settingsRes.value) {
       const existingSettings = getSystemSettings();
-      const mergedCategoryLocks = {
-        ...(existingSettings.categoryLocks || {}),
-        ...(settingsRes.value.categoryLocks || {})
-      };
+      // Backend is single source of truth for lock states
+      const incomingCategoryLocks = settingsRes.value.categoryLocks || {};
       const mergedSettings: SystemSettings = {
         ...existingSettings,
         ...settingsRes.value,
-        categoryLocks: mergedCategoryLocks
+        categoryLocks: incomingCategoryLocks
       };
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(mergedSettings));
       if (typeof window !== 'undefined') {
@@ -443,19 +458,31 @@ export const getCategoryLockKey = (appType?: string, headCategory?: string | nul
   return `${normType}___${normCategory}`;
 };
 
-export const isCategoryEvaluationLocked = (appType?: string, headCategory?: string | null): boolean => {
-  const settings = getSystemSettings();
+export const isCategoryEvaluationLocked = (
+  appType?: string,
+  headCategory?: string | null,
+  customSettings?: SystemSettings
+): boolean => {
+  const settings = customSettings || getSystemSettings();
   if (settings.evaluationsLocked) return true;
+  if (!settings.categoryLocks) return false;
   const key = getCategoryLockKey(appType, headCategory);
-  return Boolean(settings.categoryLocks && settings.categoryLocks[key]);
+  if (settings.categoryLocks[key]) return true;
+  const altKey = key.startsWith('Organisation')
+    ? key.replace('Organisation', 'Organization')
+    : key.replace('Organization', 'Organisation');
+  return Boolean(settings.categoryLocks[altKey]);
 };
 
-export const isProjectEvaluationLocked = (project?: { id: string; applicationType?: string; headCategory?: string | null } | null): boolean => {
+export const isProjectEvaluationLocked = (
+  project?: { id: string; applicationType?: string; headCategory?: string | null } | null,
+  customSettings?: SystemSettings
+): boolean => {
   if (!project) return false;
-  const settings = getSystemSettings();
+  const settings = customSettings || getSystemSettings();
   if (settings.evaluationsLocked) return true;
   if (Array.isArray(settings.lockedProjects) && settings.lockedProjects.includes(project.id)) return true;
-  return isCategoryEvaluationLocked(project.applicationType, project.headCategory);
+  return isCategoryEvaluationLocked(project.applicationType, project.headCategory, settings);
 };
 
 export const toggleCategoryEvaluationLock = (
@@ -470,6 +497,11 @@ export const toggleCategoryEvaluationLock = (
     settings.categoryLocks = {};
   }
   settings.categoryLocks[key] = locked;
+  if (key.startsWith('Organisation___')) {
+    settings.categoryLocks[key.replace('Organisation___', 'Organization___')] = locked;
+  } else if (key.startsWith('Organization___')) {
+    settings.categoryLocks[key.replace('Organization___', 'Organisation___')] = locked;
+  }
   updateSystemSettings(settings, actor);
   api.toggleCategoryLock(key, locked, actor).catch(() => {});
   if (actor) {
@@ -1098,7 +1130,7 @@ export const getEvaluationForProject = (projectId: string, judgeEmail: string): 
   );
 };
 
-export const saveEvaluation = (evaluation: Evaluation, actor?: { email: string; name: string }): void => {
+export const saveEvaluation = async (evaluation: Evaluation, actor?: { email: string; name: string }): Promise<Evaluation> => {
   // Validate scores are between 1 and 10
   for (const [key, val] of Object.entries(evaluation.scores)) {
     if (typeof val !== 'number' || isNaN(val) || val < 1 || val > 10) {
@@ -1108,39 +1140,60 @@ export const saveEvaluation = (evaluation: Evaluation, actor?: { email: string; 
 
   // Check project evaluation lock (global lock, individual project lock, and category lock)
   const allProjects = getProjects();
-  const targetProject = allProjects.find(p => p.id === evaluation.projectId);
+  const targetProject = allProjects.find(p => p.id === evaluation.projectId || p.applicationId === evaluation.projectId || p.projectCode === evaluation.projectId);
   if (targetProject && isProjectEvaluationLocked(targetProject)) {
     throw new Error('Evaluation is currently locked for this category or project by the Administrator.');
   }
 
-  // Check judge assignment authorization
-  if (targetProject && !isProjectAssignedToJudge(evaluation.judgeEmail, targetProject)) {
+  // Check judge assignment authorization (Administrators bypass this check)
+  const session = getCurrentUser();
+  const isAdmin = (session && session.role === 'admin') || actor?.email === 'admin@biin.org';
+  if (!isAdmin && targetProject && !isProjectAssignedToJudge(evaluation.judgeEmail, targetProject)) {
     throw new Error('This project is not assigned to your account. You can only evaluate projects assigned to you by the Administrator.');
   }
 
   const evaluations = getEvaluations();
   const existingIndex = evaluations.findIndex(
-    (e) => e.projectId === evaluation.projectId && e.judgeEmail.toLowerCase() === evaluation.judgeEmail.toLowerCase()
+    (e) => (e.projectId === evaluation.projectId || (targetProject && e.projectId === targetProject.id)) &&
+           e.judgeEmail.toLowerCase() === evaluation.judgeEmail.toLowerCase()
   );
 
+  let savedRecord: Evaluation = { ...evaluation };
   if (existingIndex >= 0) {
-    evaluations[existingIndex] = {
-      ...evaluation,
+    savedRecord = {
+      ...savedRecord,
       updatedAt: new Date().toISOString()
     };
+    evaluations[existingIndex] = savedRecord;
   } else {
-    evaluations.push(evaluation);
+    evaluations.push(savedRecord);
   }
 
   localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evaluations));
   if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('biin_evaluations_updated'));
     window.dispatchEvent(new Event('biin_projects_updated'));
   }
-  
+
   // Forward to backend REST API
-  api.saveEvaluation(evaluation, actor).catch((err) => {
-    console.warn('[Storage] Remote evaluation save deferred, saved locally:', err);
-  });
+  try {
+    const remote = await api.saveEvaluation(savedRecord, actor);
+    if (remote && remote.id) {
+      savedRecord = { ...savedRecord, ...remote };
+      const freshEvals = getEvaluations();
+      const idx = freshEvals.findIndex(e => e.id === savedRecord.id || (e.projectId === savedRecord.projectId && e.judgeEmail.toLowerCase() === savedRecord.judgeEmail.toLowerCase()));
+      if (idx >= 0) {
+        freshEvals[idx] = savedRecord;
+        localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(freshEvals));
+      }
+    }
+  } catch (err: any) {
+    console.warn('[Storage] Remote evaluation save notice:', err);
+    const msg = err?.message || String(err);
+    if (msg.includes('403') || msg.includes('assigned') || msg.includes('locked') || msg.includes('Invalid')) {
+      throw err;
+    }
+  }
 
   if (actor) {
     logAuditAction(
@@ -1148,9 +1201,11 @@ export const saveEvaluation = (evaluation: Evaluation, actor?: { email: string; 
       actor.name,
       existingIndex >= 0 ? 'UPDATE_EVALUATION' : 'SUBMIT_EVALUATION',
       'evaluation',
-      `Evaluation score ${evaluation.convertedScore}/100 recorded for project ${evaluation.projectId} by ${evaluation.judgeName}.`
+      `Evaluation score ${savedRecord.convertedScore}/100 recorded for project ${savedRecord.projectId} by ${savedRecord.judgeName}.`
     );
   }
+
+  return savedRecord;
 };
 
 export const deleteEvaluation = (id: string, actor?: { email: string; name: string }): void => {

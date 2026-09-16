@@ -165,7 +165,12 @@ export async function initDatabase(): Promise<DbStatus> {
 
       // Safe schema migrations for existing databases
       try {
+        await client.query('ALTER TABLE projects ADD COLUMN IF NOT EXISTS solution_name VARCHAR(500)');
+        await client.query('ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_overview TEXT');
+        await client.query('ALTER TABLE projects ADD COLUMN IF NOT EXISTS problem_statement TEXT');
+        await client.query('ALTER TABLE projects ADD COLUMN IF NOT EXISTS solution_summary TEXT');
         await client.query('ALTER TABLE projects ADD COLUMN IF NOT EXISTS team_lead_name VARCHAR(255)');
+        await client.query('ALTER TABLE projects ADD COLUMN IF NOT EXISTS room_number VARCHAR(32)');
         await client.query('ALTER TABLE projects ALTER COLUMN head_category DROP NOT NULL');
         await client.query('ALTER TABLE projects ALTER COLUMN head_category TYPE VARCHAR(255)');
         await client.query('ALTER TABLE judge_assignments ALTER COLUMN head_category TYPE VARCHAR(255)');
@@ -503,7 +508,7 @@ export const projectDb = {
                COALESCE(description, project_overview) as description,
                problem_statement as "problemStatement", solution_summary as "solutionSummary",
                tags, status
-        FROM projects WHERE id = $1 LIMIT 1
+        FROM projects WHERE id = $1 OR application_id = $1 OR project_code = $1 LIMIT 1
       `, [id]);
       if (!res.rows[0]) return undefined;
       const row = res.rows[0];
@@ -513,7 +518,12 @@ export const projectDb = {
         tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : row.tags || []
       };
     }
-    return memoryStore.projects.find(p => p.id === id);
+    const clean = String(id || '').trim().toLowerCase();
+    return memoryStore.projects.find(p => 
+      p.id.toLowerCase() === clean || 
+      (p.applicationId && p.applicationId.toLowerCase() === clean) ||
+      (p.projectCode && p.projectCode.toLowerCase() === clean)
+    );
   },
 
   async getById(id: string): Promise<SeedProject | undefined> {
