@@ -1145,23 +1145,10 @@ export const saveEvaluation = async (evaluation: Evaluation, actor?: { email: st
     throw new Error('Evaluation is currently locked for this category or project by the Administrator.');
   }
 
-  // Check judge assignment authorization (Administrators bypass this check)
-  const session = getCurrentUser();
-  const isAdmin = (session && session.role === 'admin') || actor?.email === 'admin@biin.org';
-
   const evaluations = getEvaluations();
   const existingIndex = evaluations.findIndex(
     (e) => (e.projectId === evaluation.projectId || (targetProject && (e.projectId === targetProject.id || e.projectId === targetProject.applicationId || e.projectId === targetProject.projectCode))) &&
            e.judgeEmail.toLowerCase() === evaluation.judgeEmail.toLowerCase()
-  );
-  const isExistingJudgeEval = Boolean(
-    existingIndex >= 0 ||
-    getEvaluationForProject(evaluation.projectId, evaluation.judgeEmail) ||
-    (targetProject && (
-      getEvaluationForProject(targetProject.id, evaluation.judgeEmail) ||
-      (targetProject.applicationId && getEvaluationForProject(targetProject.applicationId, evaluation.judgeEmail)) ||
-      (targetProject.projectCode && getEvaluationForProject(targetProject.projectCode, evaluation.judgeEmail))
-    ))
   );
 
   // Frontend assignment pre-check removed — backend is the authoritative source.
