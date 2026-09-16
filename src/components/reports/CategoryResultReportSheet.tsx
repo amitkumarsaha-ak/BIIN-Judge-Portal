@@ -24,17 +24,11 @@ const getPositionDisplay = (res: CombinedProjectResult): string => {
   return 'N/A';
 };
 
-const getPositionBadgeClass = (pos: string): string => {
-  switch (pos) {
-    case 'Champion':
-      return 'bg-amber-100 text-amber-950 font-black border border-amber-300 print-badge-champion';
-    case 'Winner':
-      return 'bg-indigo-100 text-indigo-950 font-black border border-indigo-300 print-badge-winner';
-    case 'Merit':
-      return 'bg-emerald-100 text-emerald-950 font-bold border border-emerald-300 print-badge-merit';
-    default:
-      return 'text-slate-500 font-semibold print-badge-na';
+const getPositionClass = (pos: string): string => {
+  if (pos === 'Champion' || pos === 'Winner' || pos === 'Merit') {
+    return 'font-extrabold text-slate-950';
   }
+  return 'text-slate-500 font-normal';
 };
 
 export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps> = ({
@@ -147,17 +141,12 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
           didParseCell: (data) => {
             if (data.section === 'body' && data.column.index === 3) {
               const val = String(data.cell.raw);
-              if (val === 'Champion') {
-                data.cell.styles.fillColor = [254, 243, 199];
-                data.cell.styles.textColor = [120, 53, 15];
-              } else if (val === 'Winner') {
-                data.cell.styles.fillColor = [224, 231, 255];
-                data.cell.styles.textColor = [49, 46, 129];
-              } else if (val === 'Merit') {
-                data.cell.styles.fillColor = [209, 250, 229];
-                data.cell.styles.textColor = [6, 78, 59];
+              if (val === 'Champion' || val === 'Winner' || val === 'Merit') {
+                data.cell.styles.fontStyle = 'bold';
+                data.cell.styles.textColor = [15, 23, 42]; // solid black
               } else {
-                data.cell.styles.textColor = [100, 116, 139];
+                data.cell.styles.fontStyle = 'normal';
+                data.cell.styles.textColor = [100, 116, 139]; // slate-500
               }
             }
           }
@@ -303,24 +292,6 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
           }
           .print-table th {
             background-color: #f1f5f9 !important;
-          }
-          .print-badge-champion {
-            background-color: #fef3c7 !important;
-            color: #78350f !important;
-            border: 1px solid #fcd34d !important;
-          }
-          .print-badge-winner {
-            background-color: #e0e7ff !important;
-            color: #312e81 !important;
-            border: 1px solid #a5b4fc !important;
-          }
-          .print-badge-merit {
-            background-color: #d1fae5 !important;
-            color: #064e3b !important;
-            border: 1px solid #6ee7b7 !important;
-          }
-          .print-badge-na {
-            color: #64748b !important;
           }
           .print-signature-block {
             page-break-inside: avoid;
@@ -491,7 +462,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
                               </td>
 
                               <td className="p-2.5 border border-slate-400 text-center">
-                                <span className={`inline-block px-3 py-1 rounded-md text-xs uppercase tracking-wide ${getPositionBadgeClass(position)}`}>
+                                <span className={`text-xs uppercase tracking-wider ${getPositionClass(position)}`}>
                                   {position}
                                 </span>
                               </td>
