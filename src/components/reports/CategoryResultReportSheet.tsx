@@ -152,25 +152,32 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
           }
         });
 
-        // 4. Judges Signatures Section
+        // 4. Judges Committee Signatures Section (Dynamic based on evaluating judges)
         const judgesMap = new Map<string, string>();
         sortedResults.forEach(r => {
           r.judgesEvaluations?.forEach((j: JudgeScoreBreakdown) => {
-            const name = j.judgeName?.replace(/\s*[\(\[-]?\s*judge\s*\d+\s*[\)\]]?/gi, '').trim();
-            if (name && !judgesMap.has(name)) {
-              judgesMap.set(name, name);
+            const rawName = j.judgeName?.trim();
+            const cleaned = rawName?.replace(/\s*[\(\[-]?\s*judge\s*\d+\s*[\)\]]?/gi, '').trim();
+            const finalName = cleaned || rawName;
+            if (finalName && !judgesMap.has(finalName)) {
+              judgesMap.set(finalName, finalName);
             }
           });
         });
         const detectedJudges = Array.from(judgesMap.values());
+        const judgeList = detectedJudges.length > 0 ? detectedJudges : ['Judge Name'];
+        const numJudges = judgeList.length;
+
+        const isTwoRows = numJudges > 6;
+        const totalHeightNeeded = isTwoRows ? 74 : 58;
 
         const lastTable = (pdf as any).lastAutoTable;
-        let sigY = lastTable ? lastTable.finalY + 12 : 215;
+        let sigY = lastTable ? lastTable.finalY + 12 : 180;
 
-        // If signature block (approx 32mm) would collide with bottom footer (at ~265mm)
-        if (sigY > 232) {
+        // If signatures (judges + 2 authorized signatures) would collide with bottom footer (at ~265mm)
+        if (sigY + totalHeightNeeded > 262) {
           pdf.addPage('a4', 'portrait');
-          sigY = 50;
+          sigY = 50; // below top letterhead on the new page
         }
 
         pdf.setDrawColor(15, 23, 42);
@@ -180,36 +187,122 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(8.5);
         pdf.setTextColor(51, 65, 85);
-        pdf.text('JUDGES COMMITTEE SIGNATURES & VERIFICATION', 105, sigY + 5, { align: 'center' });
+        pdf.text('JUDGES COMMITTEE SIGNATURES & VERIFICATION', 105, sigY + 6, { align: 'center' });
 
-        const startX = 14;
-        const totalW = 182;
-        const colW = totalW / 5;
-        const lineY = sigY + 20;
+        // Extra space between heading and judge signature line (sigY + 30 gives 24mm clearance)
+        let endOfJudgesY = sigY + 30;
 
-        for (let j = 0; j < 5; j++) {
-          const slotX = startX + j * colW;
-          const midX = slotX + colW / 2;
-          const judgeName = detectedJudges[j] || 'Judge Name';
+        if (!isTwoRows) {
+          const startX = 14;
+          const totalW = 182;
+          const colW = totalW / numJudges;
+          const lineY = sigY + 30;
+          endOfJudgesY = lineY;
 
-          // Line
-          pdf.setDrawColor(51, 65, 85);
-          pdf.setLineWidth(0.3);
-          pdf.line(slotX + 3, lineY, slotX + colW - 3, lineY);
+          const nameFont = numJudges >= 6 ? 6.5 : 7.5;
+          const desigFont = numJudges >= 6 ? 6 : 7;
 
-          // Name
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(7.5);
-          pdf.setTextColor(15, 23, 42);
-          pdf.text(judgeName, midX, lineY + 4, { align: 'center' });
+          for (let j = 0; j < numJudges; j++) {
+            const slotX = startX + j * colW;
+            const midX = slotX + colW / 2;
+            const judgeName = judgeList[j];
 
-          // Designation
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(7);
-          pdf.setTextColor(100, 116, 139);
-          pdf.text(`Judge ${j + 1}`, midX, lineY + 7.5, { align: 'center' });
-          pdf.text('Signature', midX, lineY + 11, { align: 'center' });
+            // Line
+            pdf.setDrawColor(51, 65, 85);
+            pdf.setLineWidth(0.3);
+            pdf.line(slotX + 2, lineY, slotX + colW - 2, lineY);
+
+            // Name
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(nameFont);
+            pdf.setTextColor(15, 23, 42);
+            pdf.text(judgeName, midX, lineY + 4, { align: 'center', maxWidth: colW - 4 });
+
+            // Designation
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(desigFont);
+            pdf.setTextColor(100, 116, 139);
+            pdf.text(`Judge ${j + 1}`, midX, lineY + 7.5, { align: 'center' });
+            pdf.text('Signature', midX, lineY + 11, { align: 'center' });
+          }
+        } else {
+          // Two rows for more than 6 judges
+          const perRow = Math.ceil(numJudges / 2);
+          const colW = 182 / perRow;
+          const startX = 14;
+
+          // Row 1
+          const lineY1 = sigY + 30;
+          for (let j = 0; j < perRow; j++) {
+            const slotX = startX + j * colW;
+            const midX = slotX + colW / 2;
+            const judgeName = judgeList[j];
+
+            pdf.setDrawColor(51, 65, 85);
+            pdf.setLineWidth(0.3);
+            pdf.line(slotX + 2, lineY1, slotX + colW - 2, lineY1);
+
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(7);
+            pdf.setTextColor(15, 23, 42);
+            pdf.text(judgeName, midX, lineY1 + 4, { align: 'center', maxWidth: colW - 4 });
+
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(6.5);
+            pdf.setTextColor(100, 116, 139);
+            pdf.text(`Judge ${j + 1}`, midX, lineY1 + 7.5, { align: 'center' });
+            pdf.text('Signature', midX, lineY1 + 11, { align: 'center' });
+          }
+
+          // Row 2
+          const lineY2 = lineY1 + 20;
+          endOfJudgesY = lineY2;
+          for (let j = perRow; j < numJudges; j++) {
+            const idxInRow = j - perRow;
+            const slotX = startX + idxInRow * colW;
+            const midX = slotX + colW / 2;
+            const judgeName = judgeList[j];
+
+            pdf.setDrawColor(51, 65, 85);
+            pdf.setLineWidth(0.3);
+            pdf.line(slotX + 2, lineY2, slotX + colW - 2, lineY2);
+
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(7);
+            pdf.setTextColor(15, 23, 42);
+            pdf.text(judgeName, midX, lineY2 + 4, { align: 'center', maxWidth: colW - 4 });
+
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(6.5);
+            pdf.setTextColor(100, 116, 139);
+            pdf.text(`Judge ${j + 1}`, midX, lineY2 + 7.5, { align: 'center' });
+            pdf.text('Signature', midX, lineY2 + 11, { align: 'center' });
+          }
         }
+
+        // 5. Authorized Signatures Section (2 signatures at the bottom)
+        const authY = endOfJudgesY + 22;
+
+        // Left Authorized Signature
+        const leftAuthX1 = 20;
+        const leftAuthX2 = 75;
+        const leftMidX = (leftAuthX1 + leftAuthX2) / 2;
+        pdf.setDrawColor(51, 65, 85);
+        pdf.setLineWidth(0.35);
+        pdf.line(leftAuthX1, authY, leftAuthX2, authY);
+
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(15, 23, 42);
+        pdf.text('Authorized Signature', leftMidX, authY + 4.5, { align: 'center' });
+
+        // Right Authorized Signature
+        const rightAuthX1 = 135;
+        const rightAuthX2 = 190;
+        const rightMidX = (rightAuthX1 + rightAuthX2) / 2;
+        pdf.line(rightAuthX1, authY, rightAuthX2, authY);
+
+        pdf.text('Authorized Signature', rightMidX, authY + 4.5, { align: 'center' });
       });
 
       const fileSuffix = selectedKey === 'ALL' ? 'All_Categories' : selectedKey.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -363,23 +456,23 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
               (a, b) => b.finalAverageScore - a.finalAverageScore
             );
 
-            // Collect up to 5 unique judges from this category pool
+            // Collect all unique judges who evaluated projects in this category
             const judgesMap = new Map<string, string>();
             sortedResults.forEach(r => {
               r.judgesEvaluations?.forEach((j: JudgeScoreBreakdown) => {
-                const name = j.judgeName?.replace(/\s*[\(\[-]?\s*judge\s*\d+\s*[\)\]]?/gi, '').trim();
-                if (name && !judgesMap.has(name)) {
-                  judgesMap.set(name, name);
+                const rawName = j.judgeName?.trim();
+                const cleaned = rawName?.replace(/\s*[\(\[-]?\s*judge\s*\d+\s*[\)\]]?/gi, '').trim();
+                const finalName = cleaned || rawName;
+                if (finalName && !judgesMap.has(finalName)) {
+                  judgesMap.set(finalName, finalName);
                 }
               });
             });
             const detectedJudges = Array.from(judgesMap.values());
-            const judgeSlots = Array.from({ length: 5 }, (_, idx) => {
-              return {
-                number: idx + 1,
-                name: detectedJudges[idx] || ''
-              };
-            });
+            const judgeSlots = (detectedJudges.length > 0 ? detectedJudges : ['Judge Name']).map((name, idx) => ({
+              number: idx + 1,
+              name: name
+            }));
 
             const isNoHeadCat =
               canonicalAppType(group.appType) === 'Student-Secondary' ||
@@ -487,7 +580,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
                   </span>
                 </div>
 
-                {/* 4. 5 Judge Signatures Section */}
+                {/* 4. Judges Committee Signatures Section */}
                 <div className="print-signature-block pt-10 mt-8 border-t-2 border-slate-900 space-y-4">
                   <div className="text-center">
                     <span className="text-xs font-bold uppercase tracking-widest text-slate-700">
@@ -495,16 +588,22 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-5 gap-4 pt-4 text-center">
+                  {/* Extra space between heading and judge signatures */}
+                  <div
+                    className="grid gap-4 text-center pt-8 sm:pt-10"
+                    style={{
+                      gridTemplateColumns: `repeat(${judgeSlots.length > 6 ? Math.ceil(judgeSlots.length / 2) : judgeSlots.length}, minmax(0, 1fr))`
+                    }}
+                  >
                     {judgeSlots.map((slot) => (
                       <div key={slot.number} className="flex flex-col justify-end space-y-1">
-                        {/* Signature Line */}
-                        <div className="h-12 border-b-2 border-slate-800 mb-1 flex items-end justify-center">
-                          {/* Blank area for physical or digital pen signature */}
+                        {/* Signature Line with generous height */}
+                        <div className="h-16 sm:h-20 border-b-2 border-slate-800 mb-1 flex items-end justify-center">
+                          {/* Blank area for physical signature */}
                         </div>
 
                         <span className="text-[11px] font-bold text-slate-900 block truncate" title={slot.name || `Judge ${slot.number}`}>
-                          {slot.name || 'Judge Name'}
+                          {slot.name || `Judge ${slot.number}`}
                         </span>
 
                         <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">
@@ -516,6 +615,23 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
                         </span>
                       </div>
                     ))}
+                  </div>
+
+                  {/* 5. 2 Authorized Signatures Section */}
+                  <div className="pt-12 sm:pt-16 flex items-end justify-between px-6 sm:px-14">
+                    <div className="w-52 sm:w-60 text-center">
+                      <div className="h-14 border-b-2 border-slate-800 mb-1"></div>
+                      <span className="text-xs font-bold text-slate-900 uppercase tracking-wide block">
+                        Authorized Signature
+                      </span>
+                    </div>
+
+                    <div className="w-52 sm:w-60 text-center">
+                      <div className="h-14 border-b-2 border-slate-800 mb-1"></div>
+                      <span className="text-xs font-bold text-slate-900 uppercase tracking-wide block">
+                        Authorized Signature
+                      </span>
+                    </div>
                   </div>
                 </div>
 
