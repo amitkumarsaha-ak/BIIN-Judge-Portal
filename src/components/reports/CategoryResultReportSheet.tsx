@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Printer, X, Download } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { Printer, X, Download, Loader2 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import type { CombinedProjectResult, JudgeScoreBreakdown } from '../../types';
 import { formatScoreNumber, canonicalAppType, type CategoryResultGroup } from '../../utils/evaluation';
 
@@ -44,6 +45,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
   const [selectedKey, setSelectedKey] = useState<string>(
     initialCategoryKey || categoryGroups[0]?.categoryKey || 'ALL'
   );
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const displayedGroups = useMemo(() => {
     if (selectedKey === 'ALL') {
@@ -57,67 +59,53 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
     window.print();
   };
 
-  const handleDownloadExcel = () => {
-    const wb = XLSX.utils.book_new();
+  const handleDownloadPDF = async () => {
+    setIsGeneratingPdf(true);
+    try {
+      const container = document.getElementById('print-sheets-root');
+      if (!container) return;
 
-    displayedGroups.forEach((group) => {
-      const sortedResults = [...group.allResults].sort(
-        (a, b) => b.finalAverageScore - a.finalAverageScore
-      );
+      const sheetElements = container.querySelectorAll<HTMLElement>('.category-page-break');
+      if (sheetElements.length === 0) return;
 
-      const isNoHeadCat =
-        canonicalAppType(group.appType) === 'Student-Secondary' ||
-        canonicalAppType(group.appType) === 'Individual or Group';
-
-      const catTitle = isNoHeadCat ? 'General' : group.headCategoryName;
-
-      // Prepare 2D rows
-      const rows: (string | number)[][] = [
-        ['Bangladesh ICT & Innovation Network'],
-        ['Official Competition Result Sheet'],
-        [`Application Type: ${group.appTypeTitle} | Category: ${catTitle}`],
-        [],
-        ['SL', 'Solution Name', 'Team Lead Name', 'Team / Organization Name', 'Final Score (%)', 'Position']
-      ];
-
-      sortedResults.forEach((item, idx) => {
-        const sl = idx + 1;
-        const solutionName = item.project.solutionName || item.project.title;
-        const teamLead = item.project.teamLeadName || item.project.representativeName || item.project.teamOrOrgName || 'N/A';
-        const org = item.project.teamOrOrgName || 'N/A';
-        const score = `${formatScoreNumber(item.finalAverageScore)}%`;
-        const position = getPositionDisplay(item);
-        rows.push([sl, solutionName, teamLead, org, score, position]);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
       });
 
-      rows.push([]);
-      rows.push(['Judges Committee Signatures:']);
-      rows.push(['Judge 1', 'Judge 2', 'Judge 3', 'Judge 4', 'Judge 5']);
-      rows.push(['Signature: ____________', 'Signature: ____________', 'Signature: ____________', 'Signature: ____________', 'Signature: ____________']);
+      const pdfWidth = 210;
+      const pdfHeight = 297;
 
-      const ws = XLSX.utils.aoa_to_sheet(rows);
+      for (let i = 0; i < sheetElements.length; i++) {
+        const sheet = sheetElements[i];
+        const canvas = await html2canvas(sheet, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        });
 
-      // Set column widths
-      ws['!cols'] = [
-        { wch: 8 },  // SL
-        { wch: 38 }, // Solution Name
-        { wch: 25 }, // Team Lead Name
-        { wch: 28 }, // Team / Org
-        { wch: 16 }, // Final Score
-        { wch: 16 }  // Position
-      ];
+        const imgData = canvas.toDataURL('image/jpeg', 0.98);
+        const imgWidth = pdfWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      // Safe sheet name (max 31 chars, no invalid characters)
-      let sheetName = `${group.appTypeTitle.slice(0, 14)}_${catTitle.slice(0, 14)}`.replace(/[:\\/?*\[\]]/g, '_');
-      if (wb.SheetNames.includes(sheetName)) {
-        sheetName = `${sheetName.slice(0, 27)}_${wb.SheetNames.length + 1}`;
+        if (i > 0) {
+          pdf.addPage('a4', 'portrait');
+        }
+
+        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, Math.min(imgHeight, pdfHeight));
       }
 
-      XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    });
-
-    const fileSuffix = selectedKey === 'ALL' ? 'All_Categories' : selectedKey.replace(/[^a-zA-Z0-9_-]/g, '_');
-    XLSX.writeFile(wb, `BIIN_Result_Report_${fileSuffix}.xlsx`);
+      const fileSuffix = selectedKey === 'ALL' ? 'All_Categories' : selectedKey.replace(/[^a-zA-Z0-9_-]/g, '_');
+      pdf.save(`BIIN_Result_Report_${fileSuffix}.pdf`);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      // Fallback to print if canvas fails
+      window.print();
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   return (
@@ -200,20 +188,22 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
             </select>
 
             <button
-              onClick={handleDownloadExcel}
-              className="inline-flex items-center space-x-2 rounded-xl px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg transition-transform hover:scale-105"
-              title="Download official results sheet as Excel file (.xlsx)"
+              onClick={handleDownloadPDF}
+              disabled={isGeneratingPdf}
+              className="inline-flex items-center space-x-2 rounded-xl px-4 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white shadow-lg transition-transform hover:scale-105"
+              title="Download official result sheet directly as PDF file"
             >
-              <Download className="h-4 w-4" />
-              <span>Download Excel</span>
+              {isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              <span>{isGeneratingPdf ? 'Generating PDF...' : 'Download PDF'}</span>
             </button>
 
             <button
               onClick={handlePrint}
               className="btn-primary inline-flex items-center space-x-2 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-lg transition-transform hover:scale-105"
+              title="Open browser print dialog"
             >
               <Printer className="h-4 w-4" />
-              <span>Print / Save PDF</span>
+              <span>Print Sheet</span>
             </button>
 
             <button
@@ -227,7 +217,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
         </div>
 
         {/* Printable Sheets Layout */}
-        <div className="print-sheet-container space-y-8">
+        <div className="print-sheet-container space-y-8" id="print-sheets-root">
           {displayedGroups.map((group) => {
             // Sort all projects in descending order of final average score
             const sortedResults = [...group.allResults].sort(

@@ -1,6 +1,7 @@
-import React from 'react';
-import { Printer, X, Download } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import React, { useState } from 'react';
+import { Printer, X, Download, Loader2 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import type { CombinedProjectResult } from '../../types';
 import { getCriteriaForApplicationType, formatScoreNumber, canonicalAppType } from '../../utils/evaluation';
 
@@ -19,6 +20,7 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
   onClose
 }) => {
   const { project, applicationType, judgesEvaluations, finalAverageScore, award } = result;
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const criteria = getCriteriaForApplicationType(applicationType);
 
@@ -26,61 +28,40 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
     window.print();
   };
 
-  const handleDownloadExcel = () => {
-    const wb = XLSX.utils.book_new();
+  const handleDownloadPDF = async () => {
+    setIsGeneratingPdf(true);
+    try {
+      const sheet = document.getElementById('single-project-sheet');
+      if (!sheet) return;
 
-    const rows: (string | number)[][] = [
-      ['Bangladesh ICT & Innovation Network'],
-      ['Project Evaluation Result Sheet'],
-      [],
-      ['Project Name:', project.title],
-      ['Application ID:', project.applicationId],
-      ['Application Type:', applicationType],
-      ['Head Category:', project.headCategory || 'N/A'],
-      ['Team / Organization:', project.teamOrOrgName],
-      ['Team Lead / Representative:', project.representativeName || project.teamLeadName || 'N/A'],
-      ['Final Score:', `${formatScoreNumber(finalAverageScore)} / 100`],
-      ['Award Designation:', award.toUpperCase()],
-      [],
-      ['Criteria Breakdown:']
-    ];
-
-    const headerRow: (string | number)[] = ['Criteria', 'Max Mark'];
-    judgesEvaluations.forEach((j, idx) => {
-      headerRow.push(cleanJudgeName(j.judgeName) || `Judge ${idx + 1}`);
-    });
-    rows.push(headerRow);
-
-    criteria.forEach((crit) => {
-      const critRow: (string | number)[] = [crit.label, 10];
-      judgesEvaluations.forEach((j) => {
-        critRow.push(j.scores[crit.key] ?? 0);
+      const canvas = await html2canvas(sheet, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
       });
-      rows.push(critRow);
-    });
 
-    const rawTotalRow: (string | number)[] = ['Raw Total', criteria.length * 10];
-    judgesEvaluations.forEach((j) => {
-      rawTotalRow.push(`${formatScoreNumber(j.rawScore)} / ${j.maxRawScore}`);
-    });
-    rows.push(rawTotalRow);
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
 
-    const convertedRow: (string | number)[] = ['Converted Score / 100', 100];
-    judgesEvaluations.forEach((j) => {
-      convertedRow.push(`${formatScoreNumber(j.convertedScore)}%`);
-    });
-    rows.push(convertedRow);
+      const pdfWidth = 210;
+      const pdfHeight = 297;
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [
-      { wch: 30 },
-      { wch: 15 },
-      ...judgesEvaluations.map(() => ({ wch: 20 }))
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Evaluation_Result');
-    const safeTitle = project.title.slice(0, 20).replace(/[^a-zA-Z0-9_-]/g, '_');
-    XLSX.writeFile(wb, `BIIN_Evaluation_${project.applicationId || safeTitle}.xlsx`);
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, Math.min(imgHeight, pdfHeight));
+      const safeTitle = project.title.slice(0, 20).replace(/[^a-zA-Z0-9_-]/g, '_');
+      pdf.save(`BIIN_Evaluation_${project.applicationId || safeTitle}.pdf`);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      window.print();
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   return (
@@ -147,20 +128,22 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
 
           <div className="flex items-center space-x-3">
             <button
-              onClick={handleDownloadExcel}
-              className="inline-flex items-center space-x-2 rounded-xl px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg transition-transform hover:scale-105"
-              title="Download scorecard breakdown as Excel (.xlsx)"
+              onClick={handleDownloadPDF}
+              disabled={isGeneratingPdf}
+              className="inline-flex items-center space-x-2 rounded-xl px-4 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white shadow-lg transition-transform hover:scale-105"
+              title="Download scorecard directly as PDF (.pdf)"
             >
-              <Download className="h-4 w-4" />
-              <span>Download Excel</span>
+              {isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              <span>{isGeneratingPdf ? 'Generating PDF...' : 'Download PDF'}</span>
             </button>
 
             <button
               onClick={handlePrint}
               className="btn-primary inline-flex items-center space-x-2 rounded-xl px-5 py-2 text-xs font-bold text-white shadow-lg"
+              title="Open browser print dialog"
             >
               <Printer className="h-4 w-4" />
-              <span>Print / Save PDF</span>
+              <span>Print Sheet</span>
             </button>
 
             <button
@@ -173,7 +156,7 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
         </div>
 
         {/* Printable Report Sheet Layout */}
-        <div className="print-wrapper print-card rounded-3xl bg-white p-4 sm:p-8 md:p-12 pt-[1.5in] sm:pt-[1.5in] text-slate-900 shadow-2xl border border-slate-200 space-y-6">
+        <div id="single-project-sheet" className="print-wrapper print-card rounded-3xl bg-white p-4 sm:p-8 md:p-12 pt-[1.5in] sm:pt-[1.5in] text-slate-900 shadow-2xl border border-slate-200 space-y-6">
           
           {/* Organization / Header Section */}
           <div className="print-header flex flex-col sm:flex-row sm:items-center justify-between border-b-2 border-slate-900 pb-6 gap-4">
