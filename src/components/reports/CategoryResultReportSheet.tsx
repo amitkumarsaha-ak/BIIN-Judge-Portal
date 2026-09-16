@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Printer, X, Download, Loader2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
+import autoTable from 'jspdf-autotable';
 import type { CombinedProjectResult, JudgeScoreBreakdown } from '../../types';
 import { formatScoreNumber, canonicalAppType, type CategoryResultGroup } from '../../utils/evaluation';
 
@@ -27,13 +27,13 @@ const getPositionDisplay = (res: CombinedProjectResult): string => {
 const getPositionBadgeClass = (pos: string): string => {
   switch (pos) {
     case 'Champion':
-      return 'bg-amber-100 text-amber-950 font-black border border-amber-300';
+      return 'bg-amber-100 text-amber-950 font-black border border-amber-300 print-badge-champion';
     case 'Winner':
-      return 'bg-indigo-100 text-indigo-950 font-black border border-indigo-300';
+      return 'bg-indigo-100 text-indigo-950 font-black border border-indigo-300 print-badge-winner';
     case 'Merit':
-      return 'bg-emerald-100 text-emerald-950 font-bold border border-emerald-300';
+      return 'bg-emerald-100 text-emerald-950 font-bold border border-emerald-300 print-badge-merit';
     default:
-      return 'text-slate-500 font-semibold';
+      return 'text-slate-500 font-semibold print-badge-na';
   }
 };
 
@@ -59,49 +59,178 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
     window.print();
   };
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = () => {
     setIsGeneratingPdf(true);
     try {
-      const container = document.getElementById('print-sheets-root');
-      if (!container) return;
-
-      const sheetElements = container.querySelectorAll<HTMLElement>('.category-page-break');
-      if (sheetElements.length === 0) return;
-
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
 
-      const pdfWidth = 210;
-      const pdfHeight = 297;
-
-      for (let i = 0; i < sheetElements.length; i++) {
-        const sheet = sheetElements[i];
-        const canvas = await html2canvas(sheet, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff'
-        });
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.98);
-        const imgWidth = pdfWidth;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-        if (i > 0) {
+      displayedGroups.forEach((group, gIdx) => {
+        if (gIdx > 0) {
           pdf.addPage('a4', 'portrait');
         }
 
-        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, Math.min(imgHeight, pdfHeight));
-      }
+        const sortedResults = [...group.allResults].sort(
+          (a, b) => b.finalAverageScore - a.finalAverageScore
+        );
+
+        const isNoHeadCat =
+          canonicalAppType(group.appType) === 'Student-Secondary' ||
+          canonicalAppType(group.appType) === 'Individual or Group';
+
+        const catTitle = isNoHeadCat ? 'General (No Head Category)' : group.headCategoryName;
+
+        // 1. Top Header
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(16);
+        pdf.setTextColor(15, 23, 42); // slate-900
+        pdf.text('BANGLADESH ICT & INNOVATION NETWORK', 105, 18, { align: 'center' });
+
+        // 2. Subheading
+        pdf.setFontSize(11);
+        pdf.setTextColor(51, 65, 85); // slate-700
+        const subTitle = `Application Type: ${group.appTypeTitle}   •   Category Name: ${catTitle}`;
+        pdf.text(subTitle, 105, 25, { align: 'center' });
+
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(100, 116, 139); // slate-500
+        pdf.text('Official Competition Result Sheet · Award Designation & Scoring Evaluation', 105, 30, { align: 'center' });
+
+        // Header bottom divider
+        pdf.setDrawColor(15, 23, 42);
+        pdf.setLineWidth(0.6);
+        pdf.line(14, 33, 196, 33);
+
+        // 3. Table Rows
+        const tableBody = sortedResults.map((item, idx) => {
+          const sl = (idx + 1).toString();
+          const solutionName = item.project.solutionName || item.project.title;
+          const teamLead = item.project.teamLeadName || item.project.representativeName || item.project.teamOrOrgName || 'N/A';
+          const org = item.project.teamOrOrgName;
+          const leadInfo = org && org !== teamLead ? `Team Lead: ${teamLead} (${org})` : `Team Lead: ${teamLead}`;
+          const score = `${formatScoreNumber(item.finalAverageScore)}%`;
+          const position = getPositionDisplay(item);
+          return [sl, `${solutionName}\n${leadInfo}`, score, position];
+        });
+
+        if (tableBody.length === 0) {
+          tableBody.push(['-', 'No evaluated projects in this category', '-', 'N/A']);
+        }
+
+        // Table Rendering with autoTable
+        autoTable(pdf, {
+          startY: 37,
+          head: [['SL', 'Solution Name & Team Lead', 'Score', 'Position']],
+          body: tableBody,
+          theme: 'grid',
+          margin: { left: 14, right: 14, bottom: 46 },
+          headStyles: {
+            fillColor: [241, 245, 249],
+            textColor: [15, 23, 42],
+            fontStyle: 'bold',
+            fontSize: 9,
+            lineWidth: 0.2,
+            lineColor: [100, 116, 139]
+          },
+          bodyStyles: {
+            fontSize: 8.5,
+            textColor: [15, 23, 42],
+            lineWidth: 0.2,
+            lineColor: [203, 213, 225],
+            cellPadding: 3.5
+          },
+          columnStyles: {
+            0: { cellWidth: 12, halign: 'center', fontStyle: 'bold' },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 26, halign: 'center', fontStyle: 'bold', fontSize: 9 },
+            3: { cellWidth: 32, halign: 'center', fontStyle: 'bold', fontSize: 9 }
+          },
+          didParseCell: (data) => {
+            if (data.section === 'body' && data.column.index === 3) {
+              const val = String(data.cell.raw);
+              if (val === 'Champion') {
+                data.cell.styles.fillColor = [254, 243, 199];
+                data.cell.styles.textColor = [120, 53, 15];
+              } else if (val === 'Winner') {
+                data.cell.styles.fillColor = [224, 231, 255];
+                data.cell.styles.textColor = [49, 46, 129];
+              } else if (val === 'Merit') {
+                data.cell.styles.fillColor = [209, 250, 229];
+                data.cell.styles.textColor = [6, 78, 59];
+              } else {
+                data.cell.styles.textColor = [100, 116, 139];
+              }
+            }
+          }
+        });
+
+        // 4. Judges Signatures Section
+        const judgesMap = new Map<string, string>();
+        sortedResults.forEach(r => {
+          r.judgesEvaluations?.forEach((j: JudgeScoreBreakdown) => {
+            const name = j.judgeName?.replace(/\s*[\(\[-]?\s*judge\s*\d+\s*[\)\]]?/gi, '').trim();
+            if (name && !judgesMap.has(name)) {
+              judgesMap.set(name, name);
+            }
+          });
+        });
+        const detectedJudges = Array.from(judgesMap.values());
+
+        const lastTable = (pdf as any).lastAutoTable;
+        let sigY = lastTable ? lastTable.finalY + 14 : 240;
+
+        if (sigY > 248) {
+          pdf.addPage('a4', 'portrait');
+          sigY = 30;
+        }
+
+        pdf.setDrawColor(15, 23, 42);
+        pdf.setLineWidth(0.4);
+        pdf.line(14, sigY, 196, sigY);
+
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(51, 65, 85);
+        pdf.text('JUDGES COMMITTEE SIGNATURES & VERIFICATION', 105, sigY + 5, { align: 'center' });
+
+        const startX = 14;
+        const totalW = 182;
+        const colW = totalW / 5;
+        const lineY = sigY + 22;
+
+        for (let j = 0; j < 5; j++) {
+          const slotX = startX + j * colW;
+          const midX = slotX + colW / 2;
+          const judgeName = detectedJudges[j] || 'Judge Name';
+
+          // Line
+          pdf.setDrawColor(51, 65, 85);
+          pdf.setLineWidth(0.3);
+          pdf.line(slotX + 3, lineY, slotX + colW - 3, lineY);
+
+          // Name
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(7.5);
+          pdf.setTextColor(15, 23, 42);
+          pdf.text(judgeName, midX, lineY + 4, { align: 'center' });
+
+          // Designation
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(7);
+          pdf.setTextColor(100, 116, 139);
+          pdf.text(`Judge ${j + 1}`, midX, lineY + 7.5, { align: 'center' });
+          pdf.text('Signature', midX, lineY + 11, { align: 'center' });
+        }
+      });
 
       const fileSuffix = selectedKey === 'ALL' ? 'All_Categories' : selectedKey.replace(/[^a-zA-Z0-9_-]/g, '_');
       pdf.save(`BIIN_Result_Report_${fileSuffix}.pdf`);
     } catch (err) {
       console.error('Error generating PDF:', err);
-      // Fallback to print if canvas fails
       window.print();
     } finally {
       setIsGeneratingPdf(false);
@@ -109,21 +238,39 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md p-4 sm:p-6 flex justify-center animate-in fade-in duration-200">
+    <div className="category-print-modal-wrapper fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md p-4 sm:p-6 flex justify-center animate-in fade-in duration-200">
       {/* Print Styles */}
       <style>{`
         @media print {
           @page {
             size: A4 portrait;
-            margin: 12mm 15mm;
+            margin: 10mm 12mm;
           }
           body {
             background-color: #ffffff !important;
             color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
           }
           .no-print {
             display: none !important;
+          }
+          .category-print-modal-wrapper {
+            position: static !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            display: block !important;
+          }
+          .category-print-modal-inner {
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
           }
           .print-sheet-container {
             padding: 0 !important;
@@ -132,11 +279,17 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
             width: 100% !important;
             box-shadow: none !important;
             border: none !important;
-            background: white !important;
+            background: #ffffff !important;
           }
           .category-page-break {
             page-break-after: always;
             break-after: page;
+            box-shadow: none !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 12px !important;
+            padding: 24px !important;
+            margin-bottom: 24px !important;
+            background: #ffffff !important;
           }
           .category-page-break:last-child {
             page-break-after: auto;
@@ -147,12 +300,30 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
             border-collapse: collapse !important;
           }
           .print-table th, .print-table td {
-            border: 1px solid #334155 !important;
+            border: 1px solid #64748b !important;
             padding: 7px 10px !important;
             color: #000000 !important;
           }
           .print-table th {
             background-color: #f1f5f9 !important;
+          }
+          .print-badge-champion {
+            background-color: #fef3c7 !important;
+            color: #78350f !important;
+            border: 1px solid #fcd34d !important;
+          }
+          .print-badge-winner {
+            background-color: #e0e7ff !important;
+            color: #312e81 !important;
+            border: 1px solid #a5b4fc !important;
+          }
+          .print-badge-merit {
+            background-color: #d1fae5 !important;
+            color: #064e3b !important;
+            border: 1px solid #6ee7b7 !important;
+          }
+          .print-badge-na {
+            color: #64748b !important;
           }
           .print-signature-block {
             page-break-inside: avoid;
@@ -161,14 +332,14 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
         }
       `}</style>
 
-      <div className="w-full max-w-4xl space-y-4">
+      <div className="category-print-modal-inner w-full max-w-4xl space-y-4">
         {/* Floating Top Control Bar (Hidden when printing) */}
         <div className="no-print flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900 text-white p-4 rounded-2xl border border-slate-800 shadow-2xl">
           <div className="flex items-center space-x-2">
             <Printer className="h-5 w-5 text-indigo-400 shrink-0" />
             <div>
               <h2 className="font-heading font-bold text-sm text-white">Official Result Report Sheet (A4)</h2>
-              <p className="text-[11px] text-slate-400">Print or export official competition result sheets with judge signatures</p>
+              <p className="text-[11px] text-slate-400">Download direct PDF file to your PC or print official competition result sheets</p>
             </div>
           </div>
 
