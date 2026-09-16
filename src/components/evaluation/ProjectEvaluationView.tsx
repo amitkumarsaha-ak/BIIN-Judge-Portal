@@ -6,7 +6,8 @@ import {
   getMaxRawScoreForApplicationType,
   calculateRawTotal,
   calculateConvertedScore,
-  formatScoreNumber
+  formatScoreNumber,
+  canonicalAppType
 } from '../../utils/evaluation';
 import { ProjectInfoPanel } from './ProjectInfoPanel';
 import { CriteriaScorer } from './CriteriaScorer';
@@ -333,7 +334,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
 
         <div className="flex items-center space-x-2 sm:space-x-3 text-xs self-start sm:self-auto flex-wrap">
           <span className="rounded-lg bg-indigo-50 dark:bg-indigo-500/20 px-2.5 py-1 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 font-semibold">
-            {project.applicationType}
+            {canonicalAppType(project.applicationType)}
           </span>
           <span className="text-slate-500 dark:text-slate-400 font-mono">
             Evaluating ID: <strong className="text-slate-900 dark:text-slate-200">{project.id}</strong>
@@ -398,7 +399,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
           <div>
             <h2 className="font-heading text-2xl font-extrabold text-slate-900 dark:text-white">
-              Evaluation Criteria ({project.applicationType})
+              Evaluation Criteria ({canonicalAppType(project.applicationType)})
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Grade each criterion (1-10 marks). Total maximum raw score is <strong>{maxRawScore}</strong> marks, automatically converted to <strong>100%</strong>.

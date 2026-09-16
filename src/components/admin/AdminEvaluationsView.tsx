@@ -172,6 +172,8 @@ export const AdminEvaluationsView: React.FC = () => {
   const isNoHeadCategory =
     filterType === 'Student-Secondary' ||
     canonicalAppType(filterType) === 'Student-Secondary' ||
+    filterType === 'Individual/Group' ||
+    canonicalAppType(filterType) === 'Individual/Group' ||
     filterType === 'Individual or Group' ||
     canonicalAppType(filterType) === 'Individual or Group';
 
@@ -415,7 +417,7 @@ export const AdminEvaluationsView: React.FC = () => {
             const val = e.target.value as ApplicationType | 'All';
             setFilterType(val);
             const canon = canonicalAppType(val);
-            if (val === 'Student-Secondary' || canon === 'Student-Secondary' || val === 'Individual or Group' || canon === 'Individual or Group') {
+            if (val === 'Student-Secondary' || canon === 'Student-Secondary' || val === 'Individual/Group' || canon === 'Individual/Group' || val === 'Individual or Group' || canon === 'Individual or Group') {
               setFilterCategory('All');
             }
           }}
@@ -424,8 +426,8 @@ export const AdminEvaluationsView: React.FC = () => {
           <option value="All">All Application Types</option>
           <option value="Student-Secondary">Student-Secondary</option>
           <option value="Student-Tertiary">Student-Tertiary Categories (University Level)</option>
-          <option value="Organisation">Organisation</option>
-          <option value="Individual or Group">Individual or Group</option>
+          <option value="Organization">Organization</option>
+          <option value="Individual/Group">Individual/Group</option>
         </select>
 
         {/* Filter by Head Category */}
@@ -520,9 +522,10 @@ export const AdminEvaluationsView: React.FC = () => {
                         {project.applicationId}
                       </span>
                       <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        {project.applicationType}
+                        {canonicalAppType(project.applicationType)}
                       </span>
                       {canonicalAppType(project.applicationType) !== 'Student-Secondary' &&
+                       canonicalAppType(project.applicationType) !== 'Individual/Group' &&
                        canonicalAppType(project.applicationType) !== 'Individual or Group' &&
                        project.headCategory && project.headCategory !== 'N/A' && (
                         <span className="rounded-md bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 px-2.5 py-0.5 text-xs font-semibold">

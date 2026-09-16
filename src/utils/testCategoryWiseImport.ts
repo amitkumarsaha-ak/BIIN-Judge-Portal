@@ -4,8 +4,8 @@ import type { Project, ApplicationType, HeadCategoryCode } from '../types';
 const VALID_APP_TYPES: { match: string[]; target: ApplicationType }[] = [
   { match: ['student'], target: 'Student' },
   { match: ['student-tertiary', 'student tertiary', 'student-tertiary categories (university level)', 'university level', 'tertiary'], target: 'Student-Tertiary' },
-  { match: ['organisation', 'organization', 'org'], target: 'Organisation' },
-  { match: ['individual or group', 'individual/group', 'individual', 'group'], target: 'Individual or Group' }
+  { match: ['organisation', 'organization', 'org'], target: 'Organization' },
+  { match: ['individual or group', 'individual/group', 'individual', 'group'], target: 'Individual/Group' }
 ];
 
 const VALID_HEAD_CATEGORIES: { match: string[]; code: HeadCategoryCode }[] = [
@@ -159,8 +159,8 @@ function parseWorkbook(
 // RUN TESTS
 console.log('=== RUNNING CATEGORY-WISE EXCEL IMPORT VERIFICATION ===');
 
-// TEST 1: Dedicated File for Organisation + Consumer (No category columns in Excel)
-console.log('\n--- TEST 1: Organisation & Consumer without category columns in Excel ---');
+// TEST 1: Dedicated File for Organization + Consumer (No category columns in Excel)
+console.log('\n--- TEST 1: Organization & Consumer without category columns in Excel ---');
 const file1Data = [
   {
     'Project Title': 'SmartRetail AI Cart',
@@ -188,15 +188,15 @@ const ws1 = XLSX.utils.json_to_sheet(file1Data);
 const wb1 = XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb1, ws1, 'Consumer_Projects');
 
-const res1 = parseWorkbook(wb1, 'Organisation', 'HC-C', []);
+const res1 = parseWorkbook(wb1, 'Organization', 'HC-C', []);
 console.log(`Parsed valid count: ${res1.validProjects.length}, Errors: ${res1.errors.length}`);
 console.assert(res1.validProjects.length === 2, 'Should have 2 valid projects');
-console.assert(res1.validProjects[0].applicationType === 'Organisation', 'Should be Organisation');
+console.assert(res1.validProjects[0].applicationType === 'Organization', 'Should be Organization');
 console.assert(res1.validProjects[0].headCategory === 'HC-C', 'Should be HC-C (Consumer)');
 console.log('Test 1 passed successfully!');
 
-// TEST 2: Dedicated File for Organisation + Business Services (HC-BS)
-console.log('\n--- TEST 2: Organisation & Business Services (HC-BS) ---');
+// TEST 2: Dedicated File for Organization + Business Services (HC-BS)
+console.log('\n--- TEST 2: Organization & Business Services (HC-BS) ---');
 const file2Data = [
   {
     'Project Title': 'OmniLedger Enterprise Audit Hub',
@@ -215,10 +215,10 @@ const wb2 = XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb2, ws2, 'Business_Projects');
 
 // Notice we pass res1.validProjects as existing projects to verify inter-batch duplicate checking!
-const res2 = parseWorkbook(wb2, 'Organisation', 'HC-BS', res1.validProjects);
+const res2 = parseWorkbook(wb2, 'Organization', 'HC-BS', res1.validProjects);
 console.log(`Parsed valid count: ${res2.validProjects.length}, Errors: ${res2.errors.length}`);
 console.assert(res2.validProjects.length === 1, 'Should have 1 valid project');
-console.assert(res2.validProjects[0].applicationType === 'Organisation', 'Should be Organisation');
+console.assert(res2.validProjects[0].applicationType === 'Organization', 'Should be Organization');
 console.assert(res2.validProjects[0].headCategory === 'HC-BS', 'Should be HC-BS (Business Services)');
 console.log('Test 2 passed successfully!');
 
@@ -238,7 +238,7 @@ const ws3 = XLSX.utils.json_to_sheet(file3DuplicateData);
 const wb3 = XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb3, ws3, 'Dup_Sheet');
 
-const res3 = parseWorkbook(wb3, 'Organisation', 'HC-C', [...res1.validProjects, ...res2.validProjects]);
+const res3 = parseWorkbook(wb3, 'Organization', 'HC-C', [...res1.validProjects, ...res2.validProjects]);
 console.log(`Duplicate test errors: ${JSON.stringify(res3.errors)}`);
 console.assert(res3.validProjects.length === 0, 'Duplicate project should be rejected');
 console.assert(res3.errors[0].includes('Duplicate App ID'), 'Error message should mention Duplicate App ID');

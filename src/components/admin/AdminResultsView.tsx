@@ -93,6 +93,8 @@ export const AdminResultsView: React.FC = () => {
   const isNoHeadCategory =
     filterType === 'Student-Secondary' ||
     canonicalAppType(filterType) === 'Student-Secondary' ||
+    filterType === 'Individual/Group' ||
+    canonicalAppType(filterType) === 'Individual/Group' ||
     filterType === 'Individual or Group' ||
     canonicalAppType(filterType) === 'Individual or Group';
   const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
@@ -121,7 +123,7 @@ export const AdminResultsView: React.FC = () => {
       const pAppType = canonicalAppType(res.project.applicationType);
 
       if (filterType !== 'All' && pAppType !== filterType) return false;
-      if (pAppType !== 'Student-Secondary' && pAppType !== 'Individual or Group' && filterCategory !== 'All' && !matchesCategory(res.project.headCategory, filterCategory, res.project.applicationType)) return false;
+      if (pAppType !== 'Student-Secondary' && pAppType !== 'Individual/Group' && pAppType !== 'Individual or Group' && filterCategory !== 'All' && !matchesCategory(res.project.headCategory, filterCategory, res.project.applicationType)) return false;
       if (q) {
         const hay = [
           res.project.title,
@@ -230,7 +232,7 @@ export const AdminResultsView: React.FC = () => {
 
     return categoryGroups.filter(grp => {
       if (filterType !== 'All' && grp.appType !== filterType) return false;
-      if (grp.appType !== 'Student-Secondary' && grp.appType !== 'Individual or Group' && filterCategory !== 'All' && grp.headCategoryCode !== filterCategory) return false;
+      if (grp.appType !== 'Student-Secondary' && grp.appType !== 'Individual/Group' && grp.appType !== 'Individual or Group' && filterCategory !== 'All' && grp.headCategoryCode !== filterCategory) return false;
       return true;
     }).map(grp => {
       if (!q) return grp;
@@ -482,7 +484,7 @@ export const AdminResultsView: React.FC = () => {
             const val = e.target.value as ApplicationType | 'All';
             setFilterType(val);
             const canon = canonicalAppType(val);
-            if (val === 'Student-Secondary' || canon === 'Student-Secondary' || val === 'Individual or Group' || canon === 'Individual or Group') {
+            if (val === 'Student-Secondary' || canon === 'Student-Secondary' || val === 'Individual/Group' || canon === 'Individual/Group' || val === 'Individual or Group' || canon === 'Individual or Group') {
               setFilterCategory('All');
             }
           }}
@@ -603,7 +605,7 @@ export const AdminResultsView: React.FC = () => {
                             {typeGroup.appType.title}
                           </h2>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            {typeGroup.appType.id === 'Student-Secondary' || typeGroup.appType.id === 'Individual or Group'
+                            {typeGroup.appType.id === 'Student-Secondary' || typeGroup.appType.id === 'Individual/Group' || typeGroup.appType.id === 'Individual or Group'
                               ? `General Category (No Head Category) · ${typeGroup.totalInApp} Applicant${typeGroup.totalInApp !== 1 ? 's' : ''}`
                               : `${typeGroup.categories.length} Head Categories · ${typeGroup.totalInApp} Applicant${typeGroup.totalInApp !== 1 ? 's' : ''}`}
                           </p>
@@ -917,8 +919,9 @@ export const AdminResultsView: React.FC = () => {
                               {res.project.applicationId} · {res.project.teamOrOrgName}
                             </p>
                             <div className="flex items-center space-x-1.5 mt-1 text-[10px] font-semibold text-slate-500">
-                              <span className="rounded bg-slate-200 dark:bg-slate-800 px-1.5 py-0.2">{res.project.applicationType}</span>
+                              <span className="rounded bg-slate-200 dark:bg-slate-800 px-1.5 py-0.2">{canonicalAppType(res.project.applicationType)}</span>
                               {canonicalAppType(res.project.applicationType) !== 'Student-Secondary' &&
+                               canonicalAppType(res.project.applicationType) !== 'Individual/Group' &&
                                canonicalAppType(res.project.applicationType) !== 'Individual or Group' &&
                                res.project.headCategory && res.project.headCategory !== 'N/A' && (
                                 <>
@@ -975,8 +978,9 @@ export const AdminResultsView: React.FC = () => {
                     {selectedResult.project.applicationId} · {selectedResult.project.projectCode} · {selectedResult.project.teamOrOrgName}
                   </p>
                   <div className="flex items-center space-x-2 text-xs font-semibold text-slate-600 dark:text-slate-400 pt-0.5">
-                    <span>Type: <strong>{selectedResult.applicationType}</strong></span>
+                    <span>Type: <strong>{canonicalAppType(selectedResult.project.applicationType)}</strong></span>
                     {canonicalAppType(selectedResult.project.applicationType) !== 'Student-Secondary' &&
+                     canonicalAppType(selectedResult.project.applicationType) !== 'Individual/Group' &&
                      canonicalAppType(selectedResult.project.applicationType) !== 'Individual or Group' &&
                      selectedResult.project.headCategory && selectedResult.project.headCategory !== 'N/A' && (
                       <>

@@ -77,7 +77,7 @@ export const JudgeDashboard: React.FC<JudgeDashboardProps> = ({
               Welcome, {currentUser.fullName}!
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-indigo-100/90">
-              Evaluate nominated projects across Student, Organisation, and Individual/Group categories using the multi-judge 100-point converted scoring system.
+              Evaluate nominated projects across Student, Organization, and Individual/Group categories using the multi-judge 100-point converted scoring system.
             </p>
           </div>
 

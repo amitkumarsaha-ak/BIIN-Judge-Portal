@@ -119,6 +119,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
   const isNoCategory = Boolean(
     filterType && (
       canonicalAppType(filterType) === 'Student-Secondary' ||
+      canonicalAppType(filterType) === 'Individual/Group' ||
       canonicalAppType(filterType) === 'Individual or Group'
     )
   );
@@ -235,7 +236,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
           <option value="Student-Secondary">Student-Secondary</option>
           <option value="Student -Tertiary (University Level)">Student -Tertiary</option>
           <option value="Organization">Organization</option>
-          <option value="Individual or Group">Individual or Group</option>
+          <option value="Individual/Group">Individual/Group</option>
         </select>
 
         <select
@@ -276,6 +277,8 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
             const AppTypeIcon = getAppTypeIcon(project.applicationType);
             const evalItem = myEvaluations.find(e => e.projectId === project.id);
             const isEvaluated = Boolean(evalItem);
+            const canonType = canonicalAppType(project.applicationType);
+            const isNoCatProj = canonType === 'Student-Secondary' || canonType === 'Individual/Group' || canonType === 'Individual or Group';
 
             return (
               <div
@@ -287,10 +290,10 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className={`inline-flex items-center space-x-1.5 rounded-full px-3 py-1 text-xs font-semibold border ${getAppTypeColor(project.applicationType)}`}>
                         <AppTypeIcon className="h-3.5 w-3.5" />
-                        <span>{project.applicationType}</span>
+                        <span>{canonType}</span>
                       </span>
 
-                      {project.headCategory && project.headCategory !== 'N/A' && canonicalAppType(project.applicationType) !== 'Student-Secondary' && canonicalAppType(project.applicationType) !== 'Individual or Group' && (
+                      {project.headCategory && project.headCategory !== 'N/A' && !isNoCatProj && (
                         <span className="inline-flex items-center rounded-full bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 px-2.5 py-0.5 text-[11px] font-semibold">
                           <span>{getHeadCategoryDisplayName(project.headCategory, project.applicationType)}</span>
                         </span>
@@ -316,7 +319,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
                     {project.representativeName && project.teamLeadName && project.representativeName !== project.teamLeadName && (
                       <p><span className="text-slate-400">Representative:</span> {project.representativeName}</p>
                     )}
-                    {canonicalAppType(project.applicationType) !== 'Student-Secondary' && canonicalAppType(project.applicationType) !== 'Individual or Group' && (
+                    {!isNoCatProj && (
                       <p><span className="text-slate-400">Category:</span> {getHeadCategoryDisplayName(project.headCategory, project.applicationType)}</p>
                     )}
                   </div>

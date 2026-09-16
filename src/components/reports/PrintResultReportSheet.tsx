@@ -181,7 +181,7 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
               <div className="inline-block border-2 border-slate-900 rounded-xl px-4 py-2 bg-slate-50 text-center">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block">Category</span>
                 <span className="font-mono text-base font-black text-slate-900">
-                  {canonicalAppType(applicationType) === 'Student-Secondary' || canonicalAppType(applicationType) === 'Individual or Group'
+                  {canonicalAppType(applicationType) === 'Student-Secondary' || canonicalAppType(applicationType) === 'Individual/Group' || canonicalAppType(applicationType) === 'Individual or Group'
                     ? 'General'
                     : project.headCategory || 'General'}
                 </span>
@@ -198,13 +198,13 @@ export const PrintResultReportSheet: React.FC<PrintResultReportSheetProps> = ({
 
             <div>
               <span className="font-bold text-slate-500 uppercase tracking-wider block text-[10px]">Application Type</span>
-              <span className="font-semibold text-slate-900 block mt-0.5">{applicationType}</span>
+              <span className="font-semibold text-slate-900 block mt-0.5">{canonicalAppType(applicationType)}</span>
             </div>
 
             <div>
               <span className="font-bold text-slate-500 uppercase tracking-wider block text-[10px]">Head Category</span>
               <span className="font-semibold text-slate-900 block mt-0.5">
-                {canonicalAppType(applicationType) === 'Student-Secondary' || canonicalAppType(applicationType) === 'Individual or Group'
+                {canonicalAppType(applicationType) === 'Student-Secondary' || canonicalAppType(applicationType) === 'Individual/Group' || canonicalAppType(applicationType) === 'Individual or Group'
                   ? 'N/A'
                   : getHeadCategoryDisplayName(project.headCategory, applicationType)}
               </span>

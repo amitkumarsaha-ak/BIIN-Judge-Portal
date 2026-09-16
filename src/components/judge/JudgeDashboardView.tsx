@@ -141,7 +141,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
               Welcome, {currentUser.fullName}!
             </h1>
             <p className="mt-1.5 max-w-2xl text-xs sm:text-sm text-indigo-100/90 leading-relaxed">
-              Evaluate nominated projects across Student, Student-Tertiary, Organisation, and Individual/Group categories.
+              Evaluate nominated projects across Student, Student-Tertiary, Organization, and Individual/Group categories.
             </p>
           </div>
 
@@ -259,7 +259,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
 
                     <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200/80 dark:border-slate-800/80">
                       <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-400">
-                        {proj.applicationType}{canonicalAppType(proj.applicationType) !== 'Student-Secondary' && canonicalAppType(proj.applicationType) !== 'Individual or Group' && proj.headCategory && proj.headCategory !== 'N/A' ? ` · ${getHeadCategoryDisplayName(proj.headCategory, proj.applicationType)}` : ''}
+                        {canonicalAppType(proj.applicationType)}{canonicalAppType(proj.applicationType) !== 'Student-Secondary' && canonicalAppType(proj.applicationType) !== 'Individual/Group' && canonicalAppType(proj.applicationType) !== 'Individual or Group' && proj.headCategory && proj.headCategory !== 'N/A' ? ` · ${getHeadCategoryDisplayName(proj.headCategory, proj.applicationType)}` : ''}
                       </span>
 
                       {isEvaluated && evalItem ? (
@@ -315,7 +315,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
 
                         <td className="px-4 py-3.5">
                           <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                            {proj.applicationType}{canonicalAppType(proj.applicationType) !== 'Student-Secondary' && canonicalAppType(proj.applicationType) !== 'Individual or Group' && proj.headCategory && proj.headCategory !== 'N/A' ? ` · ${getHeadCategoryDisplayName(proj.headCategory, proj.applicationType)}` : ''}
+                            {canonicalAppType(proj.applicationType)}{canonicalAppType(proj.applicationType) !== 'Student-Secondary' && canonicalAppType(proj.applicationType) !== 'Individual/Group' && canonicalAppType(proj.applicationType) !== 'Individual or Group' && proj.headCategory && proj.headCategory !== 'N/A' ? ` · ${getHeadCategoryDisplayName(proj.headCategory, proj.applicationType)}` : ''}
                           </span>
                         </td>
 

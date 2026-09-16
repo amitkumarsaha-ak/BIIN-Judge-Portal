@@ -3,7 +3,7 @@ import {
   CheckCircle2, Pencil, Calendar, Award, Layers, Lock
 } from 'lucide-react';
 import type { Project, Evaluation } from '../../types';
-import { getCriteriaForApplicationType, getHeadCategoryDisplayName } from '../../utils/evaluation';
+import { getCriteriaForApplicationType, getHeadCategoryDisplayName, canonicalAppType } from '../../utils/evaluation';
 import { useAuth } from '../../context/AuthContext';
 import {
   getEvaluationsByJudge, getEvaluations, getProjectsForJudge, getSystemSettings,
@@ -146,9 +146,12 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
                         {project?.applicationId || e.projectId}
                       </span>
                       <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                        {project?.applicationType}
+                        {project ? canonicalAppType(project.applicationType) : ''}
                       </span>
-                      {project?.headCategory && project?.headCategory !== 'N/A' && (
+                      {project?.headCategory && project.headCategory !== 'N/A' &&
+                       canonicalAppType(project.applicationType) !== 'Student-Secondary' &&
+                       canonicalAppType(project.applicationType) !== 'Individual/Group' &&
+                       canonicalAppType(project.applicationType) !== 'Individual or Group' && (
                         <span className="rounded-md bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 px-2 py-0.5 text-[11px] font-semibold flex items-center space-x-1">
                           <Layers className="h-3 w-3" />
                           <span>{getHeadCategoryDisplayName(project?.headCategory, project?.applicationType)}</span>

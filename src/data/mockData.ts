@@ -16,15 +16,15 @@ export const APPLICATION_TYPES: { id: ApplicationType; title: string; descriptio
     icon: 'University'
   },
   {
-    id: 'Organisation',
-    title: 'Organisation',
+    id: 'Organization',
+    title: 'Organization',
     description: 'Corporate initiatives, enterprise technology solutions, registered companies & startups.',
     badge: 'Enterprise',
     icon: 'Building2'
   },
   {
-    id: 'Individual or Group',
-    title: 'Individual or Group',
+    id: 'Individual/Group',
+    title: 'Individual/Group',
     description: 'Independent creators, open-source contributors, researchers, and freelance developer teams.',
     badge: 'Independent',
     icon: 'Users'

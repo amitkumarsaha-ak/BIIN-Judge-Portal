@@ -446,12 +446,12 @@ export const updateSystemSettings = (settings: SystemSettings, actor?: { email: 
 
 export const getCategoryLockKey = (appType?: string, headCategory?: string | null): string => {
   const normType = canonicalAppType(appType);
-  if (normType === 'Student-Secondary' || normType === 'Individual or Group') {
+  if (normType === 'Student-Secondary' || normType === 'Individual/Group' || normType === 'Individual or Group') {
     return `${normType}___NONE`;
   }
-  if (normType === 'Organisation') {
+  if (normType === 'Organization' || normType === 'Organisation') {
     if (isOrgMergedHeadCategory(headCategory || '')) {
-      return `Organisation___${ORG_COMBINED_HEAD_CATEGORY_CODE}`;
+      return `Organization___${ORG_COMBINED_HEAD_CATEGORY_CODE}`;
     }
   }
   const normCategory = canonicalHeadCategory(headCategory || '');
@@ -914,7 +914,7 @@ export const getProjects = (): Project[] => {
         p.headCategory = 'N/A';
       }
       const canon = canonicalAppType(p.applicationType);
-      if ((canon === 'Individual or Group' || p.applicationType === 'Individual/Group') && p.headCategory !== 'N/A') {
+      if ((canon === 'Individual/Group' || canon === 'Individual or Group' || p.applicationType === 'Individual/Group') && p.headCategory !== 'N/A') {
         p.headCategory = 'N/A';
       }
 
@@ -1335,7 +1335,7 @@ export const isProjectAssignedToJudge = (judgeIdentifier: string, project: Proje
 
     // 4. Head category matching (only for application types with head categories)
     const canon = canonicalAppType(project.applicationType);
-    const isNoHeadCat = canon === 'Student-Secondary' || canon === 'Individual or Group' || canon === 'All Application Types';
+    const isNoHeadCat = canon === 'Student-Secondary' || canon === 'Individual/Group' || canon === 'Individual or Group' || canon === 'All Application Types';
     const normHeadCat = (asgn.headCategory || '').trim().toLowerCase();
     const isAllHeadCat = !normHeadCat ||
       normHeadCat === 'all' ||

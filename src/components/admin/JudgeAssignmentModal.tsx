@@ -31,7 +31,7 @@ interface JudgeAssignmentModalProps {
 const APPLICATION_TYPES: ApplicationType[] = [
   'All Application Types',
   'Student-Secondary',
-  'Individual or Group',
+  'Individual/Group',
   'Organization',
   'Student -Tertiary (University Level)'
 ];
@@ -114,7 +114,7 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
 
   const isNoHeadCategory = useMemo(() => {
     const canon = canonicalAppType(selectedAppType);
-    return canon === 'Student-Secondary' || canon === 'Individual or Group' || canon === 'All Application Types';
+    return canon === 'Student-Secondary' || canon === 'Individual/Group' || canon === 'Individual or Group' || canon === 'All Application Types';
   }, [selectedAppType]);
 
   // Matching projects based on selected scope
@@ -134,7 +134,7 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
     setSelectedAppType(type);
     setSelectedProjectIds([]);
     const canon = canonicalAppType(type);
-    if (canon === 'Student-Secondary' || canon === 'Individual or Group' || canon === 'All Application Types') {
+    if (canon === 'Student-Secondary' || canon === 'Individual/Group' || canon === 'Individual or Group' || canon === 'All Application Types') {
       setSelectedHeadCategory('N/A');
     } else {
       setSelectedHeadCategory('All Head Category');
@@ -361,7 +361,7 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
                   const Icon = getAppTypeIcon(asgn.applicationType);
                   const isSpecific = Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0;
                   const asgnCanon = canonicalAppType(asgn.applicationType);
-                  const isNoCat = asgnCanon === 'Student-Secondary' || asgnCanon === 'Individual or Group';
+                  const isNoCat = asgnCanon === 'Student-Secondary' || asgnCanon === 'Individual/Group' || asgnCanon === 'Individual or Group';
                   const asgnProjects = getProjectsForAssignment(asgn);
                   const isExpanded = expandedAsgnIds.includes(asgn.id);
 

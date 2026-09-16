@@ -38,7 +38,7 @@ export const runRbacTestSuite = () => {
   // Test 2: Judge project retrieval and category filtering
   const allProjects = getProjects();
   const studentProjects = getProjectsForJudge('Student');
-  const orgProjects = getProjectsForJudge('Organisation');
+  const orgProjects = getProjectsForJudge('Organization');
   const allJudgeProjects = getProjectsForJudge();
 
   console.log(`[PASS] Total projects: ${allProjects.length}, Judge view: ${allJudgeProjects.length}, Student: ${studentProjects.length}, Org: ${orgProjects.length}`);

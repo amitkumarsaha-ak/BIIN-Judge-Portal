@@ -83,10 +83,10 @@ export const IndividualJudgeReportView: React.FC<IndividualJudgeReportViewProps>
             className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 p-3 text-xs font-semibold text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 focus:border-indigo-500 focus:outline-none"
           >
             {allProjects.map((p) => {
-              const isNoCat = canonicalAppType(p.applicationType) === 'Student-Secondary' || canonicalAppType(p.applicationType) === 'Individual or Group';
+              const isNoCat = canonicalAppType(p.applicationType) === 'Student-Secondary' || canonicalAppType(p.applicationType) === 'Individual/Group' || canonicalAppType(p.applicationType) === 'Individual or Group';
               return (
                 <option key={p.id} value={p.id}>
-                  {p.title} ({p.applicationType}{!isNoCat && p.headCategory && p.headCategory !== 'N/A' ? ` • ${p.headCategory}` : ''})
+                  {p.title} ({canonicalAppType(p.applicationType)}{!isNoCat && p.headCategory && p.headCategory !== 'N/A' ? ` • ${p.headCategory}` : ''})
                 </option>
               );
             })}
@@ -133,7 +133,7 @@ export const IndividualJudgeReportView: React.FC<IndividualJudgeReportViewProps>
             <div>
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Category</span>
               <span className="font-heading font-extrabold text-indigo-600 dark:text-indigo-400 text-lg">
-                {canonicalAppType(currentProject.applicationType) === 'Student-Secondary' || canonicalAppType(currentProject.applicationType) === 'Individual or Group'
+                {canonicalAppType(currentProject.applicationType) === 'Student-Secondary' || canonicalAppType(currentProject.applicationType) === 'Individual/Group' || canonicalAppType(currentProject.applicationType) === 'Individual or Group'
                   ? 'General'
                   : currentProject.headCategory || 'General'}
               </span>

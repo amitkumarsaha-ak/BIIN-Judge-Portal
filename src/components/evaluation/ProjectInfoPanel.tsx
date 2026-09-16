@@ -12,7 +12,7 @@ export const ProjectInfoPanel: React.FC<ProjectInfoPanelProps> = ({ project }) =
   const canon = canonicalAppType(project.applicationType);
   const isStudent = canon === 'Student-Secondary';
   const isStudentTertiary = canon === 'Student-Tertiary';
-  const isOrg = canon === 'Organisation';
+  const isOrg = canon === 'Organization' || canon === 'Organisation';
 
   const teamLead = project.teamLeadName || project.representativeName || '';
 
@@ -22,7 +22,7 @@ export const ProjectInfoPanel: React.FC<ProjectInfoPanelProps> = ({ project }) =
       {/* Header Badges & Solution Name */}
       <div>
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          {project.headCategory && project.headCategory !== 'N/A' && canon !== 'Student-Secondary' && canon !== 'Individual or Group' && (
+          {project.headCategory && project.headCategory !== 'N/A' && canon !== 'Student-Secondary' && canon !== 'Individual/Group' && canon !== 'Individual or Group' && (
             <span className="inline-flex items-center space-x-1 rounded-full bg-indigo-50 dark:bg-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
               <span>{getHeadCategoryDisplayName(project.headCategory, project.applicationType)}</span>
             </span>
@@ -38,7 +38,7 @@ export const ProjectInfoPanel: React.FC<ProjectInfoPanelProps> = ({ project }) =
             ) : (
               <Users className="h-3.5 w-3.5" />
             )}
-            <span>{project.applicationType}</span>
+            <span>{canonicalAppType(project.applicationType)}</span>
           </span>
 
           {project.applicationId && (

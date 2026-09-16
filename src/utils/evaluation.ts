@@ -172,8 +172,8 @@ import type { HeadCategoryCode } from '../types';
 
 export const RESULT_APPLICATION_TYPES: { id: ApplicationType; title: string; shortTitle: string }[] = [
   { id: 'Student-Secondary', title: 'Student-Secondary', shortTitle: 'Student-Secondary' },
-  { id: 'Individual or Group', title: 'Individual/Group', shortTitle: 'Individual/Group' },
-  { id: 'Organisation', title: 'Organization', shortTitle: 'Organization' },
+  { id: 'Individual/Group', title: 'Individual/Group', shortTitle: 'Individual/Group' },
+  { id: 'Organization', title: 'Organization', shortTitle: 'Organization' },
   { id: 'Student-Tertiary', title: 'Student-Tertiary (University Level)', shortTitle: 'Student-Tertiary' }
 ];
 
@@ -224,7 +224,8 @@ export const isOrgMergedHeadCategory = (cat?: string): boolean => {
 
 export const getHeadCategoryDisplayName = (headCategory?: string | null, appType?: string): string => {
   if (!headCategory || headCategory === 'N/A') return 'N/A';
-  if (canonicalAppType(appType) === 'Organisation') {
+  const cType = canonicalAppType(appType);
+  if (cType === 'Organization' || cType === 'Organisation') {
     if (isOrgMergedHeadCategory(headCategory)) {
       return ORG_COMBINED_HEAD_CATEGORY_NAME;
     }
@@ -248,10 +249,10 @@ export const getHeadCategoriesForAppType = (appType?: string): readonly { code: 
     ];
   }
   const norm = canonicalAppType(appType);
-  if (norm === 'Student-Secondary' || norm === 'Individual or Group') {
+  if (norm === 'Student-Secondary' || norm === 'Individual/Group' || norm === 'Individual or Group') {
     return [];
   }
-  if (norm === 'Organisation') {
+  if (norm === 'Organization' || norm === 'Organisation') {
     return ORG_HEAD_CATEGORIES;
   }
   return RESULT_HEAD_CATEGORIES;
@@ -269,10 +270,10 @@ export const canonicalAppType = (type?: string): ApplicationType => {
     return 'Student-Secondary';
   }
   if (t.includes('org')) {
-    return 'Organisation';
+    return 'Organization';
   }
   if (t.includes('individual') || t.includes('group')) {
-    return 'Individual or Group';
+    return 'Individual/Group';
   }
   return 'Student-Secondary';
 };
@@ -320,7 +321,7 @@ export const matchesCategory = (
     return true;
   }
   const appType = canonicalAppType(projectAppType);
-  if (appType === 'Student-Secondary' || appType === 'Individual or Group' || appType === 'All Application Types') {
+  if (appType === 'Student-Secondary' || appType === 'Individual/Group' || appType === 'Individual or Group' || appType === 'All Application Types') {
     return true;
   }
   const pc = (projectCategory || '').toLowerCase().trim();
@@ -331,7 +332,7 @@ export const matchesCategory = (
   if (pc === fc) return true;
 
   // Organization unified category matching
-  if (appType === 'Organisation') {
+  if (appType === 'Organization' || appType === 'Organisation') {
     const isFilterMerged = isOrgMergedHeadCategory(filterCategory);
     const isProjMerged = isOrgMergedHeadCategory(projectCategory);
     if (isFilterMerged && isProjMerged) {
@@ -409,8 +410,8 @@ export const getProjectCombinedResult = (
   // Determine category pool
   const projectAppType = canonicalAppType(project.applicationType);
   const projectHeadCat = canonicalHeadCategory(project.headCategory);
-  const isNoHeadCategory = projectAppType === 'Student-Secondary' || projectAppType === 'Individual or Group';
-  const isOrgMerged = projectAppType === 'Organisation' && isOrgMergedHeadCategory(project.headCategory);
+  const isNoHeadCategory = projectAppType === 'Student-Secondary' || projectAppType === 'Individual/Group' || projectAppType === 'Individual or Group';
+  const isOrgMerged = (projectAppType === 'Organization' || projectAppType === 'Organisation') && isOrgMergedHeadCategory(project.headCategory);
 
   const sameCategoryProjects = allProjects.filter((p) => {
     if (canonicalAppType(p.applicationType) !== projectAppType) return false;
@@ -538,7 +539,7 @@ export const calculateCategorizedResults = (
   const groups: CategoryResultGroup[] = [];
 
   for (const app of RESULT_APPLICATION_TYPES) {
-    if (app.id === 'Student-Secondary' || app.id === 'Individual or Group') {
+    if (app.id === 'Student-Secondary' || app.id === 'Individual/Group' || app.id === 'Individual or Group') {
       const categoryProjects = allProjects.filter((p) => {
         return canonicalAppType(p.applicationType) === app.id;
       });
@@ -570,7 +571,7 @@ export const calculateCategorizedResults = (
       continue;
     }
 
-    const headCatsToIterate = app.id === 'Organisation' ? ORG_HEAD_CATEGORIES : RESULT_HEAD_CATEGORIES;
+    const headCatsToIterate = (app.id === 'Organization' || app.id === 'Organisation') ? ORG_HEAD_CATEGORIES : RESULT_HEAD_CATEGORIES;
 
     for (const hc of headCatsToIterate) {
       // Get all applications matching this applicationType and headCategory
@@ -578,7 +579,7 @@ export const calculateCategorizedResults = (
         const appMatch = p.applicationType === 'All Application Types' || canonicalAppType(p.applicationType) === app.id;
         if (!appMatch) return false;
 
-        if (app.id === 'Organisation') {
+        if (app.id === 'Organization' || app.id === 'Organisation') {
           if (hc.code === ORG_COMBINED_HEAD_CATEGORY_CODE) {
             return isOrgMergedHeadCategory(p.headCategory) || p.headCategory === 'All Head Category';
           }

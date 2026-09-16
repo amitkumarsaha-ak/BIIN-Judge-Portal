@@ -103,10 +103,10 @@ export const CombinedProjectResultView: React.FC<CombinedProjectResultViewProps>
           className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 p-3 text-xs font-semibold text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 focus:border-indigo-500 focus:outline-none"
         >
           {allProjects.map((p) => {
-            const isNoCat = canonicalAppType(p.applicationType) === 'Student-Secondary' || canonicalAppType(p.applicationType) === 'Individual or Group';
+            const isNoCat = canonicalAppType(p.applicationType) === 'Student-Secondary' || canonicalAppType(p.applicationType) === 'Individual/Group' || canonicalAppType(p.applicationType) === 'Individual or Group';
             return (
               <option key={p.id} value={p.id}>
-                {p.title} ({p.applicationType}{!isNoCat && p.headCategory && p.headCategory !== 'N/A' ? ` • ${p.headCategory}` : ''})
+                {p.title} ({canonicalAppType(p.applicationType)}{!isNoCat && p.headCategory && p.headCategory !== 'N/A' ? ` • ${p.headCategory}` : ''})
               </option>
             );
           })}
@@ -127,6 +127,7 @@ export const CombinedProjectResultView: React.FC<CombinedProjectResultViewProps>
             <div className="space-y-1">
               <div className="flex items-center space-x-2">
                 {canonicalAppType(combinedResult.applicationType) !== 'Student-Secondary' &&
+                 canonicalAppType(combinedResult.applicationType) !== 'Individual/Group' &&
                  canonicalAppType(combinedResult.applicationType) !== 'Individual or Group' &&
                  combinedResult.project.headCategory && combinedResult.project.headCategory !== 'N/A' && (
                   <span className="rounded-lg bg-indigo-50 dark:bg-indigo-500/20 px-3 py-1 text-xs font-mono font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
@@ -253,8 +254,9 @@ export const CombinedProjectResultView: React.FC<CombinedProjectResultViewProps>
 
               {combinedResult.isHighestInCategory && combinedResult.award.includes('Champion') && (
                 <p className="text-xs text-amber-300 font-semibold tracking-wide mt-1">
-                  ★ Highest Score in Category ({combinedResult.applicationType}
+                  ★ Highest Score in Category ({canonicalAppType(combinedResult.applicationType)}
                   {canonicalAppType(combinedResult.applicationType) !== 'Student-Secondary' &&
+                   canonicalAppType(combinedResult.applicationType) !== 'Individual/Group' &&
                    canonicalAppType(combinedResult.applicationType) !== 'Individual or Group' &&
                    combinedResult.project.headCategory && combinedResult.project.headCategory !== 'N/A'
                     ? ` • ${combinedResult.project.headCategory}`

@@ -28,6 +28,7 @@ const getAppTypeIcon = (type: ApplicationType) => {
   switch (canon) {
     case 'Student-Secondary':
     case 'Student': return GraduationCap;
+    case 'Organization':
     case 'Organisation': return Building2;
     case 'Student-Tertiary': return University;
     default: return Users;
@@ -39,6 +40,7 @@ const getAppTypeColor = (type: ApplicationType) => {
   switch (canon) {
     case 'Student-Secondary':
     case 'Student': return 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20';
+    case 'Organization':
     case 'Organisation': return 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
     case 'Student-Tertiary': return 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20';
     default: return 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20';
@@ -894,7 +896,7 @@ export const AdminProjectsView: React.FC = () => {
                       <span>·</span>
                       <span className={`inline-flex items-center space-x-1 rounded-full px-2 py-0.5 font-medium border ${getAppTypeColor(project.applicationType)}`}>
                         <AppTypeIcon className="h-2.5 w-2.5" />
-                        <span>{project.applicationType}</span>
+                        <span>{canonicalAppType(project.applicationType)}</span>
                       </span>
                       {canonicalAppType(project.applicationType) !== 'Student-Secondary' && (
                         <span className="inline-flex items-center space-x-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 font-medium text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20">

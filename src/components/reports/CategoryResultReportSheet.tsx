@@ -73,6 +73,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
 
         const isNoHeadCat =
           canonicalAppType(group.appType) === 'Student-Secondary' ||
+          canonicalAppType(group.appType) === 'Individual/Group' ||
           canonicalAppType(group.appType) === 'Individual or Group';
 
         const catTitle = isNoHeadCat ? 'General (No Head Category)' : group.headCategoryName;
@@ -486,6 +487,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
 
             const isNoHeadCat =
               canonicalAppType(group.appType) === 'Student-Secondary' ||
+              canonicalAppType(group.appType) === 'Individual/Group' ||
               canonicalAppType(group.appType) === 'Individual or Group';
 
             return (

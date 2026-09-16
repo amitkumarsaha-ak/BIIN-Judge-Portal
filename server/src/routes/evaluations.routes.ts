@@ -15,10 +15,10 @@ function canonicalAppType(type?: string): string {
     return 'Student-Secondary';
   }
   if (t.includes('org')) {
-    return 'Organisation';
+    return 'Organization';
   }
   if (t.includes('individual') || t.includes('group')) {
-    return 'Individual or Group';
+    return 'Individual/Group';
   }
   return 'Student-Secondary';
 }
@@ -44,7 +44,7 @@ function matchesCategory(projectCategory?: string | null, filterCategory?: strin
     return true;
   }
   const appType = canonicalAppType(projectAppType || undefined);
-  if (appType === 'Student-Secondary' || appType === 'Individual or Group' || appType === 'All Application Types') {
+  if (appType === 'Student-Secondary' || appType === 'Individual/Group' || appType === 'Individual or Group' || appType === 'All Application Types') {
     return true;
   }
   const pc = (projectCategory || '').toLowerCase().trim();
@@ -54,7 +54,7 @@ function matchesCategory(projectCategory?: string | null, filterCategory?: strin
   }
   if (pc === fc) return true;
 
-  if (appType === 'Organisation') {
+  if (appType === 'Organization' || appType === 'Organisation') {
     const isFilterMerged = isOrgMergedHeadCategory(filterCategory);
     const isProjMerged = isOrgMergedHeadCategory(projectCategory || undefined);
     if (isFilterMerged && isProjMerged) {
@@ -100,12 +100,12 @@ function isOrgMergedHeadCategory(cat?: string): boolean {
 
 function getCategoryLockKey(appType?: string, headCategory?: string | null): string {
   const normType = canonicalAppType(appType);
-  if (normType === 'Student-Secondary' || normType === 'Individual or Group') {
+  if (normType === 'Student-Secondary' || normType === 'Individual/Group' || normType === 'Individual or Group') {
     return `${normType}___NONE`;
   }
-  if (normType === 'Organisation') {
+  if (normType === 'Organization' || normType === 'Organisation') {
     if (isOrgMergedHeadCategory(headCategory || '')) {
-      return 'Organisation___HC-PSG-I-C';
+      return 'Organization___HC-PSG-I-C';
     }
   }
   const normCategory = canonicalHeadCategory(headCategory || '');

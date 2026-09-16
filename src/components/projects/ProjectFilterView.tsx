@@ -34,6 +34,7 @@ export const ProjectFilterView: React.FC<ProjectFilterViewProps> = ({
     }
     if (selectedCategory &&
         canonicalAppType(project.applicationType) !== 'Student-Secondary' &&
+        canonicalAppType(project.applicationType) !== 'Individual/Group' &&
         canonicalAppType(project.applicationType) !== 'Individual or Group' &&
         !matchesCategory(project.headCategory, selectedCategory, project.applicationType)) {
       return false;
@@ -97,7 +98,7 @@ export const ProjectFilterView: React.FC<ProjectFilterViewProps> = ({
       </div>
 
       {/* Step 2: Select Head Category */}
-      {(!selectedType || (canonicalAppType(selectedType) !== 'Student-Secondary' && canonicalAppType(selectedType) !== 'Individual or Group')) && (
+      {(!selectedType || (canonicalAppType(selectedType) !== 'Student-Secondary' && canonicalAppType(selectedType) !== 'Individual/Group' && canonicalAppType(selectedType) !== 'Individual or Group')) && (
         <div className="glass-panel rounded-3xl p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <HeadCategorySelector
             selectedCategory={selectedCategory}
@@ -117,7 +118,7 @@ export const ProjectFilterView: React.FC<ProjectFilterViewProps> = ({
             Type: {selectedType || 'All Types'}
           </span>
 
-          {(!selectedType || (canonicalAppType(selectedType) !== 'Student-Secondary' && canonicalAppType(selectedType) !== 'Individual or Group')) && (
+          {(!selectedType || (canonicalAppType(selectedType) !== 'Student-Secondary' && canonicalAppType(selectedType) !== 'Individual/Group' && canonicalAppType(selectedType) !== 'Individual or Group')) && (
             <span className="rounded-lg bg-cyan-50 dark:bg-cyan-500/20 px-2.5 py-1 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30 font-medium">
               Category: {selectedCategory || 'All Categories'}
             </span>

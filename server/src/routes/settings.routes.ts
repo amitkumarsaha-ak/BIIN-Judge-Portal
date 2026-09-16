@@ -30,6 +30,11 @@ router.put('/', async (req: Request, res: Response): Promise<void> => {
         } else if (k.startsWith('Organization___')) {
           finalCategoryLocks[k.replace('Organization___', 'Organisation___')] = Boolean(v);
         }
+        if (k.startsWith('Individual or Group___')) {
+          finalCategoryLocks[k.replace('Individual or Group___', 'Individual/Group___')] = Boolean(v);
+        } else if (k.startsWith('Individual/Group___')) {
+          finalCategoryLocks[k.replace('Individual/Group___', 'Individual or Group___')] = Boolean(v);
+        }
       }
     }
     const updated = await settingsDb.update({
@@ -165,6 +170,11 @@ router.post('/toggle-category-lock', async (req: Request, res: Response): Promis
         categoryLocks[key.replace('Organisation___', 'Organization___')] = Boolean(locked);
       } else if (key.startsWith('Organization___')) {
         categoryLocks[key.replace('Organization___', 'Organisation___')] = Boolean(locked);
+      }
+      if (key.startsWith('Individual or Group___')) {
+        categoryLocks[key.replace('Individual or Group___', 'Individual/Group___')] = Boolean(locked);
+      } else if (key.startsWith('Individual/Group___')) {
+        categoryLocks[key.replace('Individual/Group___', 'Individual or Group___')] = Boolean(locked);
       }
     }
     const updated = await settingsDb.update({ categoryLocks });
