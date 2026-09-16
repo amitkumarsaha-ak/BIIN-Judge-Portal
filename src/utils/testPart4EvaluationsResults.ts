@@ -211,11 +211,11 @@ const res6 = getProjectCombinedResult(testProjects[5], testProjects, testEvals);
 
 console.assert(res1.award === 'Champion', `Expected 'Champion', got '${res1.award}'`);
 console.assert(res2.award === 'Winner', `Expected 'Winner', got '${res2.award}'`);
-console.assert(res3.award === '1st Merit', `Expected '1st Merit', got '${res3.award}'`);
-console.assert(res4.award === '2nd Merit', `Expected '2nd Merit', got '${res4.award}'`);
+console.assert(res3.award === 'Eligible for Merit', `Expected 'Eligible for Merit', got '${res3.award}'`);
+console.assert(res4.award === 'Eligible for Merit', `Expected 'Eligible for Merit', got '${res4.award}'`);
 console.assert(res5.award === 'No Award', `Expected 'No Award', got '${res5.award}'`);
 console.assert(res6.award === 'No Award', `Expected 'No Award' for 66% due to max 2 Merits, got '${res6.award}'`);
-console.log(`[PASS] 1 Champion (96%), 1 Winner (90%), 1st Merit (75%), 2nd Merit (68%), 3rd qualifying (66%) -> No Award (Max 2 Merits enforced).`);
+console.log(`[PASS] 1 Champion (96%), 1 Winner (90%), 2 Eligible for Merit (75%, 68%), 3rd qualifying (66%) -> No Award (Max 2 Merits enforced).`);
 
 // --- TEST 12 RESULT POOLS ---
 console.log('\n--- Testing 12 Competition Category Pools ---');

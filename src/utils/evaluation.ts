@@ -385,15 +385,8 @@ export const getProjectCombinedResult = (
     baseAward = 'Merit';
     const meritRank = meritIds.indexOf(project.id) + 1;
     awardSequence = meritRank;
-    if (meritIds.length > 1) {
-      const ord = getOrdinal(meritRank);
-      const ordWord = getOrdinalWord(meritRank);
-      awardRank = `${ord} Merit`;
-      awardFullTitle = `${ordWord} Merit`;
-    } else {
-      awardRank = 'Merit';
-      awardFullTitle = 'Merit';
-    }
+    awardRank = 'Eligible for Merit';
+    awardFullTitle = 'Eligible for Merit';
   } else {
     baseAward = 'No Award';
     awardRank = 'No Award';

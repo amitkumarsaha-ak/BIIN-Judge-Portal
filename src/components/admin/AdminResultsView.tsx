@@ -324,7 +324,7 @@ export const AdminResultsView: React.FC = () => {
             Results & Award Designation
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-            12 Independent Award Categories. Designations: <strong>≥85% Champion</strong> (and highest in category), <strong>≥70% Winner</strong>, <strong>≥65% Merit (max 2 per category)</strong>, and <strong>&lt;65% No Award</strong>.
+            12 Independent Award Categories. Designations: <strong>≥85% Champion</strong> (and highest in category), <strong>≥70% Winner</strong>, <strong>≥65% Eligible for Merit (max 2 per category)</strong>, and <strong>&lt;65% No Award</strong>.
           </p>
         </div>
 
@@ -402,10 +402,10 @@ export const AdminResultsView: React.FC = () => {
         <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-300/40 dark:border-emerald-500/30 rounded-2xl p-3.5 shadow-sm">
           <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center space-x-1">
             <Award className="h-3 w-3" />
-            <span>Merits (≥65%)</span>
+            <span>Eligible for Merit (≥65%)</span>
           </p>
           <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">{overallTotals.totalMerits}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">Up to 2 per pool (Sequenced)</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Up to 2 per pool (Max 2)</p>
         </div>
 
         <div className="col-span-2 min-[640px]:col-span-1 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
@@ -571,7 +571,7 @@ export const AdminResultsView: React.FC = () => {
                           🥈 {typeGroup.totalWinners} Win
                         </span>
                         <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2.5 py-0.5 border border-emerald-200/60 dark:border-emerald-800/60">
-                          🥉 {typeGroup.totalMerits} Merit
+                          🥉 {typeGroup.totalMerits} Eligible for Merit
                         </span>
                       </div>
                     </div>
@@ -736,7 +736,7 @@ export const AdminResultsView: React.FC = () => {
                                       <div className="flex items-center space-x-1.5">
                                         <Award className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                                         <span className="text-xs font-black tracking-wider text-emerald-900 dark:text-emerald-200 uppercase">
-                                          Merit (Max 2 • ≥ 65%)
+                                          Eligible for Merit (Max 2 • ≥ 65%)
                                         </span>
                                       </div>
                                       <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-200/70 dark:bg-emerald-800/50 text-emerald-900 dark:text-emerald-200">
@@ -746,7 +746,7 @@ export const AdminResultsView: React.FC = () => {
 
                                     {cat.merits.length === 0 ? (
                                       <p className="text-[11px] italic text-emerald-800/60 dark:text-emerald-400/50 pl-1">
-                                        No Merit
+                                        No Eligible for Merit
                                       </p>
                                     ) : (
                                       <div className="space-y-1.5">

@@ -19,13 +19,13 @@ const getPositionDisplay = (res: CombinedProjectResult): string => {
     return 'Winner';
   }
   if (res.awardBase === 'Merit' || res.award.includes('Merit')) {
-    return 'Merit';
+    return 'Eligible for Merit';
   }
   return 'N/A';
 };
 
 const getPositionClass = (pos: string): string => {
-  if (pos === 'Champion' || pos === 'Winner' || pos === 'Merit') {
+  if (pos === 'Champion' || pos === 'Winner' || pos.includes('Merit')) {
     return 'font-extrabold text-slate-950';
   }
   return 'text-slate-500 font-normal';
@@ -103,7 +103,11 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
           const leadInfo = org && org !== teamLead ? `Team Lead: ${teamLead} (${org})` : `Team Lead: ${teamLead}`;
           const score = `${formatScoreNumber(item.finalAverageScore)}%`;
           const position = getPositionDisplay(item);
-          return [sl, `${solutionName}\n${leadInfo}`, score, position];
+          let positionDisplay = position;
+          if (position === 'Eligible for Merit') {
+            positionDisplay = 'Eligible for Merit\n[   ] Yes     [   ] No';
+          }
+          return [sl, `${solutionName}\n${leadInfo}`, score, positionDisplay];
         });
 
         if (tableBody.length === 0) {
@@ -135,13 +139,13 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
           columnStyles: {
             0: { cellWidth: 12, halign: 'center', fontStyle: 'bold' },
             1: { cellWidth: 'auto' },
-            2: { cellWidth: 26, halign: 'center', fontStyle: 'bold', fontSize: 9 },
-            3: { cellWidth: 32, halign: 'center', fontStyle: 'bold', fontSize: 9 }
+            2: { cellWidth: 24, halign: 'center', fontStyle: 'bold', fontSize: 9 },
+            3: { cellWidth: 44, halign: 'center', fontSize: 8.5 }
           },
           didParseCell: (data) => {
             if (data.section === 'body' && data.column.index === 3) {
               const val = String(data.cell.raw);
-              if (val === 'Champion' || val === 'Winner' || val === 'Merit') {
+              if (val.includes('Champion') || val.includes('Winner') || val.includes('Eligible for Merit') || val.includes('Merit')) {
                 data.cell.styles.fontStyle = 'bold';
                 data.cell.styles.textColor = [15, 23, 42]; // solid black
               } else {
@@ -563,9 +567,27 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
                                 </td>
 
                                 <td className="p-2.5 border border-slate-400 text-center">
-                                  <span className={`text-xs uppercase tracking-wider ${getPositionClass(position)}`}>
-                                    {position}
-                                  </span>
+                                  {position === 'Eligible for Merit' ? (
+                                    <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2">
+                                      <span className="text-xs uppercase tracking-wider font-extrabold text-slate-950 whitespace-nowrap">
+                                        Eligible for Merit
+                                      </span>
+                                      <span className="inline-flex items-center gap-2 text-[11px] font-bold text-slate-900 shrink-0">
+                                        <span className="inline-flex items-center gap-1">
+                                          <span className="w-3.5 h-3.5 border-2 border-slate-900 inline-block bg-white rounded-none"></span>
+                                          <span>Yes</span>
+                                        </span>
+                                        <span className="inline-flex items-center gap-1">
+                                          <span className="w-3.5 h-3.5 border-2 border-slate-900 inline-block bg-white rounded-none"></span>
+                                          <span>No</span>
+                                        </span>
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className={`text-xs uppercase tracking-wider ${getPositionClass(position)}`}>
+                                      {position}
+                                    </span>
+                                  )}
                                 </td>
                               </tr>
                             );
@@ -581,7 +603,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
                       Total Projects: <strong className="text-slate-800 font-mono">{sortedResults.length}</strong>
                     </span>
                     <span>
-                      Criteria: Champion (≥85%), Winner (≥70%), Merit (≥65%, Max 2), N/A (&lt;65%)
+                      Criteria: Champion (≥85%), Winner (≥70%), Eligible for Merit (≥65%, Max 2), N/A (&lt;65%)
                     </span>
                     <span>
                       Generated: {new Date().toLocaleDateString()}
