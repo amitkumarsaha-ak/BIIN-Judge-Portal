@@ -169,13 +169,13 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
         const numJudges = judgeList.length;
 
         const isTwoRows = numJudges > 6;
-        const totalHeightNeeded = isTwoRows ? 74 : 58;
+        const totalHeightNeeded = isTwoRows ? 95 : 75;
 
         const lastTable = (pdf as any).lastAutoTable;
-        let sigY = lastTable ? lastTable.finalY + 12 : 180;
+        let sigY = lastTable ? lastTable.finalY + 12 : 160;
 
         // If signatures (judges + 2 authorized signatures) would collide with bottom footer (at ~265mm)
-        if (sigY + totalHeightNeeded > 262) {
+        if (sigY + totalHeightNeeded > 255) {
           pdf.addPage('a4', 'portrait');
           sigY = 50; // below top letterhead on the new page
         }
@@ -189,14 +189,15 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
         pdf.setTextColor(51, 65, 85);
         pdf.text('JUDGES COMMITTEE SIGNATURES & VERIFICATION', 105, sigY + 6, { align: 'center' });
 
-        // Extra space between heading and judge signature line (sigY + 30 gives 24mm clearance)
-        let endOfJudgesY = sigY + 30;
+        // Extra space between heading and judge signature line (sigY + 42 gives 36mm clearance)
+        const judgeLineOffset = 42;
+        let endOfJudgesY = sigY + judgeLineOffset;
 
         if (!isTwoRows) {
           const startX = 14;
           const totalW = 182;
           const colW = totalW / numJudges;
-          const lineY = sigY + 30;
+          const lineY = sigY + judgeLineOffset;
           endOfJudgesY = lineY;
 
           const nameFont = numJudges >= 6 ? 6.5 : 7.5;
@@ -232,7 +233,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
           const startX = 14;
 
           // Row 1
-          const lineY1 = sigY + 30;
+          const lineY1 = sigY + judgeLineOffset;
           for (let j = 0; j < perRow; j++) {
             const slotX = startX + j * colW;
             const midX = slotX + colW / 2;
@@ -255,7 +256,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
           }
 
           // Row 2
-          const lineY2 = lineY1 + 20;
+          const lineY2 = lineY1 + 22;
           endOfJudgesY = lineY2;
           for (let j = perRow; j < numJudges; j++) {
             const idxInRow = j - perRow;
@@ -280,8 +281,8 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
           }
         }
 
-        // 5. Authorized Signatures Section (2 signatures at the bottom)
-        const authY = endOfJudgesY + 22;
+        // 5. Authorized Signatures Section (Pinned to the very bottom of the page before footer)
+        const authY = Math.max(endOfJudgesY + 34, 252);
 
         // Left Authorized Signature
         const leftAuthX1 = 20;
@@ -362,6 +363,10 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
           .category-page-break {
             page-break-after: always;
             break-after: page;
+            min-height: 220mm !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
             box-shadow: none !important;
             border: none !important;
             border-radius: 0 !important;
@@ -481,144 +486,149 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
             return (
               <div
                 key={group.categoryKey}
-                className="category-page-break rounded-3xl bg-white p-6 sm:p-10 md:p-12 text-slate-900 shadow-2xl border border-slate-200 space-y-6"
+                className="category-page-break rounded-3xl bg-white p-6 sm:p-10 md:p-12 text-slate-900 shadow-2xl border border-slate-200 flex flex-col justify-between min-h-[900px] sm:min-h-[1050px] space-y-8"
               >
-                {/* 1. Header Section */}
-                <div className="text-center space-y-1.5 pb-4 border-b-2 border-slate-900">
-                  <h1 className="font-heading text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-wide">
-                    Bangladesh ICT and Innovation Awards 2026
-                  </h1>
+                {/* Upper Content: Header + Results Table + Summary Note */}
+                <div className="space-y-6 flex-1">
+                  {/* 1. Header Section */}
+                  <div className="text-center space-y-1.5 pb-4 border-b-2 border-slate-900">
+                    <h1 className="font-heading text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-wide">
+                      Bangladesh ICT and Innovation Awards 2026
+                    </h1>
 
-                  <div className="text-sm sm:text-base font-bold text-slate-700 uppercase tracking-normal">
-                    <span>Application Type: <span className="text-slate-950 font-extrabold">{group.appTypeTitle}</span></span>
-                    <span className="mx-2 text-slate-400">•</span>
-                    <span>
-                      Category Name: <span className="text-slate-950 font-extrabold">
-                        {isNoHeadCat ? 'General (No Head Category)' : group.headCategoryName}
+                    <div className="text-sm sm:text-base font-bold text-slate-700 uppercase tracking-normal">
+                      <span>Application Type: <span className="text-slate-950 font-extrabold">{group.appTypeTitle}</span></span>
+                      <span className="mx-2 text-slate-400">•</span>
+                      <span>
+                        Category Name: <span className="text-slate-950 font-extrabold">
+                          {isNoHeadCat ? 'General (No Head Category)' : group.headCategoryName}
+                        </span>
                       </span>
-                    </span>
+                    </div>
                   </div>
-                </div>
 
-                {/* 2. Results Table */}
-                <div className="overflow-x-auto">
-                  <table className="print-table w-full text-left text-xs border border-slate-400">
-                    <thead className="bg-slate-100 text-slate-900 font-extrabold uppercase text-[11px]">
-                      <tr>
-                        <th className="p-2.5 border border-slate-400 text-center w-12">SL</th>
-                        <th className="p-2.5 border border-slate-400">
-                          <div>Solution Name</div>
-                          <div className="text-[10px] text-slate-600 font-medium lowercase">team lead name</div>
-                        </th>
-                        <th className="p-2.5 border border-slate-400 text-center w-28">Score</th>
-                        <th className="p-2.5 border border-slate-400 text-center w-36">Position</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-300">
-                      {sortedResults.length === 0 ? (
+                  {/* 2. Results Table */}
+                  <div className="overflow-x-auto">
+                    <table className="print-table w-full text-left text-xs border border-slate-400">
+                      <thead className="bg-slate-100 text-slate-900 font-extrabold uppercase text-[11px]">
                         <tr>
-                          <td colSpan={4} className="p-6 text-center text-slate-500 italic">
-                            No evaluated projects in this category.
-                          </td>
+                          <th className="p-2.5 border border-slate-400 text-center w-12">SL</th>
+                          <th className="p-2.5 border border-slate-400">
+                            <div>Solution Name</div>
+                            <div className="text-[10px] text-slate-600 font-medium lowercase">team lead name</div>
+                          </th>
+                          <th className="p-2.5 border border-slate-400 text-center w-28">Score</th>
+                          <th className="p-2.5 border border-slate-400 text-center w-36">Position</th>
                         </tr>
-                      ) : (
-                        sortedResults.map((item, idx) => {
-                          const sl = idx + 1;
-                          const solutionName = item.project.solutionName || item.project.title;
-                          const teamLead =
-                            item.project.teamLeadName ||
-                            item.project.representativeName ||
-                            item.project.teamOrOrgName ||
-                            'N/A';
-                          const position = getPositionDisplay(item);
+                      </thead>
+                      <tbody className="divide-y divide-slate-300">
+                        {sortedResults.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="p-6 text-center text-slate-500 italic">
+                              No evaluated projects in this category.
+                            </td>
+                          </tr>
+                        ) : (
+                          sortedResults.map((item, idx) => {
+                            const sl = idx + 1;
+                            const solutionName = item.project.solutionName || item.project.title;
+                            const teamLead =
+                              item.project.teamLeadName ||
+                              item.project.representativeName ||
+                              item.project.teamOrOrgName ||
+                              'N/A';
+                            const position = getPositionDisplay(item);
 
-                          return (
-                            <tr key={item.project.id} className="hover:bg-slate-50">
-                              <td className="p-2.5 border border-slate-400 text-center font-mono font-bold text-slate-700">
-                                {sl}
-                              </td>
+                            return (
+                              <tr key={item.project.id} className="hover:bg-slate-50">
+                                <td className="p-2.5 border border-slate-400 text-center font-mono font-bold text-slate-700">
+                                  {sl}
+                                </td>
 
-                              <td className="p-2.5 border border-slate-400">
-                                <div className="font-bold text-slate-950 text-[13px] leading-snug">
-                                  {solutionName}
-                                </div>
-                                <div className="text-[11px] text-slate-600 font-medium mt-0.5">
-                                  Team Lead: <span className="text-slate-900 font-semibold">{teamLead}</span>
-                                  {item.project.teamOrOrgName && item.project.teamOrOrgName !== teamLead && (
-                                    <span className="text-slate-500 font-normal"> ({item.project.teamOrOrgName})</span>
-                                  )}
-                                </div>
-                              </td>
+                                <td className="p-2.5 border border-slate-400">
+                                  <div className="font-bold text-slate-950 text-[13px] leading-snug">
+                                    {solutionName}
+                                  </div>
+                                  <div className="text-[11px] text-slate-600 font-medium mt-0.5">
+                                    Team Lead: <span className="text-slate-900 font-semibold">{teamLead}</span>
+                                    {item.project.teamOrOrgName && item.project.teamOrOrgName !== teamLead && (
+                                      <span className="text-slate-500 font-normal"> ({item.project.teamOrOrgName})</span>
+                                    )}
+                                  </div>
+                                </td>
 
-                              <td className="p-2.5 border border-slate-400 text-center font-mono font-black text-sm text-slate-900">
-                                {formatScoreNumber(item.finalAverageScore)}%
-                              </td>
+                                <td className="p-2.5 border border-slate-400 text-center font-mono font-black text-sm text-slate-900">
+                                  {formatScoreNumber(item.finalAverageScore)}%
+                                </td>
 
-                              <td className="p-2.5 border border-slate-400 text-center">
-                                <span className={`text-xs uppercase tracking-wider ${getPositionClass(position)}`}>
-                                  {position}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                                <td className="p-2.5 border border-slate-400 text-center">
+                                  <span className={`text-xs uppercase tracking-wider ${getPositionClass(position)}`}>
+                                    {position}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
 
-                {/* 3. Summary / Rules Footer Note */}
-                <div className="flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-500 border-t border-slate-200 pt-2 font-medium">
-                  <span>
-                    Total Projects: <strong className="text-slate-800 font-mono">{sortedResults.length}</strong>
-                  </span>
-                  <span>
-                    Criteria: Champion (≥85%), Winner (≥70%), Merit (≥65%, Max 2), N/A (&lt;65%)
-                  </span>
-                  <span>
-                    Generated: {new Date().toLocaleDateString()}
-                  </span>
-                </div>
-
-                {/* 4. Judges Committee Signatures Section */}
-                <div className="print-signature-block pt-10 mt-8 border-t-2 border-slate-900 space-y-4">
-                  <div className="text-center">
-                    <span className="text-xs font-bold uppercase tracking-widest text-slate-700">
-                      Judges Committee Signatures &amp; Verification
+                  {/* 3. Summary / Rules Footer Note */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-500 border-t border-slate-200 pt-2 font-medium">
+                    <span>
+                      Total Projects: <strong className="text-slate-800 font-mono">{sortedResults.length}</strong>
+                    </span>
+                    <span>
+                      Criteria: Champion (≥85%), Winner (≥70%), Merit (≥65%, Max 2), N/A (&lt;65%)
+                    </span>
+                    <span>
+                      Generated: {new Date().toLocaleDateString()}
                     </span>
                   </div>
+                </div>
 
-                  {/* Extra space between heading and judge signatures */}
-                  <div
-                    className="grid gap-4 text-center pt-8 sm:pt-10"
-                    style={{
-                      gridTemplateColumns: `repeat(${judgeSlots.length > 6 ? Math.ceil(judgeSlots.length / 2) : judgeSlots.length}, minmax(0, 1fr))`
-                    }}
-                  >
-                    {judgeSlots.map((slot) => (
-                      <div key={slot.number} className="flex flex-col justify-end space-y-1">
-                        {/* Signature Line with generous height */}
-                        <div className="h-16 sm:h-20 border-b-2 border-slate-800 mb-1 flex items-end justify-center">
-                          {/* Blank area for physical signature */}
+                {/* 4. Judges Committee & Authorized Signatures Section (Pinned to the very bottom) */}
+                <div className="print-signature-block pt-10 mt-auto border-t-2 border-slate-900 flex flex-col justify-between">
+                  <div>
+                    <div className="text-center">
+                      <span className="text-xs font-bold uppercase tracking-widest text-slate-700">
+                        Judges Committee Signatures &amp; Verification
+                      </span>
+                    </div>
+
+                    {/* Extra space between heading and judge signatures */}
+                    <div
+                      className="grid gap-4 text-center pt-14 sm:pt-16"
+                      style={{
+                        gridTemplateColumns: `repeat(${judgeSlots.length > 6 ? Math.ceil(judgeSlots.length / 2) : judgeSlots.length}, minmax(0, 1fr))`
+                      }}
+                    >
+                      {judgeSlots.map((slot) => (
+                        <div key={slot.number} className="flex flex-col justify-end space-y-1">
+                          {/* Signature Line with generous height */}
+                          <div className="h-16 sm:h-20 border-b-2 border-slate-800 mb-1 flex items-end justify-center">
+                            {/* Blank area for physical signature */}
+                          </div>
+
+                          <span className="text-[11px] font-bold text-slate-900 block truncate" title={slot.name || `Judge ${slot.number}`}>
+                            {slot.name || `Judge ${slot.number}`}
+                          </span>
+
+                          <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">
+                            Judge {slot.number}
+                          </span>
+
+                          <span className="text-[9px] text-slate-400 block">
+                            Signature
+                          </span>
                         </div>
-
-                        <span className="text-[11px] font-bold text-slate-900 block truncate" title={slot.name || `Judge ${slot.number}`}>
-                          {slot.name || `Judge ${slot.number}`}
-                        </span>
-
-                        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">
-                          Judge {slot.number}
-                        </span>
-
-                        <span className="text-[9px] text-slate-400 block">
-                          Signature
-                        </span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
 
-                  {/* 5. 2 Authorized Signatures Section */}
-                  <div className="pt-12 sm:pt-16 flex items-end justify-between px-6 sm:px-14">
+                  {/* 5. 2 Authorized Signatures Section - Pinned to the very bottom of the page */}
+                  <div className="pt-20 sm:pt-28 pb-1 flex items-end justify-between px-6 sm:px-14">
                     <div className="w-52 sm:w-60 text-center">
                       <div className="h-14 border-b-2 border-slate-800 mb-1"></div>
                       <span className="text-xs font-bold text-slate-900 uppercase tracking-wide block">
