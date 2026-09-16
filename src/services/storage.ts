@@ -1266,7 +1266,8 @@ export const getJudgeAssignmentsByJudge = (judgeIdentifier: string): JudgeAssign
 export const isProjectAssignedToJudge = (judgeIdentifier: string, project: Project): boolean => {
   if (!judgeIdentifier || !project) return false;
   const assignments = getJudgeAssignmentsByJudge(judgeIdentifier);
-  if (assignments.length === 0) return false;
+  // If no assignments are configured yet for this judge, they are permitted to evaluate all active projects
+  if (assignments.length === 0) return true;
 
   return assignments.some(asgn => {
     // 1. Specific project assignment takes precedence
@@ -1392,23 +1393,17 @@ export const getProjectsForJudge = (judgeEmail?: string, applicationType?: strin
   const session = getCurrentUser();
   const effectiveEmail = judgeEmail || (session && session.role !== 'admin' ? session.email : undefined);
 
-  // If judge email is provided or a judge is logged in, restrict strictly to assigned projects
-  if (effectiveEmail) {
-    const assignments = getJudgeAssignmentsByJudge(effectiveEmail);
-    if (assignments.length === 0) {
-      return []; // Unassigned judge sees no projects
-    }
-  } else if (!judgeEmail && session && session.role !== 'admin') {
-    return [];
-  }
+  // If specific assignments are configured for this judge, restrict to them.
+  // If no assignments have been configured yet, all active projects are visible.
+  const hasConfiguredAssignments = effectiveEmail ? getJudgeAssignmentsByJudge(effectiveEmail).length > 0 : false;
 
   return allProjects.filter(p => {
     const statusStr = (p.status || 'active').trim().toLowerCase();
     const isActive = statusStr === 'active';
     if (!isActive) return false;
 
-    // Assignment filter
-    if (effectiveEmail && !isProjectAssignedToJudge(effectiveEmail, p)) {
+    // Assignment filter: strictly enforce if assignments are configured
+    if (hasConfiguredAssignments && effectiveEmail && !isProjectAssignedToJudge(effectiveEmail, p)) {
       return false;
     }
 

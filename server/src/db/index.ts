@@ -764,7 +764,7 @@ export const evaluationDb = {
     };
 
     if (isPostgresConnected) {
-      await pool.query(`
+      const queryRes = await pool.query(`
         INSERT INTO evaluations (
           id, project_id, judge_email, judge_name, scores, feedback,
           raw_total_score, max_raw_score, converted_score,
@@ -779,6 +779,10 @@ export const evaluationDb = {
           total_score = EXCLUDED.total_score,
           percentage = EXCLUDED.percentage,
           updated_at = NOW()
+        RETURNING id, project_id as "projectId", judge_email as "judgeEmail", judge_name as "judgeName",
+                  scores, feedback, raw_total_score as "rawTotalScore", max_raw_score as "maxRawScore",
+                  converted_score as "convertedScore",
+                  total_score as "totalScore", percentage, submitted_at as "submittedAt"
       `, [
         normalizedEval.id, normalizedEval.projectId, normalizedEval.judgeEmail.toLowerCase(), normalizedEval.judgeName,
         JSON.stringify(normalizedEval.scores), normalizedEval.feedback || null,
@@ -786,7 +790,16 @@ export const evaluationDb = {
         normalizedEval.totalScore, normalizedEval.percentage,
         normalizedEval.submittedAt
       ]);
-      return normalizedEval;
+      const savedRow = queryRes.rows[0];
+      return {
+        ...savedRow,
+        rawTotalScore: Number(savedRow.rawTotalScore),
+        maxRawScore: Number(savedRow.maxRawScore),
+        convertedScore: Number(savedRow.convertedScore),
+        totalScore: Number(savedRow.totalScore),
+        percentage: Number(savedRow.percentage),
+        scores: typeof savedRow.scores === 'string' ? JSON.parse(savedRow.scores) : savedRow.scores
+      };
     }
     const idx = memoryStore.evaluations.findIndex(
       e => e.projectId === normalizedEval.projectId && e.judgeEmail.toLowerCase() === normalizedEval.judgeEmail.toLowerCase()

@@ -158,39 +158,38 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     if (!isAdminUser && targetProject) {
       const judgeAssignments = await assignmentDb.getByJudge(evaluation.judgeEmail);
-      if (judgeAssignments.length === 0) {
-        res.status(403).json({ error: 'No projects have been assigned to your account. You can only evaluate projects assigned to you by the Administrator.' });
-        return;
-      }
+      // If the administrator has configured assignments for this judge, strictly enforce them.
+      // If no assignments have been configured yet, allow the approved judge to evaluate.
+      if (judgeAssignments.length > 0) {
+        const isAssigned = judgeAssignments.some(asgn => {
+          // Specific project assignment takes precedence
+          if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
+            const matchId = asgn.projectIds.includes(targetProject.id);
+            const matchAppId = Boolean(targetProject.applicationId) && asgn.projectIds.includes(targetProject.applicationId);
+            const matchCode = Boolean(targetProject.projectCode) && asgn.projectIds.includes(targetProject.projectCode);
+            return matchId || matchAppId || matchCode;
+          }
 
-      const isAssigned = judgeAssignments.some(asgn => {
-        // Specific project assignment takes precedence
-        if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
-          const matchId = asgn.projectIds.includes(targetProject.id);
-          const matchAppId = Boolean(targetProject.applicationId) && asgn.projectIds.includes(targetProject.applicationId);
-          const matchCode = Boolean(targetProject.projectCode) && asgn.projectIds.includes(targetProject.projectCode);
-          return matchId || matchAppId || matchCode;
+          const typeMatch = asgn.applicationType === 'All Application Types' || 
+                            asgn.applicationType.toLowerCase() === targetProject.applicationType.toLowerCase() ||
+                            asgn.applicationType.replace(/[^a-z]/gi, '') === targetProject.applicationType.replace(/[^a-z]/gi, '');
+          if (!typeMatch) return false;
+
+          const isNoCategory = targetProject.applicationType.includes('Secondary') || 
+                               targetProject.applicationType.includes('Individual') || 
+                               targetProject.applicationType.includes('Group');
+          if (!isNoCategory && asgn.headCategory && asgn.headCategory !== 'All Head Category' && asgn.headCategory !== 'N/A') {
+            const catMatch = asgn.headCategory.toLowerCase() === (targetProject.headCategory || '').toLowerCase();
+            if (!catMatch) return false;
+          }
+
+          return true;
+        });
+
+        if (!isAssigned) {
+          res.status(403).json({ error: 'This project is not assigned to your account. You can only evaluate projects assigned to you by the Administrator.' });
+          return;
         }
-
-        const typeMatch = asgn.applicationType === 'All Application Types' || 
-                          asgn.applicationType.toLowerCase() === targetProject.applicationType.toLowerCase() ||
-                          asgn.applicationType.replace(/[^a-z]/gi, '') === targetProject.applicationType.replace(/[^a-z]/gi, '');
-        if (!typeMatch) return false;
-
-        const isNoCategory = targetProject.applicationType.includes('Secondary') || 
-                             targetProject.applicationType.includes('Individual') || 
-                             targetProject.applicationType.includes('Group');
-        if (!isNoCategory && asgn.headCategory && asgn.headCategory !== 'All Head Category' && asgn.headCategory !== 'N/A') {
-          const catMatch = asgn.headCategory.toLowerCase() === (targetProject.headCategory || '').toLowerCase();
-          if (!catMatch) return false;
-        }
-
-        return true;
-      });
-
-      if (!isAssigned) {
-        res.status(403).json({ error: 'This project is not assigned to your account. You can only evaluate projects assigned to you by the Administrator.' });
-        return;
       }
     }
 

@@ -126,7 +126,9 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
   }, []);
 
   const isLocked = isProjectEvaluationLocked(project, settings);
-  const isAssigned = currentUser ? isProjectAssignedToJudge(currentUser.email, project) : false;
+  const isAssigned = currentUser
+    ? (currentUser.role === 'admin' || isProjectAssignedToJudge(currentUser.email, project))
+    : false;
 
   const rawTotalScore = calculateRawTotal(scores, activeCriteria);
   const convertedScore = calculateConvertedScore(rawTotalScore, maxRawScore);
@@ -229,6 +231,8 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
       setIsModalOpen(false);
       const msg = err?.message || 'Failed to submit evaluation. Please check your network or assignment.';
       setValidationError(msg);
+      const el = document.getElementById('evaluation-criteria-section');
+      el?.scrollIntoView({ behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
     }
