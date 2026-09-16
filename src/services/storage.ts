@@ -1164,8 +1164,8 @@ export const saveEvaluation = async (evaluation: Evaluation, actor?: { email: st
     ))
   );
 
-  if (!isAdmin && !isExistingJudgeEval && targetProject && !isProjectAssignedToJudge(evaluation.judgeEmail, targetProject)) {
-    // Attempt live fetch in case assignments were updated on another device (e.g. Admin PC)
+  if (!isAdmin && !isExistingJudgeEval && targetProject) {
+    // Always fetch fresh assignments from backend before checking to handle cross-device admin changes
     try {
       const freshAssignments = await api.getAssignmentsByJudge(evaluation.judgeEmail);
       if (Array.isArray(freshAssignments) && freshAssignments.length > 0) {
@@ -1178,7 +1178,7 @@ export const saveEvaluation = async (evaluation: Evaluation, actor?: { email: st
           window.dispatchEvent(new Event('biin_assignments_updated'));
         }
       }
-    } catch {}
+    } catch {/* ignore network error, use local */}
 
     if (!isProjectAssignedToJudge(evaluation.judgeEmail, targetProject)) {
       throw new Error('This project is not assigned to your account. You can only evaluate projects assigned to you by the Administrator.');

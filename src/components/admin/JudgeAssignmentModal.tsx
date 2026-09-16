@@ -105,10 +105,10 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
     });
   };
 
-  // Form State - default to specific selection
+  // Form State - default to scope so saving always works immediately
   const [selectedAppType, setSelectedAppType] = useState<ApplicationType>('Student-Secondary');
   const [selectedHeadCategory, setSelectedHeadCategory] = useState<string>('All Head Category');
-  const [assignMode, setAssignMode] = useState<'scope' | 'specific'>('specific');
+  const [assignMode, setAssignMode] = useState<'scope' | 'specific'>('scope');
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -133,6 +133,7 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
   const handleAppTypeChange = (type: ApplicationType) => {
     setSelectedAppType(type);
     setSelectedProjectIds([]);
+    setAssignMode('scope'); // always reset to scope when app type changes
     const canon = canonicalAppType(type);
     if (canon === 'Student-Secondary' || canon === 'Individual/Group' || canon === 'Individual or Group' || canon === 'All Application Types') {
       setSelectedHeadCategory('N/A');
@@ -552,7 +553,7 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => setAssignMode('specific')}
+                  onClick={() => { setAssignMode('specific'); setSelectedProjectIds(prev => prev.length === 0 ? matchingProjects.map(p => p.id) : prev); }}
                   className={`p-3 rounded-2xl border text-left transition-all ${
                     assignMode === 'specific'
                       ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-400 dark:border-violet-600 ring-2 ring-violet-400/20'

@@ -253,7 +253,8 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
     let freshAssigned = isAssigned;
     if (existingEvaluation && currentUser?.email && existingEvaluation.judgeEmail.toLowerCase() === currentUser.email.toLowerCase()) {
       freshAssigned = true;
-    } else if (!freshAssigned && currentUser?.role !== 'admin' && currentUser?.email) {
+    } else if (currentUser?.role !== 'admin' && currentUser?.email) {
+      // Always re-fetch live assignments before submitting to catch cross-device admin changes
       try {
         const liveAsgns = await api.getAssignmentsByJudge(currentUser.email);
         if (Array.isArray(liveAsgns)) {
@@ -264,7 +265,9 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
           localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(merged));
           freshAssigned = isProjectAssignedToJudge(currentUser.email, project);
         }
-      } catch {}
+      } catch {
+        // keep existing value if network fails
+      }
     }
 
     if (!freshAssigned) {
