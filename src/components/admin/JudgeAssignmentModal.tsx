@@ -30,7 +30,7 @@ interface JudgeAssignmentModalProps {
 
 const APPLICATION_TYPES: ApplicationType[] = [
   'Student-Secondary',
-  'Individual/Group',
+  'Individual or Group',
   'Organization',
   'Student -Tertiary (University Level)'
 ];
@@ -174,7 +174,7 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
       judgeId: judge.id,
       judgeEmail: judge.email,
       judgeName: judge.fullName,
-      applicationType: selectedAppType,
+      applicationType: canonicalAppType(selectedAppType),
       headCategory: finalCategory,
       projectIds: assignMode === 'specific' ? selectedProjectIds : undefined,
       createdAt: new Date().toISOString()

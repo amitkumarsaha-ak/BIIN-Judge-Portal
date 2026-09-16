@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, Send, AlertCircle, Info, ShieldCheck, Lock } from 'lucide-react';
 import type { Project, EvaluationScores, Evaluation } from '../../types';
 import {
@@ -20,7 +20,10 @@ import {
   getSystemSettings,
   isProjectEvaluationLocked,
   isProjectAssignedToJudge,
-  SETTINGS_KEY
+  SETTINGS_KEY,
+  ASSIGNMENTS_KEY,
+  getJudgeAssignments,
+  normalizeEmail
 } from '../../services/storage';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -89,6 +92,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
   }, []);
 
   const [settings, setSettings] = useState(() => getSystemSettings());
+  const [assignmentsTick, setAssignmentsTick] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -112,23 +116,52 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
       }).catch(() => {});
     };
 
+    const fetchAssignments = () => {
+      if (!currentUser?.email) return;
+      api.getAssignmentsByJudge(currentUser.email).then(cloudAsgns => {
+        if (!mounted || !Array.isArray(cloudAsgns)) return;
+        const currentAll = getJudgeAssignments();
+        const cleanEmail = normalizeEmail(currentUser.email);
+        const filtered = currentAll.filter(a => normalizeEmail(a.judgeEmail) !== cleanEmail);
+        const merged = [...filtered, ...cloudAsgns];
+        try {
+          localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(merged));
+        } catch { /* ignore */ }
+        if (mounted) {
+          setAssignmentsTick(t => t + 1);
+        }
+      }).catch(() => {});
+    };
+
     fetchSettings();
-    const interval = setInterval(fetchSettings, 4000);
+    fetchAssignments();
+    const interval = setInterval(() => {
+      fetchSettings();
+      fetchAssignments();
+    }, 4000);
+
+    const onAssignmentsUpdated = () => {
+      if (mounted) setAssignmentsTick(t => t + 1);
+    };
 
     window.addEventListener('biin_settings_updated', refreshSettings);
+    window.addEventListener('biin_assignments_updated', onAssignmentsUpdated);
     window.addEventListener('storage', refreshSettings);
     return () => {
       mounted = false;
       clearInterval(interval);
       window.removeEventListener('biin_settings_updated', refreshSettings);
+      window.removeEventListener('biin_assignments_updated', onAssignmentsUpdated);
       window.removeEventListener('storage', refreshSettings);
     };
-  }, []);
+  }, [currentUser?.email]);
 
   const isLocked = isProjectEvaluationLocked(project, settings);
-  const isAssigned = currentUser
-    ? (currentUser.role === 'admin' || isProjectAssignedToJudge(currentUser.email, project))
-    : false;
+  const isAssigned = useMemo(() => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'admin') return true;
+    return isProjectAssignedToJudge(currentUser.email, project);
+  }, [currentUser, project, assignmentsTick]);
 
   const rawTotalScore = calculateRawTotal(scores, activeCriteria);
   const convertedScore = calculateConvertedScore(rawTotalScore, maxRawScore);
@@ -141,7 +174,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
     }));
   };
 
-  const handleOpenSubmissionModal = () => {
+  const handleOpenSubmissionModal = async () => {
     setValidationError(null);
 
     const freshLocked = isLocked || isProjectEvaluationLocked(project, settings) || isProjectEvaluationLocked(project);
@@ -150,7 +183,22 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
       return;
     }
 
-    if (!isAssigned) {
+    let freshAssigned = isAssigned;
+    if (!freshAssigned && currentUser?.role !== 'admin' && currentUser?.email) {
+      try {
+        const liveAsgns = await api.getAssignmentsByJudge(currentUser.email);
+        if (Array.isArray(liveAsgns)) {
+          const currentAll = getJudgeAssignments();
+          const cleanEmail = normalizeEmail(currentUser.email);
+          const filtered = currentAll.filter(a => normalizeEmail(a.judgeEmail) !== cleanEmail);
+          const merged = [...filtered, ...liveAsgns];
+          localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(merged));
+          freshAssigned = isProjectAssignedToJudge(currentUser.email, project);
+        }
+      } catch {}
+    }
+
+    if (!freshAssigned) {
       setValidationError('You are not assigned to evaluate this project. Only assigned judges can submit scores.');
       return;
     }
@@ -198,7 +246,22 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
       return;
     }
 
-    if (!isAssigned) {
+    let freshAssigned = isAssigned;
+    if (!freshAssigned && currentUser?.role !== 'admin' && currentUser?.email) {
+      try {
+        const liveAsgns = await api.getAssignmentsByJudge(currentUser.email);
+        if (Array.isArray(liveAsgns)) {
+          const currentAll = getJudgeAssignments();
+          const cleanEmail = normalizeEmail(currentUser.email);
+          const filtered = currentAll.filter(a => normalizeEmail(a.judgeEmail) !== cleanEmail);
+          const merged = [...filtered, ...liveAsgns];
+          localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(merged));
+          freshAssigned = isProjectAssignedToJudge(currentUser.email, project);
+        }
+      } catch {}
+    }
+
+    if (!freshAssigned) {
       setValidationError('You are not assigned to evaluate this project.');
       setIsModalOpen(false);
       return;

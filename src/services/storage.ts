@@ -1149,7 +1149,24 @@ export const saveEvaluation = async (evaluation: Evaluation, actor?: { email: st
   const session = getCurrentUser();
   const isAdmin = (session && session.role === 'admin') || actor?.email === 'admin@biin.org';
   if (!isAdmin && targetProject && !isProjectAssignedToJudge(evaluation.judgeEmail, targetProject)) {
-    throw new Error('This project is not assigned to your account. You can only evaluate projects assigned to you by the Administrator.');
+    // Attempt live fetch in case assignments were updated on another device (e.g. Admin PC)
+    try {
+      const freshAssignments = await api.getAssignmentsByJudge(evaluation.judgeEmail);
+      if (Array.isArray(freshAssignments)) {
+        const currentAll = getJudgeAssignments();
+        const cleanEmail = normalizeEmail(evaluation.judgeEmail);
+        const filtered = currentAll.filter(a => normalizeEmail(a.judgeEmail) !== cleanEmail);
+        const merged = [...filtered, ...freshAssignments];
+        localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(merged));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('biin_assignments_updated'));
+        }
+      }
+    } catch {}
+
+    if (!isProjectAssignedToJudge(evaluation.judgeEmail, targetProject)) {
+      throw new Error('This project is not assigned to your account. You can only evaluate projects assigned to you by the Administrator.');
+    }
   }
 
   const evaluations = getEvaluations();

@@ -20,6 +20,39 @@ function canonicalAppType(type?: string): string {
   return 'Student-Secondary';
 }
 
+function matchesAppType(projectType?: string, filterType?: string): boolean {
+  if (!filterType || filterType === 'All' || filterType === 'All Application Types') return true;
+  if (!projectType || projectType === 'All' || projectType === 'All Application Types') return true;
+  if (projectType.trim().toLowerCase() === filterType.trim().toLowerCase()) return true;
+  return canonicalAppType(projectType) === canonicalAppType(filterType);
+}
+
+function matchesCategory(projectCategory?: string, filterCategory?: string, projectAppType?: string): boolean {
+  if (!filterCategory || filterCategory === 'All' || filterCategory === 'All Head Category' || filterCategory === 'All Head Categories' || filterCategory === 'N/A') {
+    return true;
+  }
+  const appType = canonicalAppType(projectAppType);
+  if (appType === 'Student-Secondary' || appType === 'Individual or Group') {
+    return true;
+  }
+  const pc = (projectCategory || '').toLowerCase().trim();
+  const fc = filterCategory.toLowerCase().trim();
+  if (!pc || pc === 'all' || pc === 'all head category' || pc === 'all head categories' || pc === 'all categories' || pc === 'all category' || pc === 'n/a' || pc === 'null' || pc === 'none') {
+    return true;
+  }
+  if (pc === fc) return true;
+
+  if (appType === 'Organisation') {
+    const isFilterMerged = isOrgMergedHeadCategory(filterCategory);
+    const isProjMerged = isOrgMergedHeadCategory(projectCategory);
+    if (isFilterMerged && isProjMerged) {
+      return true;
+    }
+  }
+
+  return canonicalHeadCategory(projectCategory) === canonicalHeadCategory(filterCategory);
+}
+
 function canonicalHeadCategory(cat?: string): string {
   const c = (cat || '').toLowerCase().trim();
   if (!c || c === 'n/a' || c === 'none' || c === 'null') return 'N/A';
@@ -164,23 +197,19 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         const isAssigned = judgeAssignments.some(asgn => {
           // Specific project assignment takes precedence
           if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
-            const matchId = asgn.projectIds.includes(targetProject.id);
-            const matchAppId = Boolean(targetProject.applicationId) && asgn.projectIds.includes(targetProject.applicationId);
-            const matchCode = Boolean(targetProject.projectCode) && asgn.projectIds.includes(targetProject.projectCode);
+            const cleanIds = asgn.projectIds.map((id: string) => String(id || '').trim().toLowerCase());
+            const matchId = cleanIds.includes(String(targetProject.id || '').trim().toLowerCase());
+            const matchAppId = Boolean(targetProject.applicationId) && cleanIds.includes(String(targetProject.applicationId || '').trim().toLowerCase());
+            const matchCode = Boolean(targetProject.projectCode) && cleanIds.includes(String(targetProject.projectCode || '').trim().toLowerCase());
             return matchId || matchAppId || matchCode;
           }
 
-          const typeMatch = asgn.applicationType === 'All Application Types' || 
-                            asgn.applicationType.toLowerCase() === targetProject.applicationType.toLowerCase() ||
-                            asgn.applicationType.replace(/[^a-z]/gi, '') === targetProject.applicationType.replace(/[^a-z]/gi, '');
-          if (!typeMatch) return false;
+          if (!matchesAppType(targetProject.applicationType, asgn.applicationType)) {
+            return false;
+          }
 
-          const isNoCategory = targetProject.applicationType.includes('Secondary') || 
-                               targetProject.applicationType.includes('Individual') || 
-                               targetProject.applicationType.includes('Group');
-          if (!isNoCategory && asgn.headCategory && asgn.headCategory !== 'All Head Category' && asgn.headCategory !== 'N/A') {
-            const catMatch = asgn.headCategory.toLowerCase() === (targetProject.headCategory || '').toLowerCase();
-            if (!catMatch) return false;
+          if (!matchesCategory(targetProject.headCategory, asgn.headCategory, targetProject.applicationType)) {
+            return false;
           }
 
           return true;
