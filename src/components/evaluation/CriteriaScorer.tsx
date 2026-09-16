@@ -7,13 +7,15 @@ interface CriteriaScorerProps {
   score?: number;
   onChangeScore: (score: number | undefined) => void;
   index: number;
+  disabled?: boolean;
 }
 
 export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
   criteria,
   score,
   onChangeScore,
-  index
+  index,
+  disabled = false
 }) => {
   // Local string state to handle typing without automatic clamping or auto-filling to 10
   const [inputValue, setInputValue] = useState<string>(score !== undefined ? score.toString() : '');
@@ -186,7 +188,8 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
               step="0.25"
               value={isNaN(numVal) ? 1 : Math.max(1, Math.min(10, numVal))}
               onChange={handleSliderChange}
-              className="w-full accent-cyan-600 dark:accent-cyan-400 bg-slate-200 dark:bg-slate-800 rounded-lg h-2.5 cursor-pointer touch-manipulation"
+              disabled={disabled}
+              className="w-full accent-cyan-600 dark:accent-cyan-400 bg-slate-200 dark:bg-slate-800 rounded-lg h-2.5 cursor-pointer touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -201,8 +204,9 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
                 onChange={handleTextChange}
                 onKeyDown={handleKeyDown}
                 onBlur={handleBlur}
+                disabled={disabled}
                 placeholder="1 - 10"
-                className="w-24 rounded-xl bg-white dark:bg-slate-950 px-3 py-2 text-center font-mono text-lg font-bold border border-indigo-300 dark:border-indigo-500/50 text-cyan-700 dark:text-cyan-300 focus:border-cyan-500 focus:outline-none transition-colors min-h-[42px]"
+                className="w-24 rounded-xl bg-white dark:bg-slate-950 px-3 py-2 text-center font-mono text-lg font-bold border border-indigo-300 dark:border-indigo-500/50 text-cyan-700 dark:text-cyan-300 focus:border-cyan-500 focus:outline-none transition-colors min-h-[42px] disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <span className="ml-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">/ 10</span>
             </div>
@@ -221,7 +225,8 @@ export const CriteriaScorer: React.FC<CriteriaScorerProps> = ({
                 key={val}
                 type="button"
                 onClick={() => handleSelectPreset(val)}
-                className={`flex items-center justify-center rounded-xl py-2.5 text-xs font-mono font-bold transition-all min-h-[42px] touch-manipulation active:scale-95 ${
+                disabled={disabled}
+                className={`flex items-center justify-center rounded-xl py-2.5 text-xs font-mono font-bold transition-all min-h-[42px] touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none ${
                   score === val
                     ? 'bg-cyan-600 text-white dark:bg-cyan-500 dark:text-slate-950 shadow-md shadow-cyan-500/30 font-black ring-2 ring-cyan-400/50'
                     : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-600 hover:text-white border border-slate-300 dark:border-slate-700/60'

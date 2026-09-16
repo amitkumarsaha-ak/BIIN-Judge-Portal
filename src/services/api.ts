@@ -243,6 +243,13 @@ export const api = {
     });
   },
 
+  async toggleCategoryLock(key: string, locked: boolean, actor?: { email: string; name: string }): Promise<{ success: boolean; isLocked: boolean; settings: SystemSettings }> {
+    return request('/settings/toggle-category-lock', {
+      method: 'POST',
+      body: JSON.stringify({ key, locked, actor })
+    });
+  },
+
   // Audit Logs
   async getAuditLogs(): Promise<AuditLog[]> {
     return request('/audit');

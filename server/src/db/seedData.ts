@@ -267,6 +267,7 @@ export const SEED_SETTINGS = {
   evaluationsLocked: false,
   finalResultsLocked: false,
   lockedProjects: [] as string[],
+  categoryLocks: {} as Record<string, boolean>,
   autoRankingEnabled: true
 };
 

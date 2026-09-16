@@ -6,8 +6,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import {
   getProjectsForJudge, getEvaluationsByJudge, getSystemSettings,
-  isCategoryEvaluationLocked,
-  getDashboardStatsForJudge, PROJECTS_KEY, ASSIGNMENTS_KEY, EVALUATIONS_KEY
+  isProjectEvaluationLocked,
+  getDashboardStatsForJudge, PROJECTS_KEY, ASSIGNMENTS_KEY, EVALUATIONS_KEY, SETTINGS_KEY
 } from '../../services/storage';
 import { api } from '../../services/api';
 import { StatsCard } from '../dashboard/StatsCard';
@@ -31,7 +31,7 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
   const [myEvaluations, setMyEvaluations] = useState(() =>
     currentUser ? getEvaluationsByJudge(currentUser.email) : []
   );
-  const [settings, setSettings] = useState(() => getSystemSettings());
+  const [, setSettings] = useState(() => getSystemSettings());
   const [stats, setStats] = useState(() =>
     currentUser ? getDashboardStatsForJudge(currentUser.email) : {
       totalProjects: 0,
@@ -46,11 +46,12 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
     const refresh = async () => {
       if (currentUser?.email) {
         try {
-          const [projectsRes, assignmentsRes, judgeAssignmentsRes, evalsRes] = await Promise.allSettled([
+          const [projectsRes, assignmentsRes, judgeAssignmentsRes, evalsRes, settingsRes] = await Promise.allSettled([
             api.getProjects(),
             api.getAssignments(),
             api.getAssignmentsByJudge(currentUser.email),
-            api.getEvaluationsByJudge(currentUser.email)
+            api.getEvaluationsByJudge(currentUser.email),
+            api.getSettings()
           ]);
 
           if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value)) {
@@ -68,6 +69,17 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
             if (mounted) {
               setMyEvaluations(evalsRes.value);
             }
+          }
+
+          if (settingsRes.status === 'fulfilled' && settingsRes.value) {
+            const existing = getSystemSettings();
+            const merged = {
+              ...existing,
+              ...settingsRes.value,
+              categoryLocks: { ...(existing.categoryLocks || {}), ...(settingsRes.value.categoryLocks || {}) }
+            };
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+            if (mounted) setSettings(merged);
           }
         } catch {
           // Offline fallback
@@ -87,12 +99,14 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
     refresh();
     window.addEventListener('biin_projects_updated', refresh);
     window.addEventListener('biin_assignments_updated', refresh);
+    window.addEventListener('biin_settings_updated', refresh);
     window.addEventListener('storage', refresh);
-    const interval = setInterval(refresh, 6000);
+    const interval = setInterval(refresh, 5000);
     return () => {
       mounted = false;
       window.removeEventListener('biin_projects_updated', refresh);
       window.removeEventListener('biin_assignments_updated', refresh);
+      window.removeEventListener('biin_settings_updated', refresh);
       window.removeEventListener('storage', refresh);
       clearInterval(interval);
     };
@@ -250,14 +264,19 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
                       )}
                     </div>
 
-                    <button
-                      onClick={() => onSelectProjectForEvaluation(proj)}
-                      disabled={isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)}
-                      className={`w-full flex items-center justify-center space-x-1.5 rounded-xl py-2.5 px-3 text-xs font-bold transition-all min-h-[40px] ${(isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)) ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700' : isEvaluated ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-600 hover:text-white' : 'btn-primary text-white shadow-md'}`}
-                    >
-                      {(isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)) ? <Lock className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                      <span>{(isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)) ? 'Locked' : isEvaluated ? 'Review / Edit Score' : 'Evaluate Project'}</span>
-                    </button>
+                    {(() => {
+                      const isLocked = isProjectEvaluationLocked(proj);
+                      return (
+                        <button
+                          onClick={() => onSelectProjectForEvaluation(proj)}
+                          disabled={isLocked}
+                          className={`w-full flex items-center justify-center space-x-1.5 rounded-xl py-2.5 px-3 text-xs font-bold transition-all min-h-[40px] ${isLocked ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700' : isEvaluated ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-600 hover:text-white' : 'btn-primary text-white shadow-md'}`}
+                        >
+                          {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          <span>{isLocked ? 'Locked' : isEvaluated ? 'Review / Edit Score' : 'Evaluate Project'}</span>
+                        </button>
+                      );
+                    })()}
                   </div>
                 );
               })}
@@ -311,14 +330,19 @@ export const JudgeDashboardView: React.FC<JudgeDashboardViewProps> = ({
                         </td>
 
                         <td className="px-4 py-3.5 text-center">
-                          <button
-                            onClick={() => onSelectProjectForEvaluation(proj)}
-                            disabled={isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)}
-                            className={`inline-flex items-center space-x-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${(isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)) ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700' : isEvaluated ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-600 hover:text-white' : 'btn-primary text-white shadow-md'}`}
-                          >
-                            {(isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)) ? <Lock className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                            <span>{(isCategoryEvaluationLocked(proj.applicationType, proj.headCategory) || settings.lockedProjects.includes(proj.id)) ? 'Locked' : isEvaluated ? 'Edit Score' : 'Evaluate'}</span>
-                          </button>
+                          {(() => {
+                            const isLocked = isProjectEvaluationLocked(proj);
+                            return (
+                              <button
+                                onClick={() => onSelectProjectForEvaluation(proj)}
+                                disabled={isLocked}
+                                className={`inline-flex items-center space-x-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${isLocked ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700' : isEvaluated ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-600 hover:text-white' : 'btn-primary text-white shadow-md'}`}
+                              >
+                                {isLocked ? <Lock className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                <span>{isLocked ? 'Locked' : isEvaluated ? 'Edit Score' : 'Evaluate'}</span>
+                              </button>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );

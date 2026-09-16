@@ -338,7 +338,20 @@ export const syncWithBackend = async (): Promise<boolean> => {
     }
 
     if (settingsRes.status === 'fulfilled' && settingsRes.value) {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsRes.value));
+      const existingSettings = getSystemSettings();
+      const mergedCategoryLocks = {
+        ...(existingSettings.categoryLocks || {}),
+        ...(settingsRes.value.categoryLocks || {})
+      };
+      const mergedSettings: SystemSettings = {
+        ...existingSettings,
+        ...settingsRes.value,
+        categoryLocks: mergedCategoryLocks
+      };
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(mergedSettings));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('biin_settings_updated'));
+      }
     }
 
     if (auditRes.status === 'fulfilled' && Array.isArray(auditRes.value) && auditRes.value.length > 0) {
@@ -408,6 +421,9 @@ export const getSystemSettings = (): SystemSettings => {
 export const updateSystemSettings = (settings: SystemSettings, actor?: { email: string; name: string }): void => {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   api.updateSettings(settings, actor).catch(() => {});
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('biin_settings_updated'));
+  }
   if (actor) {
     logAuditAction(actor.email, actor.name, 'UPDATE_SETTINGS', 'settings', `Updated system configuration & lock rules.`);
   }
@@ -429,8 +445,17 @@ export const getCategoryLockKey = (appType?: string, headCategory?: string | nul
 
 export const isCategoryEvaluationLocked = (appType?: string, headCategory?: string | null): boolean => {
   const settings = getSystemSettings();
+  if (settings.evaluationsLocked) return true;
   const key = getCategoryLockKey(appType, headCategory);
   return Boolean(settings.categoryLocks && settings.categoryLocks[key]);
+};
+
+export const isProjectEvaluationLocked = (project?: { id: string; applicationType?: string; headCategory?: string | null } | null): boolean => {
+  if (!project) return false;
+  const settings = getSystemSettings();
+  if (settings.evaluationsLocked) return true;
+  if (Array.isArray(settings.lockedProjects) && settings.lockedProjects.includes(project.id)) return true;
+  return isCategoryEvaluationLocked(project.applicationType, project.headCategory);
 };
 
 export const toggleCategoryEvaluationLock = (
@@ -446,6 +471,7 @@ export const toggleCategoryEvaluationLock = (
   }
   settings.categoryLocks[key] = locked;
   updateSystemSettings(settings, actor);
+  api.toggleCategoryLock(key, locked, actor).catch(() => {});
   if (actor) {
     logAuditAction(
       actor.email,
@@ -1080,17 +1106,11 @@ export const saveEvaluation = (evaluation: Evaluation, actor?: { email: string; 
     }
   }
 
-  // Check category-wise evaluation lock
+  // Check project evaluation lock (global lock, individual project lock, and category lock)
   const allProjects = getProjects();
   const targetProject = allProjects.find(p => p.id === evaluation.projectId);
-  if (targetProject && isCategoryEvaluationLocked(targetProject.applicationType, targetProject.headCategory)) {
-    throw new Error('Evaluation is locked for this Application Type and Head Category.');
-  }
-
-  // Check individual project lock
-  const settings = getSystemSettings();
-  if (settings.lockedProjects.includes(evaluation.projectId)) {
-    throw new Error('Evaluations for this specific project are currently locked by the Administrator.');
+  if (targetProject && isProjectEvaluationLocked(targetProject)) {
+    throw new Error('Evaluation is currently locked for this category or project by the Administrator.');
   }
 
   // Check judge assignment authorization

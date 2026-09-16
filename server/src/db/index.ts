@@ -169,6 +169,7 @@ export async function initDatabase(): Promise<DbStatus> {
         await client.query('ALTER TABLE projects ALTER COLUMN head_category DROP NOT NULL');
         await client.query('ALTER TABLE projects ALTER COLUMN head_category TYPE VARCHAR(255)');
         await client.query('ALTER TABLE judge_assignments ALTER COLUMN head_category TYPE VARCHAR(255)');
+        await client.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS category_locks JSONB DEFAULT '{}'::jsonb");
       } catch (migErr) {
         console.warn('[Database] Migration notice:', migErr);
       }
@@ -211,8 +212,8 @@ export async function initDatabase(): Promise<DbStatus> {
 
       // Ensure global settings record exists
       await client.query(
-        `INSERT INTO system_settings (id, evaluations_locked, final_results_locked, locked_projects, auto_ranking_enabled)
-         VALUES ('global', false, false, '[]'::jsonb, true)
+        `INSERT INTO system_settings (id, evaluations_locked, final_results_locked, locked_projects, category_locks, auto_ranking_enabled)
+         VALUES ('global', false, false, '[]'::jsonb, '{}'::jsonb, true)
          ON CONFLICT (id) DO NOTHING`
       );
 
@@ -515,6 +516,10 @@ export const projectDb = {
     return memoryStore.projects.find(p => p.id === id);
   },
 
+  async getById(id: string): Promise<SeedProject | undefined> {
+    return this.findById(id);
+  },
+
   async create(project: SeedProject): Promise<SeedProject> {
     const solName = ((project as any).solutionName || project.title || 'Untitled Project').trim();
     const title = solName;
@@ -805,6 +810,7 @@ export const settingsDb = {
         SELECT evaluations_locked as "evaluationsLocked",
                final_results_locked as "finalResultsLocked",
                locked_projects as "lockedProjects",
+               category_locks as "categoryLocks",
                auto_ranking_enabled as "autoRankingEnabled"
         FROM system_settings WHERE id = 'global' LIMIT 1
       `);
@@ -815,6 +821,7 @@ export const settingsDb = {
           evaluationsLocked: row.evaluationsLocked,
           finalResultsLocked: row.finalResultsLocked,
           lockedProjects: typeof row.lockedProjects === 'string' ? JSON.parse(row.lockedProjects) : row.lockedProjects || [],
+          categoryLocks: typeof row.categoryLocks === 'string' ? JSON.parse(row.categoryLocks) : row.categoryLocks || {},
           autoRankingEnabled: row.autoRankingEnabled
         };
       }
@@ -827,15 +834,22 @@ export const settingsDb = {
       const current = await settingsDb.get();
       const updated = { ...current, ...settings };
       await pool.query(`
-        INSERT INTO system_settings (id, evaluations_locked, final_results_locked, locked_projects, auto_ranking_enabled, updated_at)
-        VALUES ('global', $1, $2, $3, $4, NOW())
+        INSERT INTO system_settings (id, evaluations_locked, final_results_locked, locked_projects, category_locks, auto_ranking_enabled, updated_at)
+        VALUES ('global', $1, $2, $3, $4, $5, NOW())
         ON CONFLICT (id) DO UPDATE SET
           evaluations_locked = EXCLUDED.evaluations_locked,
           final_results_locked = EXCLUDED.final_results_locked,
           locked_projects = EXCLUDED.locked_projects,
+          category_locks = EXCLUDED.category_locks,
           auto_ranking_enabled = EXCLUDED.auto_ranking_enabled,
           updated_at = NOW()
-      `, [updated.evaluationsLocked, updated.finalResultsLocked, JSON.stringify(updated.lockedProjects), updated.autoRankingEnabled]);
+      `, [
+        updated.evaluationsLocked,
+        updated.finalResultsLocked,
+        JSON.stringify(updated.lockedProjects),
+        JSON.stringify(updated.categoryLocks || {}),
+        updated.autoRankingEnabled
+      ]);
       return updated;
     }
     memoryStore.settings = { ...memoryStore.settings, ...settings };

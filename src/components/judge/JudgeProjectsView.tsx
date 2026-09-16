@@ -7,7 +7,8 @@ import type { Project } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import {
   getProjectsForJudge, getEvaluationsByJudge, getSystemSettings,
-  isCategoryEvaluationLocked, PROJECTS_KEY, ASSIGNMENTS_KEY, EVALUATIONS_KEY
+  isProjectEvaluationLocked,
+  PROJECTS_KEY, ASSIGNMENTS_KEY, EVALUATIONS_KEY, SETTINGS_KEY
 } from '../../services/storage';
 import { api } from '../../services/api';
 import {
@@ -32,18 +33,19 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
   const [myEvaluations, setMyEvaluations] = useState(() =>
     currentUser ? getEvaluationsByJudge(currentUser.email) : []
   );
-  const settings = getSystemSettings();
+  const [, setSettings] = useState(() => getSystemSettings());
 
   useEffect(() => {
     let mounted = true;
     const refresh = async () => {
       if (currentUser?.email) {
         try {
-          const [projectsRes, assignmentsRes, judgeAssignmentsRes, evalsRes] = await Promise.allSettled([
+          const [projectsRes, assignmentsRes, judgeAssignmentsRes, evalsRes, settingsRes] = await Promise.allSettled([
             api.getProjects(),
             api.getAssignments(),
             api.getAssignmentsByJudge(currentUser.email),
-            api.getEvaluationsByJudge(currentUser.email)
+            api.getEvaluationsByJudge(currentUser.email),
+            api.getSettings()
           ]);
 
           if (projectsRes.status === 'fulfilled' && Array.isArray(projectsRes.value)) {
@@ -62,6 +64,17 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
               setMyEvaluations(evalsRes.value);
             }
           }
+
+          if (settingsRes.status === 'fulfilled' && settingsRes.value) {
+            const existing = getSystemSettings();
+            const merged = {
+              ...existing,
+              ...settingsRes.value,
+              categoryLocks: { ...(existing.categoryLocks || {}), ...(settingsRes.value.categoryLocks || {}) }
+            };
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+            if (mounted) setSettings(merged);
+          }
         } catch {
           // Offline fallback
         }
@@ -69,6 +82,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
 
       if (mounted) {
         setAssignedProjects(getProjectsForJudge(currentUser?.email));
+        setSettings(getSystemSettings());
         if (currentUser) {
           setMyEvaluations(getEvaluationsByJudge(currentUser.email));
         }
@@ -78,12 +92,14 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
     refresh();
     window.addEventListener('biin_projects_updated', refresh);
     window.addEventListener('biin_assignments_updated', refresh);
+    window.addEventListener('biin_settings_updated', refresh);
     window.addEventListener('storage', refresh);
-    const interval = setInterval(refresh, 6000);
+    const interval = setInterval(refresh, 5000);
     return () => {
       mounted = false;
       window.removeEventListener('biin_projects_updated', refresh);
       window.removeEventListener('biin_assignments_updated', refresh);
+      window.removeEventListener('biin_settings_updated', refresh);
       window.removeEventListener('storage', refresh);
       clearInterval(interval);
     };
@@ -314,7 +330,7 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
                   )}
 
                   {(() => {
-                    const isLocked = isCategoryEvaluationLocked(project.applicationType, project.headCategory) || settings.lockedProjects.includes(project.id);
+                    const isLocked = isProjectEvaluationLocked(project);
                     return (
                       <button
                         onClick={() => onSelectProjectForEvaluation(project)}

@@ -18,9 +18,11 @@ import {
   getEvaluationForProject,
   saveEvaluation,
   getSystemSettings,
-  isCategoryEvaluationLocked,
-  isProjectAssignedToJudge
+  isProjectEvaluationLocked,
+  isProjectAssignedToJudge,
+  SETTINGS_KEY
 } from '../../services/storage';
+import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 interface ProjectEvaluationViewProps {
@@ -85,11 +87,41 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
     };
   }, []);
 
-  // Re-read on every render so lock changes from admin are always reflected
-  const settings = getSystemSettings();
-  const isCategoryLocked = isCategoryEvaluationLocked(project.applicationType, project.headCategory);
-  const isProjectLocked = settings.lockedProjects.includes(project.id);
-  const isLocked = isCategoryLocked || isProjectLocked;
+  const [, setSettings] = useState(() => getSystemSettings());
+
+  useEffect(() => {
+    let mounted = true;
+    const refreshSettings = () => {
+      setSettings(getSystemSettings());
+    };
+
+    api.getSettings().then(cloudSettings => {
+      if (!mounted || !cloudSettings) return;
+      const local = getSystemSettings();
+      const merged = {
+        ...local,
+        ...cloudSettings,
+        categoryLocks: {
+          ...(local.categoryLocks || {}),
+          ...(cloudSettings.categoryLocks || {})
+        }
+      };
+      try {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+      } catch { /* ignore */ }
+      setSettings(merged);
+    }).catch(() => {});
+
+    window.addEventListener('biin_settings_updated', refreshSettings);
+    window.addEventListener('storage', refreshSettings);
+    return () => {
+      mounted = false;
+      window.removeEventListener('biin_settings_updated', refreshSettings);
+      window.removeEventListener('storage', refreshSettings);
+    };
+  }, []);
+
+  const isLocked = isProjectEvaluationLocked(project);
   const isAssigned = currentUser ? isProjectAssignedToJudge(currentUser.email, project) : false;
 
   const rawTotalScore = calculateRawTotal(scores, activeCriteria);
@@ -306,6 +338,7 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
               score={scores[crit.key]}
               onChangeScore={(val) => handleScoreChange(crit.key, val)}
               index={index}
+              disabled={isLocked || !isAssigned}
             />
           ))}
         </div>
@@ -319,8 +352,9 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
             rows={3}
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
+            disabled={isLocked || !isAssigned}
             placeholder="Enter qualitative comments, key strengths, or areas for improvement..."
-            className="w-full rounded-2xl bg-slate-50 dark:bg-slate-900/90 p-4 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 focus:outline-none"
+            className="w-full rounded-2xl bg-slate-50 dark:bg-slate-900/90 p-4 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
 

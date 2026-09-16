@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS system_settings (
     evaluations_locked BOOLEAN DEFAULT FALSE,
     final_results_locked BOOLEAN DEFAULT FALSE,
     locked_projects JSONB DEFAULT '[]'::jsonb,
+    category_locks JSONB DEFAULT '{}'::jsonb,
     auto_ranking_enabled BOOLEAN DEFAULT TRUE,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
-  CheckCircle2, Pencil, Calendar, Award, Layers
+  CheckCircle2, Pencil, Calendar, Award, Layers, Lock
 } from 'lucide-react';
 import type { Project, Evaluation } from '../../types';
 import { getCriteriaForApplicationType, getHeadCategoryDisplayName } from '../../utils/evaluation';
 import { useAuth } from '../../context/AuthContext';
 import {
   getEvaluationsByJudge, getProjectsForJudge, getSystemSettings,
-  isCategoryEvaluationLocked
+  isProjectEvaluationLocked, SETTINGS_KEY
 } from '../../services/storage';
+import { api } from '../../services/api';
 
 interface JudgeEvaluationsViewProps {
   onSelectProjectForEvaluation: (project: Project) => void;
@@ -24,24 +25,45 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
   const [assignedProjects, setAssignedProjects] = useState<Project[]>(() =>
     currentUser ? getProjectsForJudge(currentUser.email) : []
   );
-  const [settings, setSettings] = useState(() => getSystemSettings());
+  const [, setSettings] = useState(() => getSystemSettings());
 
   useEffect(() => {
     if (!currentUser) return;
+    let mounted = true;
     const refresh = () => {
       setMyEvaluations(getEvaluationsByJudge(currentUser.email));
       setAssignedProjects(getProjectsForJudge(currentUser.email));
       setSettings(getSystemSettings());
     };
 
+    api.getSettings().then(cloudSettings => {
+      if (!mounted || !cloudSettings) return;
+      const local = getSystemSettings();
+      const merged = {
+        ...local,
+        ...cloudSettings,
+        categoryLocks: {
+          ...(local.categoryLocks || {}),
+          ...(cloudSettings.categoryLocks || {})
+        }
+      };
+      try {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+      } catch { /* ignore */ }
+      setSettings(merged);
+    }).catch(() => {});
+
     window.addEventListener('biin_evaluations_updated', refresh);
     window.addEventListener('biin_projects_updated', refresh);
     window.addEventListener('biin_assignments_updated', refresh);
+    window.addEventListener('biin_settings_updated', refresh);
     window.addEventListener('storage', refresh);
     return () => {
+      mounted = false;
       window.removeEventListener('biin_evaluations_updated', refresh);
       window.removeEventListener('biin_projects_updated', refresh);
       window.removeEventListener('biin_assignments_updated', refresh);
+      window.removeEventListener('biin_settings_updated', refresh);
       window.removeEventListener('storage', refresh);
     };
   }, [currentUser]);
@@ -133,16 +155,23 @@ export const JudgeEvaluationsView: React.FC<JudgeEvaluationsViewProps> = ({
                       </div>
                     </div>
 
-                    {project && (
-                      <button
-                        onClick={() => onSelectProjectForEvaluation(project)}
-                        disabled={isCategoryEvaluationLocked(project.applicationType, project.headCategory) || settings.lockedProjects.includes(project.id)}
-                        className="btn-primary flex items-center justify-center space-x-1.5 rounded-xl px-3.5 sm:px-4 py-2 text-xs font-bold text-white shadow-md disabled:opacity-50 min-h-[38px] ml-auto sm:ml-0"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        <span>Edit Score</span>
-                      </button>
-                    )}
+                    {project && (() => {
+                      const isLocked = isProjectEvaluationLocked(project);
+                      return (
+                        <button
+                          onClick={() => onSelectProjectForEvaluation(project)}
+                          disabled={isLocked}
+                          className={`flex items-center justify-center space-x-1.5 rounded-xl px-3.5 sm:px-4 py-2 text-xs font-bold transition-all min-h-[38px] ml-auto sm:ml-0 ${
+                            isLocked
+                              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700'
+                              : 'btn-primary text-white shadow-md'
+                          }`}
+                        >
+                          {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                          <span>{isLocked ? 'Locked' : 'Edit Score'}</span>
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
 

@@ -3,6 +3,40 @@ import { evaluationDb, settingsDb, auditDb, userDb, projectDb, assignmentDb } fr
 
 const router = Router();
 
+function isEvaluationLocked(settings: any, project: any, projectId: string): boolean {
+  if (settings.evaluationsLocked) return true;
+  if (settings.lockedProjects && settings.lockedProjects.includes(projectId)) return true;
+  if (!settings.categoryLocks || !project) return false;
+
+  const t = (project.applicationType || '').toLowerCase();
+  let normType = 'Student-Secondary';
+  if (t.includes('tertiary')) normType = 'Student-Tertiary';
+  else if (t.includes('org')) normType = 'Organisation';
+  else if (t.includes('individual') || t.includes('group')) normType = 'Individual or Group';
+
+  let key = `${normType}___NONE`;
+  if (normType === 'Organisation') {
+    const hc = (project.headCategory || '').toLowerCase();
+    if (hc.includes('public') || hc.includes('industrial') || hc.includes('consumer') || hc.includes('psg')) {
+      key = 'Organisation___HC-PSG-I-C';
+    } else if (hc.includes('business') || hc === 'hc-bs') {
+      key = 'Organisation___HC-BS';
+    } else if (hc.includes('inclusion') || hc.includes('community') || hc === 'hc-ics') {
+      key = 'Organisation___HC-ICS';
+    }
+  } else if (normType === 'Student-Tertiary') {
+    const hc = (project.headCategory || '').toLowerCase();
+    let catCode = 'HC-C';
+    if (hc.includes('business') || hc === 'hc-bs') catCode = 'HC-BS';
+    else if (hc.includes('industrial') || hc === 'hc-i') catCode = 'HC-I';
+    else if (hc.includes('public') || hc.includes('government') || hc === 'hc-psg') catCode = 'HC-PSG';
+    else if (hc.includes('inclusion') || hc.includes('community') || hc === 'hc-ics') catCode = 'HC-ICS';
+    key = `${normType}___${catCode}`;
+  }
+
+  return Boolean(settings.categoryLocks[key]);
+}
+
 /**
  * GET /api/evaluations
  */
@@ -122,14 +156,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    // 4. Verify global and project lock state
+    // 4. Verify global, category, and project lock state
     const settings = await settingsDb.get();
-    if (settings.evaluationsLocked) {
-      res.status(423).json({ error: 'All project evaluations are currently locked by the Administrator.' });
-      return;
-    }
-    if (settings.lockedProjects && settings.lockedProjects.includes(evaluation.projectId)) {
-      res.status(423).json({ error: 'Evaluations for this specific project are locked by the Administrator.' });
+    if (isEvaluationLocked(settings, targetProject, evaluation.projectId)) {
+      res.status(423).json({ error: 'Evaluations are currently locked for this category or project by the Administrator.' });
       return;
     }
 
@@ -194,8 +224,9 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
 
     // Check lock state
     const settings = await settingsDb.get();
-    if (settings.evaluationsLocked) {
-      res.status(423).json({ error: 'All project evaluations are currently locked by the Administrator.' });
+    const targetProject = await projectDb.findById(evaluation.projectId);
+    if (isEvaluationLocked(settings, targetProject, evaluation.projectId)) {
+      res.status(423).json({ error: 'Evaluations are currently locked for this category or project by the Administrator.' });
       return;
     }
 

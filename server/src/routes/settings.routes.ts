@@ -20,11 +20,12 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
  */
 router.put('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { evaluationsLocked, finalResultsLocked, lockedProjects, autoRankingEnabled, actor } = req.body;
+    const { evaluationsLocked, finalResultsLocked, lockedProjects, categoryLocks, autoRankingEnabled, actor } = req.body;
     const updated = await settingsDb.update({
       evaluationsLocked,
       finalResultsLocked,
       lockedProjects,
+      categoryLocks,
       autoRankingEnabled
     });
 
@@ -137,6 +138,34 @@ router.post('/toggle-project-lock', async (req: Request, res: Response): Promise
     res.json({ success: true, isLocked: !isLocked, settings: updated });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to toggle project lock.' });
+  }
+});
+
+/**
+ * POST /api/settings/toggle-category-lock
+ */
+router.post('/toggle-category-lock', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { key, locked, actor } = req.body;
+    const current = await settingsDb.get();
+    const categoryLocks = { ...(current.categoryLocks || {}), [key]: Boolean(locked) };
+    const updated = await settingsDb.update({ categoryLocks });
+
+    if (actor) {
+      await auditDb.create({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        actorEmail: actor.email,
+        actorName: actor.name,
+        action: locked ? 'LOCK_CATEGORY_EVALUATION' : 'UNLOCK_CATEGORY_EVALUATION',
+        targetType: 'settings',
+        details: `${locked ? 'Locked' : 'Unlocked'} evaluation submissions for category key "${key}".`,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    res.json({ success: true, isLocked: Boolean(locked), settings: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to toggle category lock.' });
   }
 });
 
