@@ -161,7 +161,8 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
   const isAssigned = useMemo(() => {
     if (!currentUser) return false;
     if (currentUser.role === 'admin') return true;
-    if (existingEvaluation && existingEvaluation.judgeEmail.toLowerCase() === currentUser.email.toLowerCase()) return true;
+    // If this judge already has an evaluation for this project, always show as assigned
+    if (existingEvaluation) return true;
     return isProjectAssignedToJudge(currentUser.email, project);
   }, [currentUser, project, existingEvaluation, assignmentsTick]);
 
@@ -186,9 +187,11 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
     }
 
     let freshAssigned = isAssigned;
-    if (existingEvaluation && currentUser?.email && existingEvaluation.judgeEmail.toLowerCase() === currentUser.email.toLowerCase()) {
+    // If judge already has an evaluation for this project, they can always update it
+    if (existingEvaluation) {
       freshAssigned = true;
-    } else if (!freshAssigned && currentUser?.role !== 'admin' && currentUser?.email) {
+    } else if (currentUser?.role !== 'admin' && currentUser?.email) {
+      // Always refresh live assignments from API before checking
       try {
         const liveAsgns = await api.getAssignmentsByJudge(currentUser.email);
         if (Array.isArray(liveAsgns)) {
@@ -197,15 +200,21 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
           const filtered = currentAll.filter(a => normalizeEmail(a.judgeEmail) !== cleanEmail);
           const merged = [...filtered, ...liveAsgns];
           localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(merged));
-          freshAssigned = isProjectAssignedToJudge(currentUser.email, project);
+          freshAssigned = liveAsgns.length === 0 || isProjectAssignedToJudge(currentUser.email, project);
         }
-      } catch {}
+      } catch {
+        // If network fails, allow if no assignments configured locally either
+        if (getJudgeAssignments().filter(a => normalizeEmail(a.judgeEmail) === normalizeEmail(currentUser.email)).length === 0) {
+          freshAssigned = true;
+        }
+      }
     }
 
     if (!freshAssigned) {
       setValidationError('You are not assigned to evaluate this project. Only assigned judges can submit scores.');
       return;
     }
+
 
     const missingCriteria = activeCriteria.filter((crit) => {
       const val = scores[crit.key];
@@ -251,7 +260,8 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
     }
 
     let freshAssigned = isAssigned;
-    if (existingEvaluation && currentUser?.email && existingEvaluation.judgeEmail.toLowerCase() === currentUser.email.toLowerCase()) {
+    // If judge already has an evaluation for this project, they can always update it
+    if (existingEvaluation) {
       freshAssigned = true;
     } else if (currentUser?.role !== 'admin' && currentUser?.email) {
       // Always re-fetch live assignments before submitting to catch cross-device admin changes
@@ -263,10 +273,13 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
           const filtered = currentAll.filter(a => normalizeEmail(a.judgeEmail) !== cleanEmail);
           const merged = [...filtered, ...liveAsgns];
           localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(merged));
-          freshAssigned = isProjectAssignedToJudge(currentUser.email, project);
+          freshAssigned = liveAsgns.length === 0 || isProjectAssignedToJudge(currentUser.email, project);
         }
       } catch {
-        // keep existing value if network fails
+        // If network fails, allow if no assignments configured
+        if (getJudgeAssignments().filter(a => normalizeEmail(a.judgeEmail) === normalizeEmail(currentUser.email)).length === 0) {
+          freshAssigned = true;
+        }
       }
     }
 

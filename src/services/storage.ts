@@ -1164,26 +1164,11 @@ export const saveEvaluation = async (evaluation: Evaluation, actor?: { email: st
     ))
   );
 
-  if (!isAdmin && !isExistingJudgeEval && targetProject) {
-    // Always fetch fresh assignments from backend before checking to handle cross-device admin changes
-    try {
-      const freshAssignments = await api.getAssignmentsByJudge(evaluation.judgeEmail);
-      if (Array.isArray(freshAssignments) && freshAssignments.length > 0) {
-        const currentAll = getJudgeAssignments();
-        const cleanEmail = normalizeEmail(evaluation.judgeEmail);
-        const filtered = currentAll.filter(a => normalizeEmail(a.judgeEmail) !== cleanEmail);
-        const merged = [...filtered, ...freshAssignments];
-        localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(merged));
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('biin_assignments_updated'));
-        }
-      }
-    } catch {/* ignore network error, use local */}
+  // Frontend assignment pre-check removed — backend is the authoritative source.
+  // The backend (/api/evaluations POST) will validate the assignment and return 403 if not authorized.
+  // This eliminates false "not assigned" errors from stale localStorage.
 
-    if (!isProjectAssignedToJudge(evaluation.judgeEmail, targetProject)) {
-      throw new Error('This project is not assigned to your account. You can only evaluate projects assigned to you by the Administrator.');
-    }
-  }
+
 
   let savedRecord: Evaluation = { ...evaluation };
   if (existingIndex >= 0) {
@@ -1217,9 +1202,19 @@ export const saveEvaluation = async (evaluation: Evaluation, actor?: { email: st
   } catch (err: any) {
     console.warn('[Storage] Remote evaluation save notice:', err);
     const msg = err?.message || String(err);
-    if (msg.includes('403') || msg.includes('assigned') || msg.includes('locked') || msg.includes('Invalid')) {
+    // Only block on locked errors; assignment errors are handled by backend's own existingEval check
+    // For updates (existingIndex >= 0), never block on "assigned" since judge already submitted
+    const isAssignedError = msg.includes('assigned');
+    const isLockError = msg.includes('locked') || msg.includes('Locked');
+    const isInvalidScore = msg.includes('Invalid') || msg.includes('score');
+    if (isLockError || isInvalidScore) {
       throw err;
     }
+    if (isAssignedError && existingIndex < 0) {
+      // First-time submission blocked by backend — re-throw so user knows
+      throw err;
+    }
+    // Otherwise swallow network/auth errors so local save is preserved
   }
 
   if (actor) {

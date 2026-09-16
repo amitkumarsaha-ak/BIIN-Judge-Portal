@@ -105,9 +105,9 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
     });
   };
 
-  // Form State - default to scope so saving always works immediately
-  const [selectedAppType, setSelectedAppType] = useState<ApplicationType>('Student-Secondary');
-  const [selectedHeadCategory, setSelectedHeadCategory] = useState<string>('All Head Category');
+  // Form State — default to 'All Application Types' so one Save gives access to all projects
+  const [selectedAppType, setSelectedAppType] = useState<ApplicationType>('All Application Types');
+  const [selectedHeadCategory, setSelectedHeadCategory] = useState<string>('N/A');
   const [assignMode, setAssignMode] = useState<'scope' | 'specific'>('scope');
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);

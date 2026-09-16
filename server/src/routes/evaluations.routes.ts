@@ -203,14 +203,26 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     if (!isAdminUser && targetProject) {
       // Allow judges to update their own existing evaluations
-      const existingEval = await evaluationDb.getForProject(evaluation.projectId, evaluation.judgeEmail);
+      // Check by projectId, applicationId, or projectCode
+      const cleanEmail = evaluation.judgeEmail.toLowerCase();
+      const allEvals = await evaluationDb.getAll();
+      const existingEval = allEvals.find(e => {
+        if (e.judgeEmail.toLowerCase() !== cleanEmail) return false;
+        const eProjId = String(e.projectId || '').trim().toLowerCase();
+        const pId = String(targetProject.id || '').trim().toLowerCase();
+        const pAppId = String(targetProject.applicationId || '').trim().toLowerCase();
+        const pCode = String(targetProject.projectCode || '').trim().toLowerCase();
+        return eProjId === pId || (pAppId && eProjId === pAppId) || (pCode && eProjId === pCode);
+      });
+
       if (!existingEval) {
         const judgeAssignments = await assignmentDb.getByJudge(evaluation.judgeEmail);
         // If the administrator has configured assignments for this judge, strictly enforce them.
         // If no assignments have been configured yet, allow the approved judge to evaluate.
         if (judgeAssignments.length > 0) {
           const isAssigned = judgeAssignments.some(asgn => {
-            if (asgn.applicationType === 'All Application Types' || asgn.applicationType === 'All') {
+            const aType = (asgn.applicationType || '').trim().toLowerCase();
+            if (aType === 'all application types' || aType === 'all') {
               return true;
             }
 

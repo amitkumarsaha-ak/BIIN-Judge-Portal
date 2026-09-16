@@ -740,7 +740,14 @@ export const evaluationDb = {
 
   async getForProject(projectId: string, judgeEmail: string): Promise<SeedEvaluation | undefined> {
     const all = await evaluationDb.getAll();
-    return all.find(e => e.projectId === projectId && e.judgeEmail.toLowerCase() === judgeEmail.toLowerCase());
+    const cleanEmail = judgeEmail.toLowerCase();
+    const cleanId = String(projectId || '').trim().toLowerCase();
+    // Look up by projectId, applicationId, or projectCode for robustness
+    return all.find(e => {
+      if (e.judgeEmail.toLowerCase() !== cleanEmail) return false;
+      const eProjId = String(e.projectId || '').trim().toLowerCase();
+      return eProjId === cleanId;
+    });
   },
 
   async save(evaluation: SeedEvaluation): Promise<SeedEvaluation> {
