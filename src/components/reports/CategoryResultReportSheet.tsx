@@ -83,27 +83,22 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
 
         const catTitle = isNoHeadCat ? 'General (No Head Category)' : group.headCategoryName;
 
-        // 1. Top Header
+        // 1. Top Header (clearing pre-printed top letterhead region)
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(16);
+        pdf.setFontSize(15);
         pdf.setTextColor(15, 23, 42); // slate-900
-        pdf.text('BANGLADESH ICT & INNOVATION NETWORK', 105, 18, { align: 'center' });
+        pdf.text('BANGLADESH ICT AND INNOVATION AWARDS 2026', 105, 45, { align: 'center' });
 
         // 2. Subheading
-        pdf.setFontSize(11);
+        pdf.setFontSize(10);
         pdf.setTextColor(51, 65, 85); // slate-700
         const subTitle = `Application Type: ${group.appTypeTitle}   •   Category Name: ${catTitle}`;
-        pdf.text(subTitle, 105, 25, { align: 'center' });
-
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(8.5);
-        pdf.setTextColor(100, 116, 139); // slate-500
-        pdf.text('Official Competition Result Sheet · Award Designation & Scoring Evaluation', 105, 30, { align: 'center' });
+        pdf.text(subTitle, 105, 51.5, { align: 'center' });
 
         // Header bottom divider
         pdf.setDrawColor(15, 23, 42);
         pdf.setLineWidth(0.6);
-        pdf.line(14, 33, 196, 33);
+        pdf.line(14, 55, 196, 55);
 
         // 3. Table Rows
         const tableBody = sortedResults.map((item, idx) => {
@@ -121,13 +116,13 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
           tableBody.push(['-', 'No evaluated projects in this category', '-', 'N/A']);
         }
 
-        // Table Rendering with autoTable
+        // Table Rendering with autoTable (safe margins for pre-printed letterhead)
         autoTable(pdf, {
-          startY: 37,
+          startY: 58,
           head: [['SL', 'Solution Name & Team Lead', 'Score', 'Position']],
           body: tableBody,
           theme: 'grid',
-          margin: { left: 14, right: 14, bottom: 46 },
+          margin: { left: 14, right: 14, top: 44, bottom: 32 },
           headStyles: {
             fillColor: [241, 245, 249],
             textColor: [15, 23, 42],
@@ -181,11 +176,12 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
         const detectedJudges = Array.from(judgesMap.values());
 
         const lastTable = (pdf as any).lastAutoTable;
-        let sigY = lastTable ? lastTable.finalY + 14 : 240;
+        let sigY = lastTable ? lastTable.finalY + 12 : 215;
 
-        if (sigY > 248) {
+        // If signature block (approx 32mm) would collide with bottom footer (at ~265mm)
+        if (sigY > 232) {
           pdf.addPage('a4', 'portrait');
-          sigY = 30;
+          sigY = 50;
         }
 
         pdf.setDrawColor(15, 23, 42);
@@ -200,7 +196,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
         const startX = 14;
         const totalW = 182;
         const colW = totalW / 5;
-        const lineY = sigY + 22;
+        const lineY = sigY + 20;
 
         for (let j = 0; j < 5; j++) {
           const slotX = startX + j * colW;
@@ -228,7 +224,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
       });
 
       const fileSuffix = selectedKey === 'ALL' ? 'All_Categories' : selectedKey.replace(/[^a-zA-Z0-9_-]/g, '_');
-      pdf.save(`BIIN_Result_Report_${fileSuffix}.pdf`);
+      pdf.save(`BIIN_Awards_2026_Result_${fileSuffix}.pdf`);
     } catch (err) {
       console.error('Error generating PDF:', err);
       window.print();
@@ -244,7 +240,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
         @media print {
           @page {
             size: A4 portrait;
-            margin: 10mm 12mm;
+            margin: 44mm 14mm 32mm 14mm;
           }
           body {
             background-color: #ffffff !important;
@@ -279,17 +275,18 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
             width: 100% !important;
             box-shadow: none !important;
             border: none !important;
-            background: #ffffff !important;
+            background: transparent !important;
           }
           .category-page-break {
             page-break-after: always;
             break-after: page;
             box-shadow: none !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 12px !important;
-            padding: 24px !important;
-            margin-bottom: 24px !important;
-            background: #ffffff !important;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            margin-bottom: 0 !important;
+            background: transparent !important;
           }
           .category-page-break:last-child {
             page-break-after: auto;
@@ -301,7 +298,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
           }
           .print-table th, .print-table td {
             border: 1px solid #64748b !important;
-            padding: 7px 10px !important;
+            padding: 6px 8px !important;
             color: #000000 !important;
           }
           .print-table th {
@@ -338,8 +335,8 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
           <div className="flex items-center space-x-2">
             <Printer className="h-5 w-5 text-indigo-400 shrink-0" />
             <div>
-              <h2 className="font-heading font-bold text-sm text-white">Official Result Report Sheet (A4)</h2>
-              <p className="text-[11px] text-slate-400">Download direct PDF file to your PC or print official competition result sheets</p>
+              <h2 className="font-heading font-bold text-sm text-white">Letterhead Result Report Sheet (A4)</h2>
+              <p className="text-[11px] text-slate-400">Pre-adjusted for official BIIN letterhead paper (Top 44mm &amp; Bottom 32mm clearance)</p>
             </div>
           </div>
 
@@ -425,7 +422,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
                 {/* 1. Header Section */}
                 <div className="text-center space-y-1.5 pb-4 border-b-2 border-slate-900">
                   <h1 className="font-heading text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-wide">
-                    Bangladesh ICT &amp; Innovation Network
+                    Bangladesh ICT and Innovation Awards 2026
                   </h1>
 
                   <div className="text-sm sm:text-base font-bold text-slate-700 uppercase tracking-normal">
@@ -437,10 +434,6 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
                       </span>
                     </span>
                   </div>
-
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Official Competition Result Sheet · Award Designation &amp; Scoring Evaluation
-                  </p>
                 </div>
 
                 {/* 2. Results Table */}
