@@ -169,16 +169,26 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
         const numJudges = judgeList.length;
 
         const isTwoRows = numJudges > 6;
-        const totalHeightNeeded = isTwoRows ? 95 : 75;
-
         const lastTable = (pdf as any).lastAutoTable;
-        let sigY = lastTable ? lastTable.finalY + 12 : 160;
+        let tableFinalY = lastTable ? lastTable.finalY : 120;
 
-        // If signatures (judges + 2 authorized signatures) would collide with bottom footer (at ~265mm)
-        if (sigY + totalHeightNeeded > 255) {
+        // authY is pinned right at the very bottom of the page (safe above pre-printed letterhead footer at 267mm)
+        const authY = 256;
+
+        // If the table on this page leaves less than 100mm, signatures would be cramped -> move to new page
+        if (tableFinalY > 155) {
           pdf.addPage('a4', 'portrait');
-          sigY = 50; // below top letterhead on the new page
+          tableFinalY = 44; // On new page, start below top letterhead
         }
+
+        // Calculate sigY and lineY based on available vertical space to authY (256mm)
+        const sigY = tableFinalY === 44 ? 55 : Math.max(tableFinalY + 12, 145);
+
+        // Generous blank spacing between heading and judge signature line:
+        // Divide the vertical span between heading and bottom authY proportionally
+        const availableHeight = authY - sigY;
+        const judgeLineOffset = isTwoRows ? Math.round(availableHeight * 0.35) : Math.round(availableHeight * 0.45);
+        const lineY = sigY + judgeLineOffset;
 
         pdf.setDrawColor(15, 23, 42);
         pdf.setLineWidth(0.4);
@@ -189,16 +199,10 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
         pdf.setTextColor(51, 65, 85);
         pdf.text('JUDGES COMMITTEE SIGNATURES & VERIFICATION', 105, sigY + 6, { align: 'center' });
 
-        // Extra space between heading and judge signature line (sigY + 42 gives 36mm clearance)
-        const judgeLineOffset = 42;
-        let endOfJudgesY = sigY + judgeLineOffset;
-
         if (!isTwoRows) {
           const startX = 14;
           const totalW = 182;
           const colW = totalW / numJudges;
-          const lineY = sigY + judgeLineOffset;
-          endOfJudgesY = lineY;
 
           const nameFont = numJudges >= 6 ? 6.5 : 7.5;
           const desigFont = numJudges >= 6 ? 6 : 7;
@@ -233,7 +237,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
           const startX = 14;
 
           // Row 1
-          const lineY1 = sigY + judgeLineOffset;
+          const lineY1 = lineY - 10;
           for (let j = 0; j < perRow; j++) {
             const slotX = startX + j * colW;
             const midX = slotX + colW / 2;
@@ -257,7 +261,6 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
 
           // Row 2
           const lineY2 = lineY1 + 22;
-          endOfJudgesY = lineY2;
           for (let j = perRow; j < numJudges; j++) {
             const idxInRow = j - perRow;
             const slotX = startX + idxInRow * colW;
@@ -282,8 +285,6 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
         }
 
         // 5. Authorized Signatures Section (Pinned to the very bottom of the page before footer)
-        const authY = Math.max(endOfJudgesY + 34, 252);
-
         // Left Authorized Signature
         const leftAuthX1 = 20;
         const leftAuthX2 = 75;
@@ -599,7 +600,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
 
                     {/* Extra space between heading and judge signatures */}
                     <div
-                      className="grid gap-4 text-center pt-14 sm:pt-16"
+                      className="grid gap-4 text-center pt-20 sm:pt-24"
                       style={{
                         gridTemplateColumns: `repeat(${judgeSlots.length > 6 ? Math.ceil(judgeSlots.length / 2) : judgeSlots.length}, minmax(0, 1fr))`
                       }}
@@ -607,7 +608,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
                       {judgeSlots.map((slot) => (
                         <div key={slot.number} className="flex flex-col justify-end space-y-1">
                           {/* Signature Line with generous height */}
-                          <div className="h-16 sm:h-20 border-b-2 border-slate-800 mb-1 flex items-end justify-center">
+                          <div className="h-20 sm:h-24 border-b-2 border-slate-800 mb-1 flex items-end justify-center">
                             {/* Blank area for physical signature */}
                           </div>
 
@@ -628,7 +629,7 @@ export const CategoryResultReportSheet: React.FC<CategoryResultReportSheetProps>
                   </div>
 
                   {/* 5. 2 Authorized Signatures Section - Pinned to the very bottom of the page */}
-                  <div className="pt-20 sm:pt-28 pb-1 flex items-end justify-between px-6 sm:px-14">
+                  <div className="pt-28 sm:pt-36 pb-2 mt-auto flex items-end justify-between px-6 sm:px-14">
                     <div className="w-52 sm:w-60 text-center">
                       <div className="h-14 border-b-2 border-slate-800 mb-1"></div>
                       <span className="text-xs font-bold text-slate-900 uppercase tracking-wide block">
