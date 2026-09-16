@@ -259,6 +259,9 @@ export const getHeadCategoriesForAppType = (appType?: string): readonly { code: 
 
 export const canonicalAppType = (type?: string): ApplicationType => {
   const t = (type || '').toLowerCase().trim();
+  if (t === 'all' || t === 'all application types' || t === 'all application type') {
+    return 'All Application Types';
+  }
   if (t.includes('tertiary') || t === 'student-tertiary') {
     return 'Student-Tertiary';
   }
@@ -304,11 +307,20 @@ export const matchesCategory = (
   filterCategory?: string,
   projectAppType?: string
 ): boolean => {
-  if (!filterCategory || filterCategory === 'All' || filterCategory === 'All Head Category' || filterCategory === 'All Head Categories') {
+  if (
+    !filterCategory ||
+    filterCategory === 'All' ||
+    filterCategory === 'All Head Category' ||
+    filterCategory === 'All Head Categories' ||
+    filterCategory.toLowerCase().trim() === 'n/a' ||
+    filterCategory.toLowerCase().trim() === 'none' ||
+    filterCategory.toLowerCase().trim() === 'null' ||
+    filterCategory.trim() === ''
+  ) {
     return true;
   }
   const appType = canonicalAppType(projectAppType);
-  if (appType === 'Student-Secondary' || appType === 'Individual or Group') {
+  if (appType === 'Student-Secondary' || appType === 'Individual or Group' || appType === 'All Application Types') {
     return true;
   }
   const pc = (projectCategory || '').toLowerCase().trim();

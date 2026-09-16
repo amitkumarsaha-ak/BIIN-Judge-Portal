@@ -29,6 +29,7 @@ interface JudgeAssignmentModalProps {
 }
 
 const APPLICATION_TYPES: ApplicationType[] = [
+  'All Application Types',
   'Student-Secondary',
   'Individual or Group',
   'Organization',
@@ -113,7 +114,7 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
 
   const isNoHeadCategory = useMemo(() => {
     const canon = canonicalAppType(selectedAppType);
-    return canon === 'Student-Secondary' || canon === 'Individual or Group';
+    return canon === 'Student-Secondary' || canon === 'Individual or Group' || canon === 'All Application Types';
   }, [selectedAppType]);
 
   // Matching projects based on selected scope
@@ -133,7 +134,7 @@ export const JudgeAssignmentModal: React.FC<JudgeAssignmentModalProps> = ({
     setSelectedAppType(type);
     setSelectedProjectIds([]);
     const canon = canonicalAppType(type);
-    if (canon === 'Student-Secondary' || canon === 'Individual or Group') {
+    if (canon === 'Student-Secondary' || canon === 'Individual or Group' || canon === 'All Application Types') {
       setSelectedHeadCategory('N/A');
     } else {
       setSelectedHeadCategory('All Head Category');

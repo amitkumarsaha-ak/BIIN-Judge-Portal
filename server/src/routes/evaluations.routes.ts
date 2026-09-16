@@ -5,6 +5,9 @@ const router = Router();
 
 function canonicalAppType(type?: string): string {
   const t = (type || '').toLowerCase().trim();
+  if (t === 'all' || t === 'all application types' || t === 'all application type') {
+    return 'All Application Types';
+  }
   if (t.includes('tertiary') || t === 'student-tertiary') {
     return 'Student-Tertiary';
   }
@@ -27,12 +30,21 @@ function matchesAppType(projectType?: string, filterType?: string): boolean {
   return canonicalAppType(projectType) === canonicalAppType(filterType);
 }
 
-function matchesCategory(projectCategory?: string, filterCategory?: string, projectAppType?: string): boolean {
-  if (!filterCategory || filterCategory === 'All' || filterCategory === 'All Head Category' || filterCategory === 'All Head Categories' || filterCategory === 'N/A') {
+function matchesCategory(projectCategory?: string | null, filterCategory?: string | null, projectAppType?: string | null): boolean {
+  if (
+    !filterCategory ||
+    filterCategory === 'All' ||
+    filterCategory === 'All Head Category' ||
+    filterCategory === 'All Head Categories' ||
+    filterCategory.toLowerCase().trim() === 'n/a' ||
+    filterCategory.toLowerCase().trim() === 'none' ||
+    filterCategory.toLowerCase().trim() === 'null' ||
+    filterCategory.trim() === ''
+  ) {
     return true;
   }
-  const appType = canonicalAppType(projectAppType);
-  if (appType === 'Student-Secondary' || appType === 'Individual or Group') {
+  const appType = canonicalAppType(projectAppType || undefined);
+  if (appType === 'Student-Secondary' || appType === 'Individual or Group' || appType === 'All Application Types') {
     return true;
   }
   const pc = (projectCategory || '').toLowerCase().trim();
@@ -44,13 +56,13 @@ function matchesCategory(projectCategory?: string, filterCategory?: string, proj
 
   if (appType === 'Organisation') {
     const isFilterMerged = isOrgMergedHeadCategory(filterCategory);
-    const isProjMerged = isOrgMergedHeadCategory(projectCategory);
+    const isProjMerged = isOrgMergedHeadCategory(projectCategory || undefined);
     if (isFilterMerged && isProjMerged) {
       return true;
     }
   }
 
-  return canonicalHeadCategory(projectCategory) === canonicalHeadCategory(filterCategory);
+  return canonicalHeadCategory(projectCategory || undefined) === canonicalHeadCategory(filterCategory);
 }
 
 function canonicalHeadCategory(cat?: string): string {
@@ -190,34 +202,42 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     const targetProject = await projectDb.findById(evaluation.projectId);
 
     if (!isAdminUser && targetProject) {
-      const judgeAssignments = await assignmentDb.getByJudge(evaluation.judgeEmail);
-      // If the administrator has configured assignments for this judge, strictly enforce them.
-      // If no assignments have been configured yet, allow the approved judge to evaluate.
-      if (judgeAssignments.length > 0) {
-        const isAssigned = judgeAssignments.some(asgn => {
-          // Specific project assignment takes precedence
-          if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
-            const cleanIds = asgn.projectIds.map((id: string) => String(id || '').trim().toLowerCase());
-            const matchId = cleanIds.includes(String(targetProject.id || '').trim().toLowerCase());
-            const matchAppId = Boolean(targetProject.applicationId) && cleanIds.includes(String(targetProject.applicationId || '').trim().toLowerCase());
-            const matchCode = Boolean(targetProject.projectCode) && cleanIds.includes(String(targetProject.projectCode || '').trim().toLowerCase());
-            return matchId || matchAppId || matchCode;
+      // Allow judges to update their own existing evaluations
+      const existingEval = await evaluationDb.getForProject(evaluation.projectId, evaluation.judgeEmail);
+      if (!existingEval) {
+        const judgeAssignments = await assignmentDb.getByJudge(evaluation.judgeEmail);
+        // If the administrator has configured assignments for this judge, strictly enforce them.
+        // If no assignments have been configured yet, allow the approved judge to evaluate.
+        if (judgeAssignments.length > 0) {
+          const isAssigned = judgeAssignments.some(asgn => {
+            if (asgn.applicationType === 'All Application Types' || asgn.applicationType === 'All') {
+              return true;
+            }
+
+            // Specific project assignment takes precedence
+            if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
+              const cleanIds = asgn.projectIds.map((id: string) => String(id || '').trim().toLowerCase());
+              const matchId = cleanIds.includes(String(targetProject.id || '').trim().toLowerCase());
+              const matchAppId = Boolean(targetProject.applicationId) && cleanIds.includes(String(targetProject.applicationId || '').trim().toLowerCase());
+              const matchCode = Boolean(targetProject.projectCode) && cleanIds.includes(String(targetProject.projectCode || '').trim().toLowerCase());
+              return matchId || matchAppId || matchCode;
+            }
+
+            if (!matchesAppType(targetProject.applicationType, asgn.applicationType)) {
+              return false;
+            }
+
+            if (!matchesCategory(targetProject.headCategory, asgn.headCategory, targetProject.applicationType)) {
+              return false;
+            }
+
+            return true;
+          });
+
+          if (!isAssigned) {
+            res.status(403).json({ error: 'This project is not assigned to your account. You can only evaluate projects assigned to you by the Administrator.' });
+            return;
           }
-
-          if (!matchesAppType(targetProject.applicationType, asgn.applicationType)) {
-            return false;
-          }
-
-          if (!matchesCategory(targetProject.headCategory, asgn.headCategory, targetProject.applicationType)) {
-            return false;
-          }
-
-          return true;
-        });
-
-        if (!isAssigned) {
-          res.status(403).json({ error: 'This project is not assigned to your account. You can only evaluate projects assigned to you by the Administrator.' });
-          return;
         }
       }
     }

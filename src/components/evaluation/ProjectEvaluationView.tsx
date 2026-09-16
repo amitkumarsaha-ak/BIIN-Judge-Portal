@@ -160,8 +160,9 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
   const isAssigned = useMemo(() => {
     if (!currentUser) return false;
     if (currentUser.role === 'admin') return true;
+    if (existingEvaluation && existingEvaluation.judgeEmail.toLowerCase() === currentUser.email.toLowerCase()) return true;
     return isProjectAssignedToJudge(currentUser.email, project);
-  }, [currentUser, project, assignmentsTick]);
+  }, [currentUser, project, existingEvaluation, assignmentsTick]);
 
   const rawTotalScore = calculateRawTotal(scores, activeCriteria);
   const convertedScore = calculateConvertedScore(rawTotalScore, maxRawScore);
@@ -184,7 +185,9 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
     }
 
     let freshAssigned = isAssigned;
-    if (!freshAssigned && currentUser?.role !== 'admin' && currentUser?.email) {
+    if (existingEvaluation && currentUser?.email && existingEvaluation.judgeEmail.toLowerCase() === currentUser.email.toLowerCase()) {
+      freshAssigned = true;
+    } else if (!freshAssigned && currentUser?.role !== 'admin' && currentUser?.email) {
       try {
         const liveAsgns = await api.getAssignmentsByJudge(currentUser.email);
         if (Array.isArray(liveAsgns)) {
@@ -247,7 +250,9 @@ export const ProjectEvaluationView: React.FC<ProjectEvaluationViewProps> = ({
     }
 
     let freshAssigned = isAssigned;
-    if (!freshAssigned && currentUser?.role !== 'admin' && currentUser?.email) {
+    if (existingEvaluation && currentUser?.email && existingEvaluation.judgeEmail.toLowerCase() === currentUser.email.toLowerCase()) {
+      freshAssigned = true;
+    } else if (!freshAssigned && currentUser?.role !== 'admin' && currentUser?.email) {
       try {
         const liveAsgns = await api.getAssignmentsByJudge(currentUser.email);
         if (Array.isArray(liveAsgns)) {

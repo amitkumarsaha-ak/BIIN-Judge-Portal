@@ -1148,11 +1148,27 @@ export const saveEvaluation = async (evaluation: Evaluation, actor?: { email: st
   // Check judge assignment authorization (Administrators bypass this check)
   const session = getCurrentUser();
   const isAdmin = (session && session.role === 'admin') || actor?.email === 'admin@biin.org';
-  if (!isAdmin && targetProject && !isProjectAssignedToJudge(evaluation.judgeEmail, targetProject)) {
+
+  const evaluations = getEvaluations();
+  const existingIndex = evaluations.findIndex(
+    (e) => (e.projectId === evaluation.projectId || (targetProject && (e.projectId === targetProject.id || e.projectId === targetProject.applicationId || e.projectId === targetProject.projectCode))) &&
+           e.judgeEmail.toLowerCase() === evaluation.judgeEmail.toLowerCase()
+  );
+  const isExistingJudgeEval = Boolean(
+    existingIndex >= 0 ||
+    getEvaluationForProject(evaluation.projectId, evaluation.judgeEmail) ||
+    (targetProject && (
+      getEvaluationForProject(targetProject.id, evaluation.judgeEmail) ||
+      (targetProject.applicationId && getEvaluationForProject(targetProject.applicationId, evaluation.judgeEmail)) ||
+      (targetProject.projectCode && getEvaluationForProject(targetProject.projectCode, evaluation.judgeEmail))
+    ))
+  );
+
+  if (!isAdmin && !isExistingJudgeEval && targetProject && !isProjectAssignedToJudge(evaluation.judgeEmail, targetProject)) {
     // Attempt live fetch in case assignments were updated on another device (e.g. Admin PC)
     try {
       const freshAssignments = await api.getAssignmentsByJudge(evaluation.judgeEmail);
-      if (Array.isArray(freshAssignments)) {
+      if (Array.isArray(freshAssignments) && freshAssignments.length > 0) {
         const currentAll = getJudgeAssignments();
         const cleanEmail = normalizeEmail(evaluation.judgeEmail);
         const filtered = currentAll.filter(a => normalizeEmail(a.judgeEmail) !== cleanEmail);
@@ -1168,12 +1184,6 @@ export const saveEvaluation = async (evaluation: Evaluation, actor?: { email: st
       throw new Error('This project is not assigned to your account. You can only evaluate projects assigned to you by the Administrator.');
     }
   }
-
-  const evaluations = getEvaluations();
-  const existingIndex = evaluations.findIndex(
-    (e) => (e.projectId === evaluation.projectId || (targetProject && e.projectId === targetProject.id)) &&
-           e.judgeEmail.toLowerCase() === evaluation.judgeEmail.toLowerCase()
-  );
 
   let savedRecord: Evaluation = { ...evaluation };
   if (existingIndex >= 0) {
@@ -1282,30 +1292,50 @@ export const getJudgeAssignmentsByJudge = (judgeIdentifier: string): JudgeAssign
 
 export const isProjectAssignedToJudge = (judgeIdentifier: string, project: Project): boolean => {
   if (!judgeIdentifier || !project) return false;
+
+  const cleanJudge = normalizeEmail(judgeIdentifier);
+  if (cleanJudge === 'admin@biin.org') return true;
+
+  // 0. If the judge already has an evaluation recorded for this project, they are authorized to view and update it
+  const evaluations = getEvaluations();
+  const pId = String(project.id || '').trim().toLowerCase();
+  const pAppId = String(project.applicationId || '').trim().toLowerCase();
+  const pCode = String(project.projectCode || '').trim().toLowerCase();
+
+  const hasExistingEval = evaluations.some(e => {
+    if (normalizeEmail(e.judgeEmail) !== cleanJudge) return false;
+    const eProjId = String(e.projectId || '').trim().toLowerCase();
+    return eProjId && (eProjId === pId || (pAppId && eProjId === pAppId) || (pCode && eProjId === pCode));
+  });
+  if (hasExistingEval) return true;
+
   const assignments = getJudgeAssignmentsByJudge(judgeIdentifier);
   // If no assignments are configured yet for this judge, they are permitted to evaluate all active projects
   if (assignments.length === 0) return true;
 
   return assignments.some(asgn => {
-    // 1. Specific project assignment takes precedence
+    // 1. All Application Types scope
+    const aType = (asgn.applicationType as string || '').trim().toLowerCase();
+    if (aType === 'all application types' || aType === 'all') {
+      return true;
+    }
+
+    // 2. Specific project assignment takes precedence
     if (Array.isArray(asgn.projectIds) && asgn.projectIds.length > 0) {
-      const pId = String(project.id || '').trim().toLowerCase();
-      const pAppId = String(project.applicationId || '').trim().toLowerCase();
-      const pCode = String(project.projectCode || '').trim().toLowerCase();
       return asgn.projectIds.some(id => {
         const cleanId = String(id || '').trim().toLowerCase();
-        return cleanId && (cleanId === pId || cleanId === pAppId || cleanId === pCode);
+        return cleanId && (cleanId === pId || (pAppId && cleanId === pAppId) || (pCode && cleanId === pCode));
       });
     }
 
-    // 2. Scope-wide assignment: Application Type matching
+    // 3. Scope-wide assignment: Application Type matching
     if (!matchesAppType(project.applicationType, asgn.applicationType)) {
       return false;
     }
 
-    // 3. Head category matching (only for application types with head categories)
+    // 4. Head category matching (only for application types with head categories)
     const canon = canonicalAppType(project.applicationType);
-    const isNoHeadCat = canon === 'Student-Secondary' || canon === 'Individual or Group';
+    const isNoHeadCat = canon === 'Student-Secondary' || canon === 'Individual or Group' || canon === 'All Application Types';
     const normHeadCat = (asgn.headCategory || '').trim().toLowerCase();
     const isAllHeadCat = !normHeadCat ||
       normHeadCat === 'all' ||
