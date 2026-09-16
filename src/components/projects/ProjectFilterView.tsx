@@ -102,6 +102,7 @@ export const ProjectFilterView: React.FC<ProjectFilterViewProps> = ({
           <HeadCategorySelector
             selectedCategory={selectedCategory}
             onSelectCategory={(code) => setSelectedCategory(code)}
+            selectedAppType={selectedType}
           />
         </div>
       )}

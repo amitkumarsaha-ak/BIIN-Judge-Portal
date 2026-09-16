@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS projects (
     title VARCHAR(500),
     description TEXT,
     application_type VARCHAR(100) DEFAULT 'Student',
-    head_category VARCHAR(50),
+    head_category VARCHAR(255),
     application_id VARCHAR(100),
     project_code VARCHAR(100),
     team_or_org_name VARCHAR(255),
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS judge_assignments (
     judge_email VARCHAR(255) NOT NULL,
     judge_name VARCHAR(255) NOT NULL,
     application_type VARCHAR(100) NOT NULL,
-    head_category VARCHAR(50),
+    head_category VARCHAR(255),
     project_ids JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

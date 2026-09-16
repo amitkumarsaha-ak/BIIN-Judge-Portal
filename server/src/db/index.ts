@@ -167,6 +167,8 @@ export async function initDatabase(): Promise<DbStatus> {
       try {
         await client.query('ALTER TABLE projects ADD COLUMN IF NOT EXISTS team_lead_name VARCHAR(255)');
         await client.query('ALTER TABLE projects ALTER COLUMN head_category DROP NOT NULL');
+        await client.query('ALTER TABLE projects ALTER COLUMN head_category TYPE VARCHAR(255)');
+        await client.query('ALTER TABLE judge_assignments ALTER COLUMN head_category TYPE VARCHAR(255)');
       } catch (migErr) {
         console.warn('[Database] Migration notice:', migErr);
       }

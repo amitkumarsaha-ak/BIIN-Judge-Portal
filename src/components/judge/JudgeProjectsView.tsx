@@ -202,7 +202,10 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
 
         <select
           value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
+          onChange={(e) => {
+            setFilterType(e.target.value);
+            setFilterCategory('');
+          }}
           className="text-xs rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <option value="">All Application Types</option>
@@ -257,13 +260,21 @@ export const JudgeProjectsView: React.FC<JudgeProjectsViewProps> = ({
                 className="glass-panel rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-md hover:shadow-xl transition-all flex flex-col justify-between space-y-4"
               >
                 <div className="space-y-3">
-                  <div className="flex items-start justify-between">
-                    <span className={`inline-flex items-center space-x-1.5 rounded-full px-3 py-1 text-xs font-semibold border ${getAppTypeColor(project.applicationType)}`}>
-                      <AppTypeIcon className="h-3.5 w-3.5" />
-                      <span>{project.applicationType}</span>
-                    </span>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className={`inline-flex items-center space-x-1.5 rounded-full px-3 py-1 text-xs font-semibold border ${getAppTypeColor(project.applicationType)}`}>
+                        <AppTypeIcon className="h-3.5 w-3.5" />
+                        <span>{project.applicationType}</span>
+                      </span>
 
-                    <span className={`inline-flex items-center space-x-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${isEvaluated ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/20'}`}>
+                      {project.headCategory && project.headCategory !== 'N/A' && canonicalAppType(project.applicationType) !== 'Student-Secondary' && canonicalAppType(project.applicationType) !== 'Individual or Group' && (
+                        <span className="inline-flex items-center rounded-full bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 px-2.5 py-0.5 text-[11px] font-semibold">
+                          <span>{getHeadCategoryDisplayName(project.headCategory, project.applicationType)}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <span className={`inline-flex items-center space-x-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold border shrink-0 ${isEvaluated ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/20'}`}>
                       {isEvaluated ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                       <span>{isEvaluated ? 'Evaluated' : 'Pending'}</span>
                     </span>

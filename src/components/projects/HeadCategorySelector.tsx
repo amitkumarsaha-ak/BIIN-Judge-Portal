@@ -1,32 +1,19 @@
 import React from 'react';
-import { Smartphone, Factory, Briefcase, HeartHandshake, Landmark, Check } from 'lucide-react';
-import type { HeadCategoryCode } from '../../types';
-import { HEAD_CATEGORIES } from '../../data/mockData';
+import { Landmark, Check } from 'lucide-react';
+import type { HeadCategoryCode, ApplicationType } from '../../types';
+import { getHeadCategoriesForAppType } from '../../utils/evaluation';
 
 interface HeadCategorySelectorProps {
   selectedCategory: HeadCategoryCode | null;
   onSelectCategory: (code: HeadCategoryCode) => void;
+  selectedAppType?: ApplicationType | null;
 }
 
 export const HeadCategorySelector: React.FC<HeadCategorySelectorProps> = ({
   selectedCategory,
-  onSelectCategory
+  onSelectCategory,
+  selectedAppType
 }) => {
-  const getIcon = (iconName: string) => {
-    switch (iconName) {
-      case 'Smartphone':
-        return Smartphone;
-      case 'Factory':
-        return Factory;
-      case 'Briefcase':
-        return Briefcase;
-      case 'HeartHandshake':
-        return HeartHandshake;
-      case 'Landmark':
-      default:
-        return Landmark;
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -46,10 +33,10 @@ export const HeadCategorySelector: React.FC<HeadCategorySelectorProps> = ({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-5">
-        {HEAD_CATEGORIES.map((cat) => {
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        {getHeadCategoriesForAppType(selectedAppType || undefined).map((cat) => {
           const isSelected = selectedCategory === cat.code;
-          const IconComponent = getIcon(cat.iconName);
+          const IconComponent = Landmark;
 
           return (
             <div
@@ -75,14 +62,10 @@ export const HeadCategorySelector: React.FC<HeadCategorySelectorProps> = ({
 
               <div className="space-y-1">
                 <span className="inline-block rounded bg-cyan-100 dark:bg-cyan-500/20 px-2 py-0.5 text-[11px] font-bold text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30">
-                  {cat.shortCode}
+                  {cat.code}
                 </span>
                 <h3 className="font-heading font-bold text-slate-900 dark:text-white text-sm leading-tight">{cat.name}</h3>
               </div>
-
-              <p className="mt-2 text-[11px] text-slate-600 dark:text-slate-400 leading-snug line-clamp-2">
-                {cat.description}
-              </p>
             </div>
           );
         })}

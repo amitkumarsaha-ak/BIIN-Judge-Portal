@@ -237,7 +237,16 @@ export const getHeadCategoryDisplayName = (headCategory?: string | null, appType
   return found ? found.name : headCategory;
 };
 
-export const getHeadCategoriesForAppType = (appType?: string): { code: HeadCategoryCode; name: string }[] => {
+export const getHeadCategoriesForAppType = (appType?: string): readonly { code: HeadCategoryCode; name: string }[] => {
+  if (!appType || appType === 'All' || appType === 'All Application Types') {
+    return [
+      ...RESULT_HEAD_CATEGORIES,
+      {
+        code: ORG_COMBINED_HEAD_CATEGORY_CODE,
+        name: ORG_COMBINED_HEAD_CATEGORY_NAME
+      }
+    ];
+  }
   const norm = canonicalAppType(appType);
   if (norm === 'Student-Secondary' || norm === 'Individual or Group') {
     return [];
